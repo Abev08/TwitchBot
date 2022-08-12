@@ -16,7 +16,8 @@ public class Chat
             Socket socket = new Socket(SocketType.Stream, ProtocolType.Tcp);
             byte[] receiveBuffer = new byte[10000]; // Max IRC message is 4096 bytes?
             int zeroBytesReceivedCounter = 0, currentIndex, nextIndex, bytesReceived, messageStartOffset = 0;
-            string userBadge, userName, customRewardID, message;
+            string userBadge, userName, customRewardID;
+            List<string> message;
             ManualResetEvent receiveEvent = new ManualResetEvent(false);
             // Background worker for async handling received messages
             BackgroundWorker receiveWorker = new BackgroundWorker() { WorkerSupportsCancellation = true };
@@ -48,7 +49,8 @@ public class Chat
 
                                 for (int i = 0; i < messages.Count; i++)
                                 {
-                                    message = messages[i];
+                                    // message[0] - header, message[1] - body
+                                    message = messages[i].Split("#" + Program.ChannelName, StringSplitOptions.RemoveEmptyEntries).ToList();
 
                                     // Check if received message is incomplete (just for last received message)
                                     if ((i == messages.Count - 1) && (receiveBuffer[bytesReceived + messageStartOffset - 1] != (byte)'\n') && (receiveBuffer[bytesReceived + messageStartOffset - 2] != (byte)'\r'))
@@ -56,31 +58,56 @@ public class Chat
                                         // Move the message to beginning of receiveBuffer
                                         if (messageStartOffset == 0) Array.Clear(receiveBuffer);
 
-                                        for (int j = 0; j < message.Length; j++) receiveBuffer[j + messageStartOffset] = (byte)message[j];
-                                        messageStartOffset += message.Length;
+                                        string s = string.Join("#" + Program.ChannelName, message);
+                                        for (int j = 0; j < s.Length; j++) receiveBuffer[j + messageStartOffset] = (byte)s[j];
+                                        messageStartOffset += s.Length;
                                         // Program.ConsoleWarning(">> Received incomplete message, moving offset to " + messageStartOffset);
                                         continue;
                                     }
                                     else messageStartOffset = 0;
 
+                                    // Ping request, let's play PING - PONG with the server :D
+                                    if (message[0].StartsWith("PING"))
+                                    {
+                                        string response = message[0].Replace("PING", "PONG");
+                                        // Console.WriteLine(string.Join("", message));
+                                        // Program.ConsoleWarning(">> " + response + ", " + DateTime.Now.ToString());
+                                        socket.Send(Encoding.UTF8.GetBytes(response + "\r\n"));
+                                        continue;
+                                    }
+
+                                    // Probably there was some "#channelName" parts in the message body
+                                    // Attach them together
+                                    if (message.Count < 2)
+                                    {
+                                        // Program.ConsoleWarning(">> Something went wrong with the message, skipping it");
+                                        Console.WriteLine(string.Join("", message));
+                                        continue;
+                                    }
+                                    while (message.Count > 2)
+                                    {
+                                        message[^2] += $" #{Program.ChannelName} " + message[^1];
+                                        message.RemoveAt(message.Count - 1);
+                                    }
+
                                     // Standard message without extra tags
-                                    if (message.StartsWith(':') && message.Contains("PRIVMSG"))
+                                    if (message[0].StartsWith(':') && message[0].Contains("PRIVMSG"))
                                     {
                                         Console.WriteLine(
-                                            String.Format("{0, 20}{1, 2}{2, -0}", message.Substring(1, message.IndexOf('!') - 1) // Username
+                                            String.Format("{0, 20}{1, 2}{2, -0}", message[0].Substring(1, message[0].IndexOf('!') - 1) // Username
                                             , ": ",
-                                            message.Substring(message.IndexOf(':', 1) + 1)) // message
+                                            message[1].Substring(message[1].IndexOf(':') + 1)) // message
                                         );
                                     }
                                     // Standard message with extra tags
-                                    else if (message.StartsWith("@") && message.Contains("PRIVMSG"))
+                                    else if (message[0].StartsWith("@") && message[0].Contains("PRIVMSG"))
                                     {
                                         // Check if message was from custom reward
-                                        currentIndex = message.IndexOf("custom-reward-id=");
+                                        currentIndex = message[0].IndexOf("custom-reward-id=");
                                         if (currentIndex > 0)
                                         {
                                             currentIndex += 17;
-                                            customRewardID = message.Substring(currentIndex, message.IndexOf(';', currentIndex) - currentIndex);
+                                            customRewardID = message[0].Substring(currentIndex, message[0].IndexOf(';', currentIndex) - currentIndex);
 
                                             // Do something based on customRewardID
                                             switch (customRewardID)
@@ -100,15 +127,15 @@ public class Chat
                                         }
 
                                         // Check if message had some bits cheered
-                                        currentIndex = message.IndexOf("bits=");
+                                        currentIndex = message[0].IndexOf("bits=");
                                         if (currentIndex > 0)
                                         {
                                             currentIndex += 5;
-                                            Console.WriteLine($"> Cheered with {message.Substring(currentIndex, message.IndexOf(';', currentIndex) - currentIndex)} bits");
+                                            Console.WriteLine($"> Cheered with {message[0].Substring(currentIndex, message[0].IndexOf(';', currentIndex) - currentIndex)} bits");
                                         }
 
-                                        currentIndex = message.IndexOf("badges=") + 7;
-                                        userBadge = message.Substring(currentIndex, (nextIndex = message.IndexOf(';', currentIndex - 1)) - currentIndex);
+                                        currentIndex = message[0].IndexOf("badges=") + 7;
+                                        userBadge = message[0].Substring(currentIndex, (nextIndex = message[0].IndexOf(';', currentIndex - 1)) - currentIndex);
                                         if (userBadge.Contains("broadcaster")) userBadge = "GOD";
                                         else if (userBadge.Contains("moderator")) userBadge = "MOD";
                                         else if (userBadge.Contains("subscriber")) userBadge = "SUB";
@@ -116,69 +143,69 @@ public class Chat
                                         else userBadge = string.Empty;
                                         currentIndex = nextIndex;
 
-                                        userName = message.Substring(currentIndex = (message.IndexOf("display-name=") + 13), (nextIndex = message.IndexOf(';', currentIndex)) - currentIndex);
+                                        userName = message[0].Substring(currentIndex = (message[0].IndexOf("display-name=") + 13), (nextIndex = message[0].IndexOf(';', currentIndex)) - currentIndex);
                                         currentIndex = nextIndex;
 
                                         Console.WriteLine(String.Format("{0, -4}{1, 20}{2, 2}{3, -0}",
                                                             userBadge,
                                                             userName,
                                                             ": ",
-                                                            message.Substring(message.IndexOf($"PRIVMSG #{Program.ChannelName} :", currentIndex) + 11 + Program.ChannelName.Length))
+                                                            message[1].Substring(message[1].IndexOf(":") + 1))
                                         );
                                     }
                                     // Notification - sub / announcement
-                                    else if (message.StartsWith("@") && message.Contains("USERNOTICE"))
+                                    else if (message[0].StartsWith("@") && message[0].Contains("USERNOTICE"))
                                     {
-                                        currentIndex = message.IndexOf("display-name=") + 13;
-                                        userName = message.Substring(currentIndex, (nextIndex = (message.IndexOf(';', currentIndex))) - currentIndex);
+                                        currentIndex = message[0].IndexOf("display-name=") + 13;
+                                        userName = message[0].Substring(currentIndex, (nextIndex = (message[0].IndexOf(';', currentIndex))) - currentIndex);
                                         currentIndex = nextIndex;
-                                        currentIndex = message.IndexOf("msg-id=", currentIndex) + 7;
-                                        switch (message.Substring(currentIndex, (message.IndexOf(';', currentIndex)) - currentIndex))
+                                        currentIndex = message[0].IndexOf("msg-id=", currentIndex) + 7;
+                                        switch (message[0].Substring(currentIndex, (message[0].IndexOf(';', currentIndex)) - currentIndex))
                                         {
                                             case "sub":
                                             case "resub":
                                                 Console.WriteLine("> User " + userName +
-                                                                    (message.Contains("msg-param-was-gifted=true") ? " got gifted sub for " : " subscribed for ") +
-                                                                    message.Substring(currentIndex = (message.IndexOf("msg-param-cumulative-months=", currentIndex) + 28), (message.IndexOf(';', currentIndex)) - currentIndex) +
-                                                                    " months."
+                                                                    (message[0].Contains("msg-param-was-gifted=true") ? " got gifted sub for " : " subscribed for ") +
+                                                                    message[0].Substring(currentIndex = (message[0].IndexOf("msg-param-cumulative-months=", currentIndex) + 28), (message[0].IndexOf(';', currentIndex)) - currentIndex) +
+                                                                    " months. Message: " +
+                                                                    message[1].Substring(message[1].IndexOf(':') + 1)
                                                 );
                                                 break;
                                             case "announcement":
-                                                currentIndex = (message.IndexOf("USERNOTICE", currentIndex) + 10);
-                                                currentIndex = (message.IndexOf(" :", currentIndex) + 2);
-                                                Console.WriteLine("> User " + userName + " announced that: " + message.Substring(currentIndex));
+                                                currentIndex = (message[1].IndexOf(":") + 1);
+                                                Console.WriteLine("> User " + userName + " announced that: " + message[1].Substring(currentIndex));
                                                 break;
                                             default:
-                                                Console.WriteLine(message);
+                                                Console.WriteLine(string.Join("", message));
                                                 break;
                                         }
                                     }
                                     // Ban
-                                    else if (message.StartsWith("@ban-duration="))
+                                    else if (message[0].StartsWith("@ban-duration="))
                                     {
-                                        currentIndex = message.IndexOf("CLEARCHAT") + 10;
-                                        currentIndex = message.IndexOf(':', currentIndex) + 1;
-                                        userName = message.Substring(currentIndex);
-                                        Console.WriteLine($"> User {userName} got banned for {message.Substring(14, message.IndexOf(';') - 14)} min.");
+                                        userName = message[1].Substring(message[1].IndexOf(':') + 1);
+                                        Console.WriteLine($"> User {userName} got banned for {message[0].Substring(14, message[0].IndexOf(';') - 14)} min.");
                                     }
                                     // Timeout?
-                                    else if (message.StartsWith("@") && message.Contains("CLEARMSG"))
+                                    else if (message[0].StartsWith("@") && message[0].Contains("CLEARMSG"))
                                     {
-                                        userName = message.Substring(7, message.IndexOf(';') - 7);
+                                        userName = message[0].Substring(7, message[0].IndexOf(';') - 7);
                                         Console.WriteLine($"> User {userName} got timed out.");
                                     }
-                                    // Ping request, let's play PING - PONG with the server :D
-                                    else if (message.Split(" ")[0] == "PING")
+                                    // Different timeout?
+                                    else if (message[0].StartsWith("@") && message[0].Contains("CLEARCHAT"))
                                     {
-                                        string response = message.Replace("PING", "PONG");
-                                        // Console.WriteLine(message);
-                                        // Program.ConsoleWarning(">> " + response + ", " + DateTime.Now.ToString());
-                                        socket.Send(Encoding.UTF8.GetBytes(response + "\r\n"));
+                                        currentIndex = message[0].IndexOf(":tmi.twitch.tv ") + 15;
+                                        currentIndex = message[0].IndexOf(":", currentIndex) + 1;
+                                        userName = message[0].Substring(currentIndex);
+                                        Console.WriteLine($"> User {userName} got timed out.");
                                     }
                                     // Other message type
                                     else
                                     {
-                                        Console.WriteLine(message);
+                                        Console.ForegroundColor = ConsoleColor.Magenta;
+                                        Console.WriteLine(string.Join("", message));
+                                        Console.ForegroundColor = Program.ConsoleDefaultColor;
                                     }
                                 }
                                 zeroBytesReceivedCounter = 0;

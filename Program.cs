@@ -11,7 +11,7 @@ internal class Program
     public static string ChannelName = "cakez77";
     static Vector2u MinWindowSize = new Vector2u(1280, 720);
     static Font TextFont = new Font(GetResource("SegoeUI.ttf"));
-    static ConsoleColor ConsoleDefaultColor;
+    public static ConsoleColor ConsoleDefaultColor;
 
     private static void Main(string[] args)
     {
