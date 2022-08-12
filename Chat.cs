@@ -193,7 +193,7 @@ public class Chat
                                             case "submysterygift":
                                                 currentIndex = message[0].IndexOf("msg-param-mass-gift-count=") + 26;
                                                 Console.WriteLine("> User " + userName + " gifting " +
-                                                                    message[0].Substring(currentIndex, message[0].IndexOf(";", currentIndex)) +
+                                                                    message[0].Substring(currentIndex, message[0].IndexOf(";", currentIndex) - currentIndex) +
                                                                     " subs for random viewers" +
                                                                     (message[1].Length > 2 ? " Message: " + message[1].Substring(message[1].IndexOf(':') + 1) : "")
                                                 );
@@ -234,7 +234,7 @@ public class Chat
                                     // Emote only
                                     else if (message[0].StartsWith("@msg-id=emote_only_"))
                                     {
-                                        if (message[0].Substring(19, message[0].IndexOf(" ;") - 19) == "on") Console.WriteLine("> Emote only activated");
+                                        if (message[0].Substring(19, message[0].IndexOf(" :") - 19) == "on") Console.WriteLine("> Emote only activated");
                                         else Console.WriteLine("> Emote only deactivated");
                                     }
                                     // Other message type
