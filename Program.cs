@@ -8,13 +8,16 @@ using SFML.Window;
 
 internal class Program
 {
-    public static string ChannelName = "cakez77";
+    public static string ChannelName = string.Empty;
     static Vector2u MinWindowSize = new Vector2u(1280, 720);
     static Font TextFont = new Font(GetResource("SegoeUI.ttf"));
     public static ConsoleColor ConsoleDefaultColor;
 
     private static void Main(string[] args)
     {
+        // Read Config.ini
+        if (ParseConfigFile()) return;
+
         ConsoleDefaultColor = Console.ForegroundColor;
 
         Chat.Start(); // Start chatbot
@@ -75,5 +78,79 @@ internal class Program
             stream.Read(data);
             return data;
         }
+    }
+
+    static bool ParseConfigFile()
+    {
+        FileInfo configFile = new FileInfo(@"./Config.ini");
+        if (configFile.Exists == false)
+        {
+            // The file doesn't exist - create empty one
+            using (var stream = configFile.Create())
+            {
+                stream.Write(Encoding.UTF8.GetBytes("NICK = \r\n"));
+                stream.Write(Encoding.UTF8.GetBytes("PASS = \r\n"));
+                stream.Write(Encoding.UTF8.GetBytes("Channel name = "));
+                stream.Flush();
+            }
+            // Notify the user and close bot
+            Console.WriteLine("Missing required info in Config.ini file.");
+            Console.WriteLine("Please fill it up.");
+            Console.ReadLine();
+            return true;
+        }
+        else
+        {
+            using (var reader = configFile.OpenText())
+            {
+                string[] lines = reader.ReadToEnd().Split("\r\n", StringSplitOptions.RemoveEmptyEntries);
+                bool[] readedRequiredData = new bool[3]; // { NICK, PASS, ChannelName }
+                foreach (string line in lines)
+                {
+                    string[] text = line.Split('=');
+                    if (text.Length < 2) continue;
+                    for (int i = 0; i < text.Length; i++) text[i] = text[i].Trim(); // Trim white spaces
+                    if (string.IsNullOrEmpty(text[1])) continue;
+                    switch (text[0])
+                    {
+                        case "NICK":
+                            if (readedRequiredData[0] == false)
+                            {
+                                readedRequiredData[0] = true;
+                                Chat.BotName = text[1].ToLower();
+                            }
+                            break;
+                        case "PASS":
+                            if (readedRequiredData[1] == false)
+                            {
+                                if (text[1].ToLower().Contains("oauth:") == false) break;
+                                readedRequiredData[1] = true;
+                                Chat.BotPass = text[1].ToLower();
+                            }
+                            break;
+                        case "Channel name":
+                            if (readedRequiredData[2] == false)
+                            {
+                                readedRequiredData[2] = true;
+                                ChannelName = text[1].ToLower();
+                            }
+                            break;
+                    }
+                }
+                // Check if all needed data was read
+                if (readedRequiredData.All(x => x == true) == false)
+                {
+                    // Something is missing, notify the user and close bot
+                    Console.WriteLine("Missing required info in Config.ini file.");
+                    if (readedRequiredData[0] == false) Console.WriteLine("Missing bot NICK. Correct syntax is \"NICK = TheBot\".");
+                    if (readedRequiredData[1] == false) Console.WriteLine("Missing bot PASS. Correct syntax is \"PASS = oauth:1234\".");
+                    if (readedRequiredData[2] == false) Console.WriteLine("Missing channel name. Correct syntax is \"Channel name = SomeChannelName\".");
+                    Console.ReadLine();
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 }

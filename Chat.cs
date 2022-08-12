@@ -4,6 +4,8 @@ using System.Text;
 
 public class Chat
 {
+    public static string BotName = string.Empty;
+    public static string BotPass = string.Empty;
     static bool botStarted;
 
     public static void Start()
@@ -252,8 +254,8 @@ public class Chat
                 socket.Connect("irc.chat.twitch.tv", 6667);
                 Program.ConsoleWarning(">> Connected");
                 receiveWorker.RunWorkerAsync();
-                socket.Send(Encoding.UTF8.GetBytes("PASS oauth:pemxb4hgv68mmloe7216qrjpgjrbic\r\n"));
-                socket.Send(Encoding.UTF8.GetBytes("NICK abevbot\r\n"));
+                socket.Send(Encoding.UTF8.GetBytes($"PASS {BotPass}\r\n"));
+                socket.Send(Encoding.UTF8.GetBytes($"NICK {BotName}\r\n"));
                 socket.Send(Encoding.UTF8.GetBytes($"JOIN #{Program.ChannelName},#{Program.ChannelName}\r\n"));
                 socket.Send(Encoding.UTF8.GetBytes("CAP REQ :twitch.tv/commands twitch.tv/tags\r\n")); // request extended chat messages
 
