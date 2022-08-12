@@ -18,6 +18,7 @@ internal class Program
         ConsoleDefaultColor = Console.ForegroundColor;
 
         Chat.Start(); // Start chatbot
+        while (true) Thread.Sleep(100); // Disable window for now
 
         Text message = new Text("Test string", TextFont, 42);
         message.Position = new Vector2f(10, 10);

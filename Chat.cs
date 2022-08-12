@@ -15,8 +15,8 @@ public class Chat
         {
             Socket socket = new Socket(SocketType.Stream, ProtocolType.Tcp);
             byte[] receiveBuffer = new byte[10000]; // Max IRC message is 4096 bytes?
-            int zeroBytesReceivedCounter = 0, currentIndex, nextIndex, bytesReceived;
-            string userBadge, userName, customRewardID;
+            int zeroBytesReceivedCounter = 0, currentIndex, nextIndex, bytesReceived, messageStartOffset = 0;
+            string userBadge, userName, customRewardID, message;
             ManualResetEvent receiveEvent = new ManualResetEvent(false);
             // Background worker for async handling received messages
             BackgroundWorker receiveWorker = new BackgroundWorker() { WorkerSupportsCancellation = true };
@@ -26,16 +26,43 @@ public class Chat
                 {
                     receiveEvent.Reset();
 
-                    socket.BeginReceive(receiveBuffer, 0, receiveBuffer.Length, SocketFlags.None, new AsyncCallback((IAsyncResult ar) =>
+                    socket.BeginReceive(receiveBuffer, messageStartOffset, receiveBuffer.Length - messageStartOffset, SocketFlags.None, new AsyncCallback((IAsyncResult ar) =>
                     {
                         try
                         {
                             bytesReceived = socket.EndReceive(ar);
                             if (bytesReceived > 0)
                             {
-                                string[] messages = Encoding.Default.GetString(receiveBuffer, 0, bytesReceived).Split("\r\n", StringSplitOptions.RemoveEmptyEntries);
-                                foreach (string message in messages)
+                                List<string> messages = Encoding.UTF8.GetString(receiveBuffer, 0, bytesReceived + messageStartOffset).Split("\r\n", StringSplitOptions.RemoveEmptyEntries).ToList();
+
+                                if (messageStartOffset > 0)
                                 {
+                                    // For some reason if the missing part of previous message is "\r\n" it's not send on next message
+                                    // Cut out the new message appended to previous one and insert it as new one
+                                    if (receiveBuffer[messageStartOffset] == '@')
+                                    {
+                                        messages.Insert(1, messages[0].Substring(messageStartOffset));
+                                        messages[0] = messages[0].Substring(0, messageStartOffset);
+                                    }
+                                }
+
+                                for (int i = 0; i < messages.Count; i++)
+                                {
+                                    message = messages[i];
+
+                                    // Check if received message is incomplete (just for last received message)
+                                    if ((i == messages.Count - 1) && (receiveBuffer[bytesReceived + messageStartOffset - 1] != (byte)'\n') && (receiveBuffer[bytesReceived + messageStartOffset - 2] != (byte)'\r'))
+                                    {
+                                        // Move the message to beginning of receiveBuffer
+                                        if (messageStartOffset == 0) Array.Clear(receiveBuffer);
+
+                                        for (int j = 0; j < message.Length; j++) receiveBuffer[j + messageStartOffset] = (byte)message[j];
+                                        messageStartOffset += message.Length;
+                                        // Program.ConsoleWarning(">> Received incomplete message, moving offset to " + messageStartOffset);
+                                        continue;
+                                    }
+                                    else messageStartOffset = 0;
+
                                     // Standard message without extra tags
                                     if (message.StartsWith(':') && message.Contains("PRIVMSG"))
                                     {
@@ -48,10 +75,6 @@ public class Chat
                                     // Standard message with extra tags
                                     else if (message.StartsWith("@") && message.Contains("PRIVMSG"))
                                     {
-                                        // Console.WriteLine("------");
-                                        // Console.WriteLine(message);
-                                        // Console.WriteLine("------");
-
                                         // Check if message was from custom reward
                                         currentIndex = message.IndexOf("custom-reward-id=");
                                         if (currentIndex > 0)
@@ -113,6 +136,7 @@ public class Chat
                                         switch (message.Substring(currentIndex, (message.IndexOf(';', currentIndex)) - currentIndex))
                                         {
                                             case "sub":
+                                            case "resub":
                                                 Console.WriteLine("> User " + userName +
                                                                     (message.Contains("msg-param-was-gifted=true") ? " got gifted sub for " : " subscribed for ") +
                                                                     message.Substring(currentIndex = (message.IndexOf("msg-param-cumulative-months=", currentIndex) + 28), (message.IndexOf(';', currentIndex)) - currentIndex) +
@@ -148,7 +172,7 @@ public class Chat
                                     {
                                         string response = message.Replace("PING", "PONG");
                                         // Console.WriteLine(message);
-                                        // Program.ConsoleWarning("> " + response + ", " + DateTime.Now.ToString());
+                                        // Program.ConsoleWarning(">> " + response + ", " + DateTime.Now.ToString());
                                         socket.Send(Encoding.UTF8.GetBytes(response + "\r\n"));
                                     }
                                     // Other message type
@@ -161,9 +185,13 @@ public class Chat
                             }
                             else
                             {
-                                Program.ConsoleWarning("> Received 0 bytes");
+                                Program.ConsoleWarning(">> Received 0 bytes");
                                 zeroBytesReceivedCounter++;
-                                if (zeroBytesReceivedCounter >= 5) socket.Close(); // Close connection if 5 times in a row received 0 bytes
+                                if (zeroBytesReceivedCounter >= 5)
+                                {
+                                    Program.ConsoleWarning(">> Closing connection");
+                                    socket.Close(); // Close connection if 5 times in a row received 0 bytes
+                                }
                             }
                         }
                         catch (Exception ex) { Console.WriteLine(ex.Message); }
@@ -179,10 +207,10 @@ public class Chat
             while (true)
             {
                 // Try to connect
-                Program.ConsoleWarning("> Connecting...");
+                Program.ConsoleWarning(">> Connecting...");
                 socket = new Socket(SocketType.Stream, ProtocolType.Tcp);
                 socket.Connect("irc.chat.twitch.tv", 6667);
-                Program.ConsoleWarning("> Connected");
+                Program.ConsoleWarning(">> Connected");
                 receiveWorker.RunWorkerAsync();
                 socket.Send(Encoding.UTF8.GetBytes("PASS oauth:pemxb4hgv68mmloe7216qrjpgjrbic\r\n"));
                 socket.Send(Encoding.UTF8.GetBytes("NICK abevbot\r\n"));
@@ -192,7 +220,7 @@ public class Chat
                 while (socket.Connected) Thread.Sleep(500); // While connection is active do nothing
 
                 // Connection lost
-                Program.ConsoleWarning("> Connection lost, waiting 2s to reconnect");
+                Program.ConsoleWarning(">> Connection lost, waiting 2s to reconnect");
                 receiveWorker.CancelAsync();
                 Thread.Sleep(2000);
             }
