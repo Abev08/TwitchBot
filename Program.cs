@@ -143,7 +143,7 @@ internal class Program
                     // Something is missing, notify the user and close bot
                     Console.WriteLine("Missing required info in Config.ini file.");
                     if (readedRequiredData[0] == false) Console.WriteLine("Missing bot NICK. Correct syntax is \"NICK = TheBot\".");
-                    if (readedRequiredData[1] == false) Console.WriteLine("Missing bot PASS. Correct syntax is \"PASS = oauth:1234\".");
+                    if (readedRequiredData[1] == false) Console.WriteLine("Missing bot PASS. Correct syntax is \"PASS = oauth:1234\".\r\nTo generate oauth token visit: https://twitchapps.com/tmi");
                     if (readedRequiredData[2] == false) Console.WriteLine("Missing channel name. Correct syntax is \"Channel name = SomeChannelName\".");
                     Console.ReadLine();
                     return true;

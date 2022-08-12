@@ -72,7 +72,7 @@ public class Chat
                                     if (message[0].StartsWith("PING"))
                                     {
                                         string response = message[0].Replace("PING", "PONG");
-                                        // Console.WriteLine(string.Join("", message));
+                                        // Console.WriteLine(string.Join($"#{Program.ChannelName}", message));
                                         // Program.ConsoleWarning(">> " + response + ", " + DateTime.Now.ToString());
                                         socket.Send(Encoding.UTF8.GetBytes(response + "\r\n"));
                                         continue;
@@ -83,7 +83,7 @@ public class Chat
                                     if (message.Count < 2)
                                     {
                                         // Sub without message doesn't have body part of the message :/
-                                        if (message[0].Contains("msg-id=sub") || message[0].Contains("msg-id=resub") || message[0].Contains("msg-id=primepaidupgrade"))
+                                        if (message[0].Contains("msg-id=sub") || message[0].Contains("msg-id=resub") || message[0].Contains("subgift") || message[0].Contains("submysterygift") || message[0].Contains("msg-id=primepaidupgrade"))
                                         {
                                             message.Add(":"); // Add fake message
                                         }
@@ -141,8 +141,9 @@ public class Chat
                                         if (currentIndex > 0)
                                         {
                                             currentIndex += 5;
-                                            Console.WriteLine($"> Cheered with {message[0].Substring(currentIndex, message[0].IndexOf(';', currentIndex) - currentIndex)} bits");
-                                            continue; // Not sure about continue here, need someone to cheer to test it out :D 
+                                            Console.WriteLine($"> Cheered with {message[0].Substring(currentIndex, message[0].IndexOf(';', currentIndex) - currentIndex)} bits" +
+                                                                (message[1].Length > 2 ? " Message: " + message[1].Substring(message[1].IndexOf(':') + 1) : ""));
+                                            continue;
                                         }
 
                                         currentIndex = message[0].IndexOf("badges=") + 7;
@@ -182,6 +183,21 @@ public class Chat
                                                                     (message[1].Length > 2 ? " Message: " + message[1].Substring(message[1].IndexOf(':') + 1) : "")
                                                 );
                                                 break;
+                                            case "subgift":
+                                                currentIndex = message[0].IndexOf("msg-param-recipient-display-name=") + 33;
+                                                Console.WriteLine("> User " + userName + " gifted a sub for " +
+                                                                    message[0].Substring(currentIndex, message[0].IndexOf(';', currentIndex) - currentIndex) +
+                                                                    (message[1].Length > 2 ? " Message: " + message[1].Substring(message[1].IndexOf(':') + 1) : "")
+                                                );
+                                                break;
+                                            case "submysterygift":
+                                                currentIndex = message[0].IndexOf("msg-param-mass-gift-count=") + 26;
+                                                Console.WriteLine("> User " + userName + " gifting " +
+                                                                    message[0].Substring(currentIndex, message[0].IndexOf(";", currentIndex)) +
+                                                                    " subs for random viewers" +
+                                                                    (message[1].Length > 2 ? " Message: " + message[1].Substring(message[1].IndexOf(':') + 1) : "")
+                                                );
+                                                break;
                                             case "primepaidupgrade":
                                                 Console.WriteLine("> User " + userName +
                                                                     " converted prime sub to standard sub." +
@@ -193,7 +209,7 @@ public class Chat
                                                 Console.WriteLine("> User " + userName + " announced that: " + message[1].Substring(currentIndex));
                                                 break;
                                             default:
-                                                Console.WriteLine(string.Join("", message));
+                                                Console.WriteLine(string.Join($"#{Program.ChannelName}", message));
                                                 break;
                                         }
                                     }
@@ -215,11 +231,17 @@ public class Chat
                                         userName = message[1].Substring(message[1].IndexOf(":") + 1);
                                         Console.WriteLine($"> User {userName} got timed out.");
                                     }
+                                    // Emote only
+                                    else if (message[0].StartsWith("@msg-id=emote_only_"))
+                                    {
+                                        if (message[0].Substring(19, message[0].IndexOf(" ;") - 19) == "on") Console.WriteLine("> Emote only activated");
+                                        else Console.WriteLine("> Emote only deactivated");
+                                    }
                                     // Other message type
                                     else
                                     {
                                         Console.ForegroundColor = ConsoleColor.Magenta;
-                                        Console.WriteLine(string.Join("", message));
+                                        Console.WriteLine(string.Join($"#{Program.ChannelName}", message));
                                         Console.ForegroundColor = Program.ConsoleDefaultColor;
                                     }
                                 }
