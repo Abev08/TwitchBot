@@ -80,13 +80,21 @@ public class Chat
                                     // Attach them together
                                     if (message.Count < 2)
                                     {
-                                        // Program.ConsoleWarning(">> Something went wrong with the message, skipping it");
-                                        Console.WriteLine(string.Join("", message));
-                                        continue;
+                                        // Sub without message doesn't have body part of the message :/
+                                        if (message[0].Contains("msg-id=sub") || message[0].Contains("msg-id=resub") || message[0].Contains("msg-id=primepaidupgrade"))
+                                        {
+                                            message.Add(":"); // Add fake message
+                                        }
+                                        else
+                                        {
+                                            // Program.ConsoleWarning(">> Something went wrong with the message, skipping it");
+                                            Console.WriteLine(string.Join($"#{Program.ChannelName}", message));
+                                            continue;
+                                        }
                                     }
                                     while (message.Count > 2)
                                     {
-                                        message[^2] += $" #{Program.ChannelName} " + message[^1];
+                                        message[^2] += $"#{Program.ChannelName}" + message[^1];
                                         message.RemoveAt(message.Count - 1);
                                     }
 
@@ -132,6 +140,7 @@ public class Chat
                                         {
                                             currentIndex += 5;
                                             Console.WriteLine($"> Cheered with {message[0].Substring(currentIndex, message[0].IndexOf(';', currentIndex) - currentIndex)} bits");
+                                            continue; // Not sure about continue here, need someone to cheer to test it out :D 
                                         }
 
                                         currentIndex = message[0].IndexOf("badges=") + 7;
@@ -167,8 +176,14 @@ public class Chat
                                                 Console.WriteLine("> User " + userName +
                                                                     (message[0].Contains("msg-param-was-gifted=true") ? " got gifted sub for " : " subscribed for ") +
                                                                     message[0].Substring(currentIndex = (message[0].IndexOf("msg-param-cumulative-months=", currentIndex) + 28), (message[0].IndexOf(';', currentIndex)) - currentIndex) +
-                                                                    " months. Message: " +
-                                                                    message[1].Substring(message[1].IndexOf(':') + 1)
+                                                                    " months." +
+                                                                    (message[1].Length > 2 ? " Message: " + message[1].Substring(message[1].IndexOf(':') + 1) : "")
+                                                );
+                                                break;
+                                            case "primepaidupgrade":
+                                                Console.WriteLine("> User " + userName +
+                                                                    " converted prime sub to standard sub." +
+                                                                    (message[1].Length > 2 ? " Message: " + message[1].Substring(message[1].IndexOf(':') + 1) : "")
                                                 );
                                                 break;
                                             case "announcement":
@@ -195,9 +210,7 @@ public class Chat
                                     // Different timeout?
                                     else if (message[0].StartsWith("@") && message[0].Contains("CLEARCHAT"))
                                     {
-                                        currentIndex = message[0].IndexOf(":tmi.twitch.tv ") + 15;
-                                        currentIndex = message[0].IndexOf(":", currentIndex) + 1;
-                                        userName = message[0].Substring(currentIndex);
+                                        userName = message[1].Substring(message[1].IndexOf(":") + 1);
                                         Console.WriteLine($"> User {userName} got timed out.");
                                     }
                                     // Other message type
