@@ -370,6 +370,7 @@ public class Chat
             text[0] = text[0].Trim(); // Lead leading and trailing white space characters
             text[1] = text[1].Trim();
             if ((text[0] == "key") && (text[1] == "message")) continue; // This is the header, skip it
+            if (text[0].StartsWith("//")) continue; // Commented out line - skip it
 
             if (ResponseMessages.TryAdd(text[0], (text[1], new DateTime()))) Program.ConsoleWarning($">> Added respoonse to \"{text[0]}\" key");
             else Program.ConsoleWarning($">> Redefiniton of \"{text[0]}\" key, in line {(i + 1)}."); // TryAdd returned false - probably a duplicate
