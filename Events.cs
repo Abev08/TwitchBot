@@ -64,27 +64,30 @@ public class Events
         ManualEvent = new ManualResetEvent(false); // Reset manual event
         bool awaitingResponse = false;
 
-        // Subscribe to follow events (possible with app token and user token)
-        Program.ConsoleWarning(">> Subscribing to channel follow event.");
-        using (HttpRequestMessage request = new HttpRequestMessage(new HttpMethod("POST"), "https://api.twitch.tv/helix/eventsub/subscriptions"))
+        if (Config.FollowsNotifications)
         {
-            request.Headers.Add("Authorization", $"Bearer {Config.BotAccessToken}");
-            request.Headers.Add("Client-Id", $"{Config.BotClientID}");
-            request.Content = new StringContent("{\"type\":\"channel.follow\"," +
-                                                "\"version\":\"1\"," +
-                                                "\"condition\":{\"broadcaster_user_id\":\"" + Config.BroadcasterID + "\"}," +
-                                                "\"transport\":{\"method\":\"webhook\",\"callback\":\"" + Config.NgrokTunnelAddress + "\",\"secret\":\"secretsecret\"}}");
-            request.Content.Headers.ContentType = MediaTypeHeaderValue.Parse("application/json");
+            // Subscribe to follow events (possible with app token and user token)
+            Program.ConsoleWarning(">> Subscribing to channel follow event.");
+            using (HttpRequestMessage request = new HttpRequestMessage(new HttpMethod("POST"), "https://api.twitch.tv/helix/eventsub/subscriptions"))
+            {
+                request.Headers.Add("Authorization", $"Bearer {Config.BotAccessToken}");
+                request.Headers.Add("Client-Id", $"{Config.BotClientID}");
+                request.Content = new StringContent("{\"type\":\"channel.follow\"," +
+                                                    "\"version\":\"1\"," +
+                                                    "\"condition\":{\"broadcaster_user_id\":\"" + Config.BroadcasterID + "\"}," +
+                                                    "\"transport\":{\"method\":\"webhook\",\"callback\":\"" + Config.NgrokTunnelAddress + "\",\"secret\":\"secretsecret\"}}");
+                request.Content.Headers.ContentType = MediaTypeHeaderValue.Parse("application/json");
 
-            string response = Client.SendAsync(request).Result.Content.ReadAsStringAsync().Result;
-            awaitingResponse = ParseSubscribeResponse(response);
-        }
+                string response = Client.SendAsync(request).Result.Content.ReadAsStringAsync().Result;
+                awaitingResponse = ParseSubscribeResponse(response);
+            }
 
-        if (awaitingResponse)
-        {
-            if (ManualEvent.WaitOne(5000) == false) Program.ConsoleWarning(">> Reached maximum response waiting time."); // Wait for response, return false if timed out
+            if (awaitingResponse)
+            {
+                if (ManualEvent.WaitOne(5000) == false) Program.ConsoleWarning(">> Reached maximum response waiting time."); // Wait for response, return false if timed out
+            }
+            ManualEvent.Reset(); // Reset manual event
         }
-        ManualEvent.Reset(); // Reset manual event
 
         // Subscription to those events require user token
         if (Config.RedemptionsAndBitsNotifications)

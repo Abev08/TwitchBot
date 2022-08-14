@@ -5,20 +5,24 @@ using System.Text;
 public class Chat
 {
     static bool botStarted;
+    static Dictionary<string, (string, DateTime)> ResponseMessages = new Dictionary<string, (string, DateTime)>();
+    static TimeSpan CooldownBetweenTheSameMessage = new TimeSpan(0, 0, 10);
 
     public static void Start()
     {
         if (botStarted) return;
         botStarted = true;
         Program.ConsoleWarning(">> Starting chat bot.");
+        LoadResponseMessages();
 
         new Thread(() =>
         {
             Socket socket = new Socket(SocketType.Stream, ProtocolType.Tcp);
             byte[] receiveBuffer = new byte[10000]; // Max IRC message is 4096 bytes?
             int zeroBytesReceivedCounter = 0, currentIndex, nextIndex, bytesReceived, messageStartOffset = 0;
-            string userBadge, userName, customRewardID;
-            List<string> message;
+            string userBadge, userName, customRewardID, temp;
+            List<string> messages, message;
+            (string, DateTime) dictionaryResponse;
             ManualResetEvent receiveEvent = new ManualResetEvent(false);
             // Background worker for async handling received messages
             BackgroundWorker receiveWorker = new BackgroundWorker() { WorkerSupportsCancellation = true };
@@ -35,7 +39,7 @@ public class Chat
                             bytesReceived = socket.EndReceive(ar);
                             if (bytesReceived > 0)
                             {
-                                List<string> messages = Encoding.UTF8.GetString(receiveBuffer, 0, bytesReceived + messageStartOffset).Split("\r\n", StringSplitOptions.RemoveEmptyEntries).ToList();
+                                messages = Encoding.UTF8.GetString(receiveBuffer, 0, bytesReceived + messageStartOffset).Split("\r\n", StringSplitOptions.RemoveEmptyEntries).ToList();
 
                                 if (messageStartOffset > 0)
                                 {
@@ -86,7 +90,8 @@ public class Chat
                                             message[0].Contains("msg-id=subgift") || message[0].Contains("msg-id=submysterygift") ||
                                             message[0].Contains("msg-id=raid") ||
                                             message[0].Contains("msg-id=primepaidupgrade") ||
-                                            message[0].StartsWith("@emote-only="))
+                                            message[0].StartsWith("@emote-only=") ||
+                                            message[0].Contains($":tmi.twitch.tv USERSTATE"))
                                         {
                                             message.Add(":"); // Add fake message
                                         }
@@ -167,6 +172,34 @@ public class Chat
                                                             ": ",
                                                             message[1].Substring(message[1].IndexOf(":") + 1))
                                         );
+
+                                        // Check if message starts with key to get automatic response
+                                        currentIndex = message[1].IndexOf(':') + 1;
+                                        nextIndex = message[1].IndexOf(' ', currentIndex);
+                                        if (nextIndex < 0) nextIndex = message[1].Length - currentIndex;
+                                        temp = message[1].Substring(currentIndex, nextIndex).Trim();
+                                        if (ResponseMessages.TryGetValue(temp, out dictionaryResponse))
+                                        {
+                                            // Check if the same message was send not long ago
+                                            if (DateTime.Now - dictionaryResponse.Item2 >= CooldownBetweenTheSameMessage)
+                                            {
+                                                socket.Send(Encoding.UTF8.GetBytes($"PRIVMSG #{Config.ChannelName} :{dictionaryResponse.Item1}\r\n"));
+                                                ResponseMessages[temp] = (ResponseMessages[temp].Item1, DateTime.Now);
+                                            }
+                                            else Program.ConsoleWarning($">> Not sending response for \"{temp}\" key. Cooldown active.");
+                                        }
+                                    }
+                                    // Automated bot response
+                                    else if (message[0].Contains(":tmi.twitch.tv USERSTATE"))
+                                    {
+                                        currentIndex = message[0].IndexOf("display-name=") + 13;
+                                        userName = message[0].Substring(currentIndex, (nextIndex = (message[0].IndexOf(';', currentIndex))) - currentIndex);
+
+                                        Console.WriteLine(String.Format("{0, -4}{1, 20}{2, 2}{3, -0}",
+                                                            "BOT",
+                                                            userName,
+                                                            ": ",
+                                                            "Automated bot response (message is not available)"));
                                     }
                                     // Notification - sub / announcement
                                     else if (message[0].StartsWith("@") && message[0].Contains("USERNOTICE"))
@@ -280,7 +313,6 @@ public class Chat
                     }), null);
 
                     receiveEvent.WaitOne();
-                    Thread.Sleep(1000);
                 }
             };
 
@@ -306,5 +338,41 @@ public class Chat
             }
         })
         { Name = "Chat thread", IsBackground = true }.Start();
+    }
+
+    static void LoadResponseMessages()
+    {
+        Program.ConsoleWarning(">> Loading response messages.");
+
+        FileInfo messagesFile = new FileInfo(@"ResponseMessages.csv");
+        // The file doesn't exist - create new one
+        if (messagesFile.Exists == false)
+        {
+            Program.ConsoleWarning(">> ResponseMessages.csv file not found. Generating new one.");
+
+            using (var writer = messagesFile.Create())
+            {
+                writer.Write(Encoding.UTF8.GetBytes("key; message" + Environment.NewLine));
+                writer.Write(Encoding.UTF8.GetBytes("!example; This is an example response." + Environment.NewLine));
+            }
+        }
+
+        // Read the file
+        string[] lines = File.ReadAllLines(messagesFile.FullName);
+        for (int i = 0; i < lines.Length; i++)
+        {
+            List<string> text = lines[i].Split(';', StringSplitOptions.RemoveEmptyEntries).ToList();
+            while (text.Count > 2)
+            {
+                text[^2] += ";" + text[^1];
+                text.RemoveAt(text.Count - 1);
+            }
+            text[0] = text[0].Trim(); // Lead leading and trailing white space characters
+            text[1] = text[1].Trim();
+            if ((text[0] == "key") && (text[1] == "message")) continue; // This is the header, skip it
+
+            if (ResponseMessages.TryAdd(text[0], (text[1], new DateTime()))) Program.ConsoleWarning($">> Added respoonse to \"{text[0]}\" key");
+            else Program.ConsoleWarning($">> Redefiniton of \"{text[0]}\" key, in line {(i + 1)}."); // TryAdd returned false - probably a duplicate
+        }
     }
 }

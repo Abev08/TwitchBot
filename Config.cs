@@ -13,6 +13,7 @@ public class Config
     public static string BroadcasterID { get; set; }
     public static string NgrokAuthToken { get; set; }
     public static string NgrokTunnelAddress { get; set; }
+    public static bool FollowsNotifications { get; set; }
     public static bool RedemptionsAndBitsNotifications { get; set; }
 
     public static bool ParseConfigFile()
@@ -31,7 +32,8 @@ public class Config
                 stream.Write(Encoding.UTF8.GetBytes("ClientID = " + Environment.NewLine));
                 stream.Write(Encoding.UTF8.GetBytes("Secret = " + Environment.NewLine));
                 stream.Write(Encoding.UTF8.GetBytes("ngrokAuthToken = " + Environment.NewLine));
-                stream.Write(Encoding.UTF8.GetBytes("RedemptionsAndBitsNotifications = " + Environment.NewLine));
+                stream.Write(Encoding.UTF8.GetBytes("FollowsNotifications = false" + Environment.NewLine));
+                stream.Write(Encoding.UTF8.GetBytes("RedemptionsAndBitsNotifications = false" + Environment.NewLine));
                 stream.Flush();
             }
             // Notify the user and close bot
@@ -41,7 +43,7 @@ public class Config
         }
         else
         {
-            bool[] readedRequiredData = new bool[7]; // { NICK, PASS, ChannelName, etc. }
+            bool[] readedRequiredData = new bool[8]; // { NICK, PASS, ChannelName, etc. }
 
             using (var reader = configFile.OpenText())
             {
@@ -79,8 +81,12 @@ public class Config
                             readedRequiredData[5] = true;
                             NgrokAuthToken = text[1];
                             break;
-                        case "RedemptionsAndBitsNotifications":
+                        case "FollowsNotifications":
                             readedRequiredData[6] = true;
+                            FollowsNotifications = bool.Parse(text[1]);
+                            break;
+                        case "RedemptionsAndBitsNotifications":
+                            readedRequiredData[7] = true;
                             RedemptionsAndBitsNotifications = bool.Parse(text[1]);
                             break;
                     }
@@ -99,7 +105,8 @@ public class Config
                 if (readedRequiredData[3] == false) Console.WriteLine("Missing bot's Client ID. Correct syntax is \"ClientID = 1234\"." + Environment.NewLine + "To generate bot's Client ID visit: https://dev.twitch.tv/console");
                 if (readedRequiredData[4] == false) Console.WriteLine("Missing bot's Secret. Correct syntax is \"Secret = 1234\"." + Environment.NewLine + "To generate bot's Secret visit: https://dev.twitch.tv/console");
                 if (readedRequiredData[5] == false) Console.WriteLine("Missing ngrok Authtoken. Correct syntax is \"ngrokAuthToken = 1234\"." + Environment.NewLine + "Create free account at https://ngrok.com to get ngrok Authtoken");
-                if (readedRequiredData[6] == false) Console.WriteLine("Missing specification if bot should get bits and redemptions notifications. Correct syntax is \"RedemptionsAndBitsNotifications = false\". Or replace \"false\" with \"true\" to allow it.");
+                if (readedRequiredData[6] == false) Console.WriteLine("Missing specification if bot should get follows notifications. Correct syntax is \"FollowsNotifications = false\". Or replace \"false\" with \"true\" to allow it.");
+                if (readedRequiredData[7] == false) Console.WriteLine("Missing specification if bot should get bits and redemptions notifications. Correct syntax is \"RedemptionsAndBitsNotifications = false\". Or replace \"false\" with \"true\" to allow it.");
                 Console.WriteLine("You can delete Config.ini file to generate new one. ! WARNING - ALL DATA INSIDE IT WILL BE LOST !");
                 Console.ResetColor();
                 Console.ReadLine();

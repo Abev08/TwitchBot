@@ -3,7 +3,9 @@
 ##
 ## Get latest from https://github.com/github/gitignore/blob/main/VisualStudio.gitignore
 
+# Do not add user specyfic files
 Config.ini
+ResponseMessages.csv
 
 # User-specific files
 *.rsuser
