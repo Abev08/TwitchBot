@@ -19,4 +19,11 @@
   <ItemGroup>
     <EmbeddedResource Include="Resources\SegoeUI.ttf" />
   </ItemGroup>
+
+  <!-- Copying files to the output directory during build -->
+  <ItemGroup>
+    <None Update="ngrok.exe">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
 </Project>
