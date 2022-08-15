@@ -377,6 +377,16 @@ public class Events
         return true;
     }
 
+    public static void GetTTS(string text)
+    {
+        using (HttpRequestMessage request = new HttpRequestMessage(new HttpMethod("GET"), @"https://api.streamelements.com/kappa/v2/speech?voice=Brian&text=" + text))
+        {
+            var stream = Client.SendAsync(request).Result.Content.ReadAsStream();
+
+            new Thread(Audio.PlaySound).Start(stream); // Start new sound, there should be something like "AddToBuffer" or something instead of this
+        }
+    }
+
     class TwitchUserTokenResponse
     {
         public string access_token { get; set; }

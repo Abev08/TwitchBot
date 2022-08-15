@@ -9,5 +9,9 @@
         Background="Lime">
     <Grid>
         <MediaElement x:Name="VideoPlayer"/>
+        <StackPanel  VerticalAlignment="Top" HorizontalAlignment="Left" Margin="20" Orientation="Horizontal">
+        <Button x:Name="btnTestTTS" Width="60" Height="25" Content="Test TTS"/>
+        <TextBox x:Name="tbText" Width="120" Height="25" Text="This is a test" Margin="10,0,0,0" VerticalContentAlignment="Center"/>
+        </StackPanel>
     </Grid>
 </Window>

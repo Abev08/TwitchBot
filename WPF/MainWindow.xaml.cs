@@ -27,6 +27,8 @@ namespace TwitchBotWPF
             Events.Start(); // Start events bot
             Chat.Start(); // Start chat bot
 
+            btnTestTTS.Click += (sender, e) => Events.GetTTS(tbText.Text); // On button click get TTS audio and play it
+
             // Automatically set source to null after video ended
             VideoPlayer.MediaEnded += (sender, e) => VideoPlayer.Source = null;
             // Take control over video player
