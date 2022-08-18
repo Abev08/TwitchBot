@@ -10,14 +10,14 @@ using TwitchBotWPF;
 
 public class Chat
 {
-    static bool botStarted;
+    static bool BotStarted;
     static Dictionary<string, (string, DateTime)> ResponseMessages = new Dictionary<string, (string, DateTime)>();
     static TimeSpan CooldownBetweenTheSameMessage = new TimeSpan(0, 0, 10);
 
     public static void Start()
     {
-        if (botStarted) return;
-        botStarted = true;
+        if (BotStarted) return;
+        BotStarted = true;
         MainWindow.ConsoleWarning(">> Starting chat bot.");
         LoadResponseMessages();
 
@@ -61,7 +61,7 @@ public class Chat
                                 for (int i = 0; i < messages.Count; i++)
                                 {
                                     // message[0] - header, message[1] - body
-                                    message = messages[i].Split("#" + Config.ChannelName, StringSplitOptions.RemoveEmptyEntries).ToList();
+                                    message = messages[i].Split("#" + Config.Data[Config.Keys.ChannelName].Value, StringSplitOptions.RemoveEmptyEntries).ToList();
 
                                     // Check if received message is incomplete (just for last received message)
                                     if ((i == messages.Count - 1) && (receiveBuffer[bytesReceived + messageStartOffset - 1] != (byte)'\n') && (receiveBuffer[bytesReceived + messageStartOffset - 2] != (byte)'\r'))
@@ -69,7 +69,7 @@ public class Chat
                                         // Move the message to beginning of receiveBuffer
                                         if (messageStartOffset == 0) Array.Clear(receiveBuffer);
 
-                                        string s = string.Join("#" + Config.ChannelName, message);
+                                        string s = string.Join("#" + Config.Data[Config.Keys.ChannelName].Value, message);
                                         for (int j = 0; j < s.Length; j++) receiveBuffer[j + messageStartOffset] = (byte)s[j];
                                         messageStartOffset += s.Length;
                                         // Program.ConsoleWarning(">> Received incomplete message, moving offset to " + messageStartOffset);
@@ -81,7 +81,7 @@ public class Chat
                                     if (message[0].StartsWith("PING"))
                                     {
                                         string response = message[0].Replace("PING", "PONG");
-                                        // Console.WriteLine(string.Join($"#{Program.ChannelName}", message));
+                                        // MainWindow.ConsoleWriteLine(string.Join($"#{Program.ChannelName}", message));
                                         // Program.ConsoleWarning(">> " + response + ", " + DateTime.Now.ToString());
                                         socket.Send(Encoding.UTF8.GetBytes(response + "\r\n"));
                                         continue;
@@ -104,20 +104,20 @@ public class Chat
                                         else
                                         {
                                             // Program.ConsoleWarning(">> Something went wrong with the message, skipping it");
-                                            Console.WriteLine(string.Join($"#{Config.ChannelName}", message));
+                                            MainWindow.ConsoleWriteLine(string.Join($"#{Config.Data[Config.Keys.ChannelName].Value}", message));
                                             continue;
                                         }
                                     }
                                     while (message.Count > 2)
                                     {
-                                        message[^2] += $"#{Config.ChannelName}" + message[^1];
+                                        message[^2] += $"#{Config.Data[Config.Keys.ChannelName].Value}" + message[^1];
                                         message.RemoveAt(message.Count - 1);
                                     }
 
                                     // Standard message without extra tags
                                     if (message[0].StartsWith(':') && message[0].Contains("PRIVMSG"))
                                     {
-                                        Console.WriteLine(
+                                        MainWindow.ConsoleWriteLine(
                                             String.Format("{0, 20}{1, 2}{2, -0}", message[0].Substring(1, message[0].IndexOf('!') - 1) // Username
                                             , ": ",
                                             message[1].Substring(message[1].IndexOf(':') + 1)) // message
@@ -138,14 +138,14 @@ public class Chat
                                             {
                                                 // Cakez77 - TTS
                                                 case "713be8e1-266a-4b5c-bf37-c42882ddc845":
-                                                    Console.WriteLine("> TTS");
+                                                    MainWindow.ConsoleWriteLine("> TTS");
                                                     break;
                                                 // Cakez77 - TTS Chipmunk
                                                 case "de05a92e-380d-415d-83ed-963808c394cb":
-                                                    Console.WriteLine("> TTS Chipmunk");
+                                                    MainWindow.ConsoleWriteLine("> TTS Chipmunk");
                                                     break;
                                                 default:
-                                                    Console.WriteLine("> Custom reward ID: " + customRewardID);
+                                                    MainWindow.ConsoleWriteLine("> Custom reward ID: " + customRewardID);
                                                     break;
                                             }
                                         }
@@ -155,7 +155,7 @@ public class Chat
                                         if (currentIndex > 0)
                                         {
                                             currentIndex += 5;
-                                            Console.WriteLine($"> Cheered with {message[0].Substring(currentIndex, message[0].IndexOf(';', currentIndex) - currentIndex)} bits" +
+                                            MainWindow.ConsoleWriteLine($"> Cheered with {message[0].Substring(currentIndex, message[0].IndexOf(';', currentIndex) - currentIndex)} bits" +
                                                                 (message[1].Length > 2 ? " Message: " + message[1].Substring(message[1].IndexOf(':') + 1) : ""));
                                             continue;
                                         }
@@ -172,7 +172,7 @@ public class Chat
                                         userName = message[0].Substring(currentIndex = (message[0].IndexOf("display-name=") + 13), (nextIndex = message[0].IndexOf(';', currentIndex)) - currentIndex);
                                         currentIndex = nextIndex;
 
-                                        Console.WriteLine(String.Format("{0, -4}{1, 20}{2, 2}{3, -0}",
+                                        MainWindow.ConsoleWriteLine(String.Format("{0, -4}{1, 20}{2, 2}{3, -0}",
                                                             userBadge,
                                                             userName,
                                                             ": ",
@@ -189,7 +189,7 @@ public class Chat
                                             // Check if the same message was send not long ago
                                             if (DateTime.Now - dictionaryResponse.Item2 >= CooldownBetweenTheSameMessage)
                                             {
-                                                socket.Send(Encoding.UTF8.GetBytes($"PRIVMSG #{Config.ChannelName} :{dictionaryResponse.Item1}\r\n"));
+                                                socket.Send(Encoding.UTF8.GetBytes($"PRIVMSG #{Config.Data[Config.Keys.ChannelName].Value} :{dictionaryResponse.Item1}\r\n"));
                                                 ResponseMessages[temp] = (ResponseMessages[temp].Item1, DateTime.Now);
                                             }
                                             else MainWindow.ConsoleWarning($">> Not sending response for \"{temp}\" key. Cooldown active.");
@@ -201,7 +201,7 @@ public class Chat
                                         currentIndex = message[0].IndexOf("display-name=") + 13;
                                         userName = message[0].Substring(currentIndex, (nextIndex = (message[0].IndexOf(';', currentIndex))) - currentIndex);
 
-                                        Console.WriteLine(String.Format("{0, -4}{1, 20}{2, 2}{3, -0}",
+                                        MainWindow.ConsoleWriteLine(String.Format("{0, -4}{1, 20}{2, 2}{3, -0}",
                                                             "BOT",
                                                             userName,
                                                             ": ",
@@ -218,7 +218,7 @@ public class Chat
                                         {
                                             case "sub":
                                             case "resub":
-                                                Console.WriteLine("> " + userName +
+                                                MainWindow.ConsoleWriteLine("> " + userName +
                                                                     (message[0].Contains("msg-param-was-gifted=true") ? " got gifted sub for " : " subscribed for ") +
                                                                     message[0].Substring(currentIndex = (message[0].IndexOf("msg-param-cumulative-months=", currentIndex) + 28), (message[0].IndexOf(';', currentIndex)) - currentIndex) +
                                                                     " months." +
@@ -227,35 +227,35 @@ public class Chat
                                                 break;
                                             case "subgift":
                                                 currentIndex = message[0].IndexOf("msg-param-recipient-display-name=") + 33;
-                                                Console.WriteLine("> " + userName + " gifted a sub for " +
+                                                MainWindow.ConsoleWriteLine("> " + userName + " gifted a sub for " +
                                                                     message[0].Substring(currentIndex, message[0].IndexOf(';', currentIndex) - currentIndex) +
                                                                     (message[1].Length > 2 ? " Message: " + message[1].Substring(message[1].IndexOf(':') + 1) : "")
                                                 );
                                                 break;
                                             case "submysterygift":
                                                 currentIndex = message[0].IndexOf("msg-param-mass-gift-count=") + 26;
-                                                Console.WriteLine("> " + userName + " gifting " +
+                                                MainWindow.ConsoleWriteLine("> " + userName + " gifting " +
                                                                     message[0].Substring(currentIndex, message[0].IndexOf(";", currentIndex) - currentIndex) +
                                                                     " subs for random viewers" +
                                                                     (message[1].Length > 2 ? " Message: " + message[1].Substring(message[1].IndexOf(':') + 1) : "")
                                                 );
                                                 break;
                                             case "primepaidupgrade":
-                                                Console.WriteLine("> " + userName +
+                                                MainWindow.ConsoleWriteLine("> " + userName +
                                                                     " converted prime sub to standard sub." +
                                                                     (message[1].Length > 2 ? " Message: " + message[1].Substring(message[1].IndexOf(':') + 1) : "")
                                                 );
                                                 break;
                                             case "announcement":
                                                 currentIndex = (message[1].IndexOf(":") + 1);
-                                                Console.WriteLine("> " + userName + " announced that: " + message[1].Substring(currentIndex));
+                                                MainWindow.ConsoleWriteLine("> " + userName + " announced that: " + message[1].Substring(currentIndex));
                                                 break;
                                             case "raid":
                                                 currentIndex = (message[0].IndexOf("msg-param-viewerCount=") + 22);
-                                                Console.WriteLine("> " + userName + " raided the channel with " + message[0].Substring(currentIndex, message[0].IndexOf(';', currentIndex) - currentIndex) + " viewers.");
+                                                MainWindow.ConsoleWriteLine("> " + userName + " raided the channel with " + message[0].Substring(currentIndex, message[0].IndexOf(';', currentIndex) - currentIndex) + " viewers.");
                                                 break;
                                             default:
-                                                Console.WriteLine(string.Join($"#{Config.ChannelName}", message));
+                                                MainWindow.ConsoleWriteLine(string.Join($"#{Config.Data[Config.Keys.ChannelName].Value}", message));
                                                 break;
                                         }
                                     }
@@ -263,41 +263,41 @@ public class Chat
                                     else if (message[0].StartsWith("@ban-duration="))
                                     {
                                         userName = message[1].Substring(message[1].IndexOf(':') + 1);
-                                        Console.WriteLine($"> User {userName} got timed out for {message[0].Substring(14, message[0].IndexOf(';') - 14)} sec.");
+                                        MainWindow.ConsoleWriteLine($"> User {userName} got timed out for {message[0].Substring(14, message[0].IndexOf(';') - 14)} sec.");
                                     }
                                     // Timeout?
                                     else if (message[0].StartsWith("@") && message[0].Contains("CLEARMSG"))
                                     {
                                         userName = message[0].Substring(7, message[0].IndexOf(';') - 7);
-                                        Console.WriteLine($"> User {userName} got banned.");
+                                        MainWindow.ConsoleWriteLine($"> User {userName} got banned.");
                                     }
                                     // Different timeout?
                                     else if (message[0].StartsWith("@") && message[0].Contains("CLEARCHAT"))
                                     {
                                         userName = message[1].Substring(message[1].IndexOf(":") + 1);
-                                        Console.WriteLine($"> User {userName} got banned.");
+                                        MainWindow.ConsoleWriteLine($"> User {userName} got banned.");
                                     }
                                     // Emote only activated
                                     else if (message[0].StartsWith("@emote-only=1"))
                                     {
-                                        Console.WriteLine("> Emote only activated");
+                                        MainWindow.ConsoleWriteLine("> Emote only activated");
                                     }
                                     // Emote only deactivated
                                     else if (message[0].StartsWith("@emote-only=0"))
                                     {
-                                        Console.WriteLine("> Emote only deactivated");
+                                        MainWindow.ConsoleWriteLine("> Emote only deactivated");
                                     }
                                     // Emote only
                                     else if (message[0].StartsWith("@msg-id=emote_only_"))
                                     {
                                         // Switching emote only sends 2 messages - this is a duplicate? Do nothing?
-                                        // if (message[0].Substring(19, message[0].IndexOf(" :") - 19) == "on") Console.WriteLine("> Emote only activated");
-                                        // else Console.WriteLine("> Emote only deactivated");
+                                        // if (message[0].Substring(19, message[0].IndexOf(" :") - 19) == "on") MainWindow.ConsoleWriteLine("> Emote only activated");
+                                        // else MainWindow.ConsoleWriteLine("> Emote only deactivated");
                                     }
                                     // Other message type
                                     else
                                     {
-                                        MainWindow.ConsoleWarning(string.Join($"#{Config.ChannelName}", message), ConsoleColor.Magenta);
+                                        MainWindow.ConsoleWarning(string.Join($"#{Config.Data[Config.Keys.ChannelName].Value}", message), ConsoleColor.Magenta);
                                     }
                                 }
                                 zeroBytesReceivedCounter = 0;
@@ -313,7 +313,7 @@ public class Chat
                                 }
                             }
                         }
-                        catch (Exception ex) { Console.WriteLine(ex.Message); }
+                        catch (Exception ex) { MainWindow.ConsoleWriteLine(ex.Message); }
 
                         receiveEvent.Set();
                     }), null);
@@ -330,9 +330,9 @@ public class Chat
                 socket.Connect("irc.chat.twitch.tv", 6667);
                 MainWindow.ConsoleWarning(">> Connected.");
                 receiveWorker.RunWorkerAsync();
-                socket.Send(Encoding.UTF8.GetBytes($"PASS {Config.BotPass}\r\n"));
-                socket.Send(Encoding.UTF8.GetBytes($"NICK {Config.BotName}\r\n"));
-                socket.Send(Encoding.UTF8.GetBytes($"JOIN #{Config.ChannelName},#{Config.ChannelName}\r\n"));
+                socket.Send(Encoding.UTF8.GetBytes($"PASS {Config.Data[Config.Keys.BotOAuthToken].Value}\r\n"));
+                socket.Send(Encoding.UTF8.GetBytes($"NICK {Config.Data[Config.Keys.BotNick].Value}\r\n"));
+                socket.Send(Encoding.UTF8.GetBytes($"JOIN #{Config.Data[Config.Keys.ChannelName].Value},#{Config.Data[Config.Keys.ChannelName].Value}\r\n"));
                 socket.Send(Encoding.UTF8.GetBytes("CAP REQ :twitch.tv/commands twitch.tv/tags\r\n")); // request extended chat messages
 
                 while (socket.Connected) Thread.Sleep(500); // While connection is active do nothing

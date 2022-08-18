@@ -13,7 +13,7 @@ using TwitchBotWPF;
 
 public class Events
 {
-    static bool botStarted;
+    static bool BotStarted;
     static HttpClient Client = new HttpClient();
     static HttpListener LocalServer = new HttpListener();
     static List<object> EventQueue = new List<object>();
@@ -23,8 +23,8 @@ public class Events
 
     public static void Start()
     {
-        if (botStarted) return;
-        botStarted = true;
+        if (BotStarted) return;
+        BotStarted = true;
         MainWindow.ConsoleWarning(">> Starting event bot.");
 
         if (GetLocalTunnel()) return; // Return on error
@@ -34,21 +34,26 @@ public class Events
         LocalServer.Prefixes.Add("http://localhost:3000/"); // Where local server should listen for connections, maybe it should be in Config.ini? Hmm
         LocalServer.Start();
 
-        GetNewAccessToken(Config.RedemptionsAndBitsNotifications);
+        GetNewAccessToken();
 
         // Get broadcaster ID
         MainWindow.ConsoleWarning(">> Getting broadcaster ID.");
-        string uri = $"https://api.twitch.tv/helix/users?login={Config.ChannelName}";
+        string uri = $"https://api.twitch.tv/helix/users?login={Config.Data[Config.Keys.ChannelName].Value}";
         using (HttpRequestMessage request = new HttpRequestMessage(new HttpMethod("GET"), uri))
         {
-            request.Headers.Add("Authorization", $"Bearer {Config.BotAccessToken}");
-            request.Headers.Add("Client-Id", $"{Config.BotClientID}");
+            request.Headers.Add("Authorization", $"Bearer {Config.BotAppAccessToken}");
+            request.Headers.Add("Client-Id", $"{Config.Data[Config.Keys.BotClientID].Value}");
 
             string response = Client.SendAsync(request).Result.Content.ReadAsStringAsync().Result;
             if (response.Contains("\"id\":"))
             {
                 int index = response.IndexOf("\"id\":") + 6;
                 Config.BroadcasterID = response.Substring(index, response.IndexOf("\",", index) - index);
+            }
+            else
+            {
+                MainWindow.ConsoleWarning(">> Couldn't acquire broadcaster ID. Probably defined channel name doesn't exist." + Environment.NewLine + ">> Event bot initialization failed.");
+                return;
             }
         }
 
@@ -70,14 +75,14 @@ public class Events
         ManualEvent = new ManualResetEvent(false); // Reset manual event
         bool awaitingResponse = false;
 
-        if (Config.FollowsNotifications)
+        if (Config.Data[Config.Keys.FollowsNotifications].BoolValue)
         {
             // Subscribe to follow events (possible with app token and user token)
             MainWindow.ConsoleWarning(">> Subscribing to channel follow event.");
             using (HttpRequestMessage request = new HttpRequestMessage(new HttpMethod("POST"), "https://api.twitch.tv/helix/eventsub/subscriptions"))
             {
-                request.Headers.Add("Authorization", $"Bearer {Config.BotAccessToken}");
-                request.Headers.Add("Client-Id", $"{Config.BotClientID}");
+                request.Headers.Add("Authorization", $"Bearer {Config.BotAppAccessToken}");
+                request.Headers.Add("Client-Id", $"{Config.Data[Config.Keys.BotClientID].Value}");
                 request.Content = new StringContent("{\"type\":\"channel.follow\"," +
                                                     "\"version\":\"1\"," +
                                                     "\"condition\":{\"broadcaster_user_id\":\"" + Config.BroadcasterID + "\"}," +
@@ -96,18 +101,18 @@ public class Events
         }
 
         // Subscription to those events require user token
-        if (Config.RedemptionsAndBitsNotifications)
+        if (Config.Data[Config.Keys.RedemptionsNotifications].BoolValue)
         {
             // Subscribe to custom rewards redemptions events (possible only with user token)
             MainWindow.ConsoleWarning(">> Subscribing to channel custom reward redemption event.");
             using (HttpRequestMessage request = new HttpRequestMessage(new HttpMethod("POST"), "https://api.twitch.tv/helix/eventsub/subscriptions"))
             {
-                request.Headers.Add("Authorization", $"Bearer {Config.BotAccessToken}");
-                request.Headers.Add("Client-Id", $"{Config.BotClientID}");
+                request.Headers.Add("Authorization", $"Bearer {Config.BotAppAccessToken}");
+                request.Headers.Add("Client-Id", $"{Config.Data[Config.Keys.BotClientID].Value}");
                 request.Content = new StringContent("{\"type\":\"channel.channel_points_custom_reward_redemption.add\"," +
                                                     "\"version\":\"1\"," +
                                                     "\"condition\":{\"broadcaster_user_id\":\"" + Config.BroadcasterID + "\"}," +
-                                                    "\"transport\":{\"method\":\"webhook\",\"callback\":\"" + Config.NgrokTunnelAddress + "\",\"secret\":\"secretsecret\"}}");
+                                                    "\"transport\":{\"method\":\"webhook\",\"callback\":\"" + Config.Data[Config.Keys.NgrokAuthtoken].Value + "\",\"secret\":\"secretsecret\"}}");
                 request.Content.Headers.ContentType = MediaTypeHeaderValue.Parse("application/json");
 
                 string response = Client.SendAsync(request).Result.Content.ReadAsStringAsync().Result;
@@ -119,13 +124,16 @@ public class Events
                 if (ManualEvent.WaitOne(5000) == false) MainWindow.ConsoleWarning(">> Reached maximum response waiting time."); // Wait for response, return false if timed out
             }
             ManualEvent.Reset(); // Reset manual event
+        }
 
-            // Subscribe to cheer events (possible only with user token)
+        // Subscribe to cheer events (possible only with user token)
+        if (Config.Data[Config.Keys.BitsNotifications].BoolValue)
+        {
             MainWindow.ConsoleWarning(">> Subscribing to cheer event.");
             using (HttpRequestMessage request = new HttpRequestMessage(new HttpMethod("POST"), "https://api.twitch.tv/helix/eventsub/subscriptions"))
             {
-                request.Headers.Add("Authorization", $"Bearer {Config.BotAccessToken}");
-                request.Headers.Add("Client-Id", $"{Config.BotClientID}");
+                request.Headers.Add("Authorization", $"Bearer {Config.BotAppAccessToken}");
+                request.Headers.Add("Client-Id", $"{Config.Data[Config.Keys.BotClientID].Value}");
                 request.Content = new StringContent("{\"type\":\"channel.cheer\"," +
                                                     "\"version\":\"1\"," +
                                                     "\"condition\":{\"broadcaster_user_id\":\"" + Config.BroadcasterID + "\"}," +
@@ -146,14 +154,14 @@ public class Events
         MainWindow.ConsoleWarning(">> Event bot finished initializing.");
     }
 
-    static void GetNewAccessToken(bool involweUser = true)
+    static void GetNewAccessToken()
     {
         MainWindow.ConsoleWarning(">> Getting new access token.");
 
-        if (involweUser)
+        if (Config.RequiredUserToken)
         {
             string uri = "https://id.twitch.tv/oauth2/authorize?" +
-                        $"client_id={Config.BotClientID}" +
+                        $"client_id={Config.Data[Config.Keys.BotClientID].Value}" +
                         "&redirect_uri=http://localhost:3000" +
                         "&response_type=code" +
                         "&scope=" + ("bits:read" // View Bits information for a channel
@@ -180,8 +188,8 @@ public class Events
                 string code = requestUrl.Substring(6, requestUrl.IndexOf('&', 6) - 6);
                 using (HttpRequestMessage request = new HttpRequestMessage(new HttpMethod("POST"), "https://id.twitch.tv/oauth2/token"))
                 {
-                    request.Content = new StringContent($"client_id={Config.BotClientID}" +
-                                                        $"&client_secret={Config.BotSecret}" +
+                    request.Content = new StringContent($"client_id={Config.Data[Config.Keys.BotClientID].Value}" +
+                                                        $"&client_secret={Config.Data[Config.Keys.BotPass].Value}" +
                                                         $"&code={code}" +
                                                         "&grant_type=authorization_code" +
                                                         "&redirect_uri=http://localhost:3000");
@@ -192,7 +200,7 @@ public class Events
                     if (response != null)
                     {
                         Config.BotUserAccessToken = response.access_token;
-                        Config.BotRefreshToken = response.refresh_token;
+                        Config.BotUserRefreshToken = response.refresh_token;
                     }
                 }
             }
@@ -206,8 +214,8 @@ public class Events
         // Access token without getting user involved (just app token)
         using (HttpRequestMessage request = new HttpRequestMessage(new HttpMethod("POST"), "https://id.twitch.tv/oauth2/token"))
         {
-            request.Content = new StringContent($"client_id={Config.BotClientID}" +
-                                                $"&client_secret={Config.BotSecret}" +
+            request.Content = new StringContent($"client_id={Config.Data[Config.Keys.BotClientID].Value}" +
+                                                $"&client_secret={Config.Data[Config.Keys.BotPass].Value}" +
                                                 "&grant_type=client_credentials");
             request.Content.Headers.ContentType = MediaTypeHeaderValue.Parse("application/x-www-form-urlencoded");
 
@@ -215,7 +223,7 @@ public class Events
             if ((response != null) && (response.Contains("access_token")))
             {
                 int index = response.IndexOf("access_token") + 15;
-                Config.BotAccessToken = response.Substring(index, response.IndexOf(',', index) - index - 1);
+                Config.BotAppAccessToken = response.Substring(index, response.IndexOf(',', index) - index - 1);
             }
             else
             {
@@ -244,8 +252,9 @@ public class Events
         NgrokProcess.StartInfo.WindowStyle = System.Diagnostics.ProcessWindowStyle.Hidden;
         NgrokProcess.StartInfo.UseShellExecute = false;
         NgrokProcess.StartInfo.RedirectStandardOutput = true;
+        NgrokProcess.StartInfo.RedirectStandardError = true;
         NgrokProcess.StartInfo.FileName = "cmd.exe";
-        NgrokProcess.StartInfo.Arguments = $"/C ngrok http 3000 --authtoken={Config.NgrokAuthToken} --host-header=\"localhost:3000\"";
+        NgrokProcess.StartInfo.Arguments = $"/C ngrok http 3000 --authtoken={Config.Data[Config.Keys.NgrokAuthtoken].Value} --host-header=\"localhost:3000\"";
         NgrokProcess.Start(); // In debugging make sure that ngrok.exe procces is closed otherwise you will get spammed :D
 
         using (HttpRequestMessage request = new HttpRequestMessage(new HttpMethod("GET"), "http://localhost:4040/api/tunnels"))
@@ -295,20 +304,20 @@ public class Events
                 {
                     if (message["subscription"]["type"].ToString() == "channel.follow")
                     {
-                        Console.WriteLine("> " + message["event"]["user_name"] + " followed " + message["event"]["broadcaster_user_name"]);
+                        MainWindow.ConsoleWriteLine("> " + message["event"]["user_name"] + " followed " + message["event"]["broadcaster_user_name"]);
                     }
                 }
                 else
                 {
                     MainWindow.ConsoleWarning(">> Received new event message!");
-                    Console.WriteLine(text); // Print received message
+                    MainWindow.ConsoleWriteLine(text); // Print received message
                 }
             }
         }
         catch (Exception ex)
         {
             MainWindow.ConsoleWarning(ex.Message);
-            Console.WriteLine(context.Request.Url);
+            MainWindow.ConsoleWriteLine(context.Request.Url.ToString());
         }
 
         context.Response.Close(); // Send server response
@@ -321,8 +330,8 @@ public class Events
         // Get subscription list
         using (HttpRequestMessage request = new HttpRequestMessage(new HttpMethod("GET"), "https://api.twitch.tv/helix/eventsub/subscriptions"))
         {
-            request.Headers.Add("Authorization", $"Bearer {Config.BotAccessToken}");
-            request.Headers.Add("Client-Id", $"{Config.BotClientID}");
+            request.Headers.Add("Authorization", $"Bearer {Config.BotAppAccessToken}");
+            request.Headers.Add("Client-Id", $"{Config.Data[Config.Keys.BotClientID].Value}");
 
             string response = Client.SendAsync(request).Result.Content.ReadAsStringAsync().Result;
             if (response != null)
@@ -340,11 +349,11 @@ public class Events
                             MainWindow.ConsoleWarning(">> Deleting event subscription with ID: " + message["data"][i]["id"] + ".");
                             using (HttpRequestMessage request2 = new HttpRequestMessage(new HttpMethod("DELETE"), "https://api.twitch.tv/helix/eventsub/subscriptions?id=" + message["data"][i]["id"]))
                             {
-                                request2.Headers.Add("Authorization", $"Bearer {Config.BotAccessToken}");
-                                request2.Headers.Add("Client-Id", $"{Config.BotClientID}");
+                                request2.Headers.Add("Authorization", $"Bearer {Config.BotAppAccessToken}");
+                                request2.Headers.Add("Client-Id", $"{Config.Data[Config.Keys.BotClientID].Value}");
 
                                 string response2 = Client.SendAsync(request2).Result.Content.ReadAsStringAsync().Result;
-                                if (string.IsNullOrEmpty(response2) == false) Console.WriteLine(response2);
+                                if (string.IsNullOrEmpty(response2) == false) MainWindow.ConsoleWriteLine(response2);
                             }
                         }
                     }

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -6,19 +7,22 @@ using TwitchBotWPF;
 
 public class Config
 {
-    public static string ChannelName { get; private set; }
-    public static string BotName { get; private set; }
-    public static string BotPass { get; private set; }
-    public static string BotClientID { get; private set; }
-    public static string BotSecret { get; private set; }
-    public static string BotUserAccessToken { get; set; } // Twitch User Access Token
-    public static string BotAccessToken { get; set; } // Twitch App Access Token
-    public static string BotRefreshToken { get; set; }
-    public static string BroadcasterID { get; set; }
-    public static string NgrokAuthToken { get; set; }
-    public static string NgrokTunnelAddress { get; set; }
-    public static bool FollowsNotifications { get; set; }
-    public static bool RedemptionsAndBitsNotifications { get; set; }
+    public enum Keys
+    {
+        ChannelName,
+        BotNick, BotClientID, BotPass,
+        BotOAuthToken, // I would like to generate this token programmatically but I don't know how :/
+        NgrokAuthtoken,
+        FollowsNotifications, BitsNotifications, RedemptionsNotifications
+    };
+    public static Dictionary<Keys, DataType> Data = Enum.GetValues(typeof(Keys)).Cast<Keys>().ToDictionary(k => k, k => new DataType());
+
+    public static bool RequiredUserToken { get; private set; } = false;
+    public static string BotAppAccessToken { get; set; } = string.Empty;
+    public static string BotUserAccessToken { get; set; } = string.Empty;
+    public static string BotUserRefreshToken { get; set; } = string.Empty;
+    public static string BroadcasterID { get; set; } = string.Empty;
+    public static string NgrokTunnelAddress { get; set; } = string.Empty;
 
     public static bool ParseConfigFile()
     {
@@ -30,94 +34,84 @@ public class Config
             // The file doesn't exist - create empty one
             using (var stream = configFile.Create())
             {
-                stream.Write(Encoding.UTF8.GetBytes("ChannelName = " + Environment.NewLine));
-                stream.Write(Encoding.UTF8.GetBytes("NICK = " + Environment.NewLine));
-                stream.Write(Encoding.UTF8.GetBytes("PASS = " + Environment.NewLine));
-                stream.Write(Encoding.UTF8.GetBytes("ClientID = " + Environment.NewLine));
-                stream.Write(Encoding.UTF8.GetBytes("Secret = " + Environment.NewLine));
-                stream.Write(Encoding.UTF8.GetBytes("ngrokAuthToken = " + Environment.NewLine));
-                stream.Write(Encoding.UTF8.GetBytes("FollowsNotifications = false" + Environment.NewLine));
-                stream.Write(Encoding.UTF8.GetBytes("RedemptionsAndBitsNotifications = false" + Environment.NewLine));
+                foreach (var data in Data) stream.Write(Encoding.UTF8.GetBytes(data.Key.ToString() + " = " + Environment.NewLine));
                 stream.Flush();
             }
             // Notify the user and close bot
-            MainWindow.ConsoleWarning("Missing required info in Config.ini file." + Environment.NewLine + "The file was generated." + Environment.NewLine + "Please fill it up.");
+            MainWindow.ConsoleWarning("Missing required info in Config.ini file." + Environment.NewLine +
+                                    "The file was generated." + Environment.NewLine + "Please fill it up and restart the bot.");
             Console.ReadLine();
             return true;
         }
         else
         {
-            bool[] readedRequiredData = new bool[8]; // { NICK, PASS, ChannelName, etc. }
-
             using (var reader = configFile.OpenText())
             {
                 string[] lines = reader.ReadToEnd().Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries);
+                Keys key;
                 foreach (string line in lines)
                 {
                     string[] text = line.Split('=');
                     if (text.Length < 2) continue;
                     for (int i = 0; i < text.Length; i++) text[i] = text[i].Trim(); // Trim white spaces
                     if (string.IsNullOrEmpty(text[1])) continue; // Skip if nothing was assigned
-                    switch (text[0])
+                    try
                     {
-                        case "NICK":
-                            readedRequiredData[0] = true;
-                            BotName = text[1].ToLower();
-                            break;
-                        case "PASS":
-                            if (text[1].ToLower().Contains("oauth:") == false) break;
-                            readedRequiredData[1] = true;
-                            BotPass = text[1].ToLower();
-                            break;
-                        case "ChannelName":
-                            readedRequiredData[2] = true;
-                            ChannelName = text[1].ToLower();
-                            break;
-                        case "ClientID":
-                            readedRequiredData[3] = true;
-                            BotClientID = text[1].ToLower();
-                            break;
-                        case "Secret":
-                            readedRequiredData[4] = true;
-                            BotSecret = text[1].ToLower();
-                            break;
-                        case "ngrokAuthToken":
-                            readedRequiredData[5] = true;
-                            NgrokAuthToken = text[1];
-                            break;
-                        case "FollowsNotifications":
-                            readedRequiredData[6] = true;
-                            FollowsNotifications = bool.Parse(text[1]);
-                            break;
-                        case "RedemptionsAndBitsNotifications":
-                            readedRequiredData[7] = true;
-                            RedemptionsAndBitsNotifications = bool.Parse(text[1]);
-                            break;
+                        key = (Keys)Enum.Parse(typeof(Keys), text[0]);
+                        switch (key)
+                        {
+                            case Keys.NgrokAuthtoken:
+                                Data[key].Value = text[1];
+                                break;
+                            case Keys.FollowsNotifications:
+                            case Keys.BitsNotifications:
+                            case Keys.RedemptionsNotifications:
+                                Data[key].BoolValue = bool.Parse(text[1].ToLower());
+                                break;
+                            default:
+                                Data[key].Value = text[1].ToLower();
+                                break;
+                        }
+                        Data[key].Readed = true;
                     }
+                    catch (Exception ex) { MainWindow.ConsoleWarning(ex.Message); }
                 }
             }
 
             // Check if all needed data was read
-            if (readedRequiredData.Any(x => x == false))
+            bool configDataMissing = false;
+            foreach (var data in Data)
             {
-                // Something is missing, notify the user and close the bot
-                Console.ForegroundColor = ConsoleColor.DarkRed;
-                Console.WriteLine("Missing required info in Config.ini file.");
-                if (readedRequiredData[2] == false) Console.WriteLine("Missing channel name. Correct syntax is \"ChannelName = SomeChannelName\".");
-                if (readedRequiredData[0] == false) Console.WriteLine("Missing bot's NICK. Correct syntax is \"NICK = TheBot\".");
-                if (readedRequiredData[1] == false) Console.WriteLine("Missing bot's PASS. Correct syntax is \"PASS = oauth:1234\"." + Environment.NewLine + "To generate oauth token visit: https://twitchapps.com/tmi");
-                if (readedRequiredData[3] == false) Console.WriteLine("Missing bot's Client ID. Correct syntax is \"ClientID = 1234\"." + Environment.NewLine + "To generate bot's Client ID visit: https://dev.twitch.tv/console");
-                if (readedRequiredData[4] == false) Console.WriteLine("Missing bot's Secret. Correct syntax is \"Secret = 1234\"." + Environment.NewLine + "To generate bot's Secret visit: https://dev.twitch.tv/console");
-                if (readedRequiredData[5] == false) Console.WriteLine("Missing ngrok Authtoken. Correct syntax is \"ngrokAuthToken = 1234\"." + Environment.NewLine + "Create free account at https://ngrok.com to get ngrok Authtoken");
-                if (readedRequiredData[6] == false) Console.WriteLine("Missing specification if bot should get follows notifications. Correct syntax is \"FollowsNotifications = false\". Or replace \"false\" with \"true\" to allow it.");
-                if (readedRequiredData[7] == false) Console.WriteLine("Missing specification if bot should get bits and redemptions notifications. Correct syntax is \"RedemptionsAndBitsNotifications = false\". Or replace \"false\" with \"true\" to allow it.");
-                Console.WriteLine("You can delete Config.ini file to generate new one. ! WARNING - ALL DATA INSIDE IT WILL BE LOST !");
-                Console.ResetColor();
+                if (data.Value.Readed == false)
+                {
+                    configDataMissing = true;
+                    MainWindow.ConsoleWarning($"Missing {data.Key.ToString()} key.");
+                }
+            }
+
+            // Check if something is missing
+            if (configDataMissing)
+            {
+                MainWindow.ConsoleWarning("Missing required info in Config.ini file." + Environment.NewLine +
+                                "Look inside \"Required information in Config.ini\" section in README for help." + Environment.NewLine +
+                                "You can delete Config.ini file to generate new one. ! WARNING - ALL DATA INSIDE IT WILL BE LOST !");
                 Console.ReadLine();
                 return true;
             }
+
+            RequiredUserToken = Data[Keys.BitsNotifications].BoolValue || Data[Keys.RedemptionsNotifications].BoolValue; // Check if user token will be required
         }
 
         return false;
     }
+}
+
+public class DataType
+{
+    /// <summary> Data was readed from Config.ini </summary>
+    public bool Readed;
+    /// <summary> Value readed from Config.ini </summary>
+    public string Value = string.Empty;
+    /// <summary> Value readed from Config.ini parsed to bool </summary>
+    public bool BoolValue;
 }

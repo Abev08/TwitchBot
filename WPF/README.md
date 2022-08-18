@@ -1,8 +1,8 @@
 # AbevBot - WPF
 Almost the same as Console version but uses Windows Presentation Foundation (WPF). WPF is used instead of SFML, which grants higher level of abstraction on graphical interface (like premade user controls). Can display videos and play audio clips. Because WPF is used can be built only for Windows.
+<br><br>
 
-
-## **Features**:
+## **Features**
 - Integrates Twitch IRC chat:
   - Reads messages,
   - Can replay to configured keys in read messages (automated responses),
@@ -31,9 +31,9 @@ Almost the same as Console version but uses Windows Presentation Foundation (WPF
 - Bot configuration is carried out in:
   - Config.ini,
   - ResponseMessages.csv.
+<br><br>
 
-
-## **Some explanation of source code**:
+## **Some explanation of source code**
 - `Chat.cs` - Implements chat integration.
   - Chat part of the bot is started with `Chat.Start()` function.
   - After `Chat.Start()` is called:
@@ -87,3 +87,20 @@ Almost the same as Console version but uses Windows Presentation Foundation (WPF
   - `GetTTS()` is being used to acquire audio stream from StreamElements api.
 - `Audio.cs` - Implements playing audio clips. For now there is only one function `PlaySound()` to create new audio playing object. The call to it is created in `Events.GetTTS()` in which it's encapsulated in `new Thread` so each new sound is a `new Thread` and they could be playing at the same time. Some buffering is required to be implemented.
 - `Config.cs` - Implements bot configuration from Config.ini file. Creates new `Config.ini` file if the file is missing. Parses `Config.ini` file and if some errors are found notifies the user.
+<br><br>
+
+## **Required information in Config.ini**
+ - Channel name (`ChannelName`) - Name of the channel to connect to.
+ - Bot's name (`BotNick`) - Name of the registered application on https://dev.twitch.tv/console/apps.
+ - Bot's client ID (`BotClientID`) - Customer ID of the registered application on https://dev.twitch.tv/console/apps.
+ - Bot's password (`BotPass`) - Customer password of the registered application on https://dev.twitch.tv/console/apps.
+</br><center><img src="ReadmeImages/BotLogin.png" height="400" verticalalign="center" alt="Bot's Nick, ClientID and Password"></center>  
+ - Bot's OAuthToken (`BotOAuthToken`) - Log in to bot's account and generate token on https://twitchapps.com/tmi.
+ - ngrok authorization token (`NgrokAuthtoken`) - ngrok account authorization token. You have to sign in for free account (https://ngrok.com). After signing up you can get your ngrok authtoken at https://dashboard.ngrok.com/get-started/your-authtoken. Without that account the http tunnel lasts for up to 2 hours, with it doesn't have time limit.
+</br><center><img src="ReadmeImages/ngrokAuthtoken.png" height="200" verticalalign="center" alt="ngrok Authtoken"></center>
+ - Bot's behaviour settings:
+   - Follows notifications (`FollowsNotifications`) - enable / disable follows notifications,
+   - Bits (cheers) notifications (`BitsNotifications`) - enable / disable bits (cheers) notifications,
+   - Custom rewards redeems notifications (`RedemptionsNotifications`) - enable / disable custom rewards redeems notifications,
+ - Filled up Config.ini file should look like this:
+  </br><center><img src="ReadmeImages/ExampleConfig.png" height="200" verticalalign="center" alt="Example Config.ini"></center>

@@ -17,12 +17,15 @@ namespace TwitchBotWPF
             InitializeComponent();
 
             AllocConsole();
+            this.Closing += (sender, e) => FreeConsole(); // Free console window on program close
             ConsoleWarning(">> Hi. I'm AbevBot.");
 
-            this.Closing += (sender, e) => FreeConsole(); // Free console window on program close
-
             // Read Config.ini
-            if (Config.ParseConfigFile()) return;
+            if (Config.ParseConfigFile())
+            {
+                FreeConsole();
+                return;
+            }
 
             Events.Start(); // Start events bot
             Chat.Start(); // Start chat bot
@@ -48,6 +51,11 @@ namespace TwitchBotWPF
             Console.ForegroundColor = color;
             Console.WriteLine(text);
             Console.ResetColor();
+        }
+
+        public static void ConsoleWriteLine(string text)
+        {
+            Console.WriteLine(text.ToString());
         }
     }
 }
