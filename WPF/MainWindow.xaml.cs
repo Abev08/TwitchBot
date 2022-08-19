@@ -1,6 +1,9 @@
 ﻿using System;
 using System.Runtime.InteropServices;
+using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Media;
 
 namespace TwitchBotWPF
 {
@@ -12,9 +15,14 @@ namespace TwitchBotWPF
         [DllImport("Kernel32")]
         public static extern void FreeConsole();
 
+        static MainWindow window;
+        static TextBlock TextOutput; // For some reason it have to be done via temp variable
+
         public MainWindow()
         {
             InitializeComponent();
+            window = this;
+            TextOutput = tbTextOutput;
 
             AllocConsole();
             this.Closing += (sender, e) => FreeConsole(); // Free console window on program close
@@ -29,8 +37,27 @@ namespace TwitchBotWPF
 
             Events.Start(); // Start events bot
             Chat.Start(); // Start chat bot
+            Notifications.Start(); // Start notifications on MainWindow
 
-            btnTestTTS.Click += (sender, e) => Events.GetTTS(tbText.Text); // On button click get TTS audio and play it
+            // For testing purposes some bot functions are assigned to buttons.
+            // In real bot appliaction these things should be fired from received events in Event class or chat commands from Chat class or even keyboard buttons bindings
+            btnTestTTS.Click += (sender, e) =>
+            {
+                string text = tbText.Text;
+                if (string.IsNullOrEmpty(text)) return;
+                // It can freeze the main thread so better use Task to add new notification
+                new Task(() =>
+                {
+                    Notifications.AddNotification(new Notification(text, true, true));
+                }).Start();
+            };
+            btnPause.Click += (sender, e) =>
+            {
+                Notifications.NotificationsPaused ^= true;
+                if (Notifications.NotificationsPaused) ((Button)sender).Background = Brushes.Red;
+                else ((Button)sender).Background = btnSkip.Background;
+            };
+            btnSkip.Click += (sender, e) => Notifications.SkipNotification = true;
 
             // Automatically set source to null after video ended
             VideoPlayer.MediaEnded += (sender, e) => VideoPlayer.Source = null;
@@ -41,7 +68,7 @@ namespace TwitchBotWPF
             // Wait for window to be loaded (visible) to start a demo video
             this.Loaded += (sender, e) =>
             {
-                VideoPlayer.Source = new Uri(@"file_example_MP4_480_1_5MG.mp4", UriKind.Relative);
+                VideoPlayer.Source = new Uri(@"peepoHey.mp4", UriKind.Relative);
                 VideoPlayer.Play();
             };
         }
@@ -56,6 +83,14 @@ namespace TwitchBotWPF
         public static void ConsoleWriteLine(string text)
         {
             Console.WriteLine(text.ToString());
+        }
+
+        public static void SetTextDisplayed(string text)
+        {
+            window.Dispatcher.Invoke(new Action(() =>
+            {
+                TextOutput.Text = text;
+            }));
         }
     }
 }

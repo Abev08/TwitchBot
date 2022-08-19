@@ -94,13 +94,14 @@ Almost the same as Console version but uses Windows Presentation Foundation (WPF
  - Bot's name (`BotNick`) - Name of the registered application on https://dev.twitch.tv/console/apps.
  - Bot's client ID (`BotClientID`) - Customer ID of the registered application on https://dev.twitch.tv/console/apps.
  - Bot's password (`BotPass`) - Customer password of the registered application on https://dev.twitch.tv/console/apps.
-</br><center><img src="ReadmeImages/BotLogin.png" height="400" verticalalign="center" alt="Bot's Nick, ClientID and Password"></center>  
+</br><center><img src="ReadmeImages/BotLogin.png" height="400" alt="Bot's Nick, ClientID and Password"></center>  
  - Bot's OAuthToken (`BotOAuthToken`) - Log in to bot's account and generate token on https://twitchapps.com/tmi.
  - ngrok authorization token (`NgrokAuthtoken`) - ngrok account authorization token. You have to sign in for free account (https://ngrok.com). After signing up you can get your ngrok authtoken at https://dashboard.ngrok.com/get-started/your-authtoken. Without that account the http tunnel lasts for up to 2 hours, with it doesn't have time limit.
-</br><center><img src="ReadmeImages/ngrokAuthtoken.png" height="200" verticalalign="center" alt="ngrok Authtoken"></center>
- - Bot's behaviour settings:
+</br><center><img src="ReadmeImages/ngrokAuthtoken.png" height="200" alt="ngrok Authtoken"></center>
+ - Bot's behavior settings:
    - Follows notifications (`FollowsNotifications`) - enable / disable follows notifications,
    - Bits (cheers) notifications (`BitsNotifications`) - enable / disable bits (cheers) notifications,
    - Custom rewards redeems notifications (`RedemptionsNotifications`) - enable / disable custom rewards redeems notifications,
  - Filled up Config.ini file should look like this:
-  </br><center><img src="ReadmeImages/ExampleConfig.png" height="200" verticalalign="center" alt="Example Config.ini"></center>
+  </br><center><img src="ReadmeImages/ExampleConfig.png" height="200" alt="Example Config.ini"></center>
+  

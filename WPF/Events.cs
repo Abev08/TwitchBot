@@ -13,7 +13,7 @@ using TwitchBotWPF;
 
 public class Events
 {
-    static bool BotStarted;
+    public static bool BotStarted { get; private set; }
     static HttpClient Client = new HttpClient();
     static HttpListener LocalServer = new HttpListener();
     static List<object> EventQueue = new List<object>();
@@ -386,14 +386,14 @@ public class Events
         return true;
     }
 
-    public static void GetTTS(string text)
+    public static NAudio.Wave.WaveOut GetTTS(string text)
     {
+        Stream stream;
         using (HttpRequestMessage request = new HttpRequestMessage(new HttpMethod("GET"), @"https://api.streamelements.com/kappa/v2/speech?voice=Brian&text=" + text))
         {
-            var stream = Client.SendAsync(request).Result.Content.ReadAsStream();
-
-            new Thread(Audio.PlaySound).Start(stream); // Start new sound, there should be something like "AddToBuffer" or something instead of this
+            stream = Client.SendAsync(request).Result.Content.ReadAsStream();
         }
+        return Audio.PlaySound(stream);
     }
 
     class TwitchUserTokenResponse
