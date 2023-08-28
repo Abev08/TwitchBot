@@ -112,7 +112,7 @@ public class Events
                 request.Content = new StringContent("{\"type\":\"channel.channel_points_custom_reward_redemption.add\"," +
                                                     "\"version\":\"1\"," +
                                                     "\"condition\":{\"broadcaster_user_id\":\"" + Config.BroadcasterID + "\"}," +
-                                                    "\"transport\":{\"method\":\"webhook\",\"callback\":\"" + Config.Data[Config.Keys.NgrokAuthtoken].Value + "\",\"secret\":\"secretsecret\"}}");
+                                                    "\"transport\":{\"method\":\"webhook\",\"callback\":\"" + Config.NgrokTunnelAddress + "\",\"secret\":\"secretsecret\"}}");
                 request.Content.Headers.ContentType = MediaTypeHeaderValue.Parse("application/json");
 
                 string response = Client.SendAsync(request).Result.Content.ReadAsStringAsync().Result;

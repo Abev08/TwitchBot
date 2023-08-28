@@ -15,7 +15,10 @@ public class Config
         NgrokAuthtoken,
         FollowsNotifications, BitsNotifications, RedemptionsNotifications
     };
-    public static Dictionary<Keys, DataType> Data = Enum.GetValues(typeof(Keys)).Cast<Keys>().ToDictionary(k => k, k => new DataType());
+    public static Dictionary<Keys, DataType> Data = Enum.GetValues(typeof(Keys)).Cast<Keys>().ToDictionary(k => k, k => new DataType()
+    {
+        BoolValue = k == Keys.FollowsNotifications || k == Keys.BitsNotifications || k == Keys.RedemptionsNotifications
+    });
 
     public static bool RequiredUserToken { get; private set; } = false;
     public static string BotAppAccessToken { get; set; } = string.Empty;
@@ -34,7 +37,11 @@ public class Config
             // The file doesn't exist - create empty one
             using (var stream = configFile.Create())
             {
-                foreach (var data in Data) stream.Write(Encoding.UTF8.GetBytes(data.Key.ToString() + " = " + Environment.NewLine));
+                foreach (var data in Data)
+                {
+                    if (data.Value.BoolValue) stream.Write(Encoding.UTF8.GetBytes(data.Key.ToString() + " = false" + Environment.NewLine));
+                    else stream.Write(Encoding.UTF8.GetBytes(data.Key.ToString() + " = " + Environment.NewLine));
+                }
                 stream.Flush();
             }
             // Notify the user and close bot
