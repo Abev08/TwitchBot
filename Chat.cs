@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.IO;
 using System.Net.Sockets;
 using System.Text;
@@ -33,23 +32,27 @@ namespace AbevBot
 
     private static void Update()
     {
-      Socket socket = new Socket(SocketType.Stream, ProtocolType.Tcp);
+      Socket socket = null;
       byte[] receiveBuffer = new byte[8192]; // Max IRC message is 4096 bytes? let's allocate 2 times that
       int zeroBytesReceivedCounter = 0, currentIndex, nextIndex, bytesReceived, messageStartOffset = 0;
       string userBadge, userName, customRewardID, temp;
-      List<string> messages = new(), message;
+      List<string> messages = new();
+      /// <summary> message[0] - header, message[1] - body </summary>
+      string[] message;
       (string, DateTime) dictionaryResponse;
       ManualResetEvent receiveEvent = new ManualResetEvent(false);
       // Background worker for async handling received messages
       while (true)
       {
-        while (socket.Connected)
+        while (socket?.Connected == true)
         {
           receiveEvent.Reset();
 
           socket.BeginReceive(receiveBuffer, messageStartOffset, receiveBuffer.Length - messageStartOffset, SocketFlags.None, new AsyncCallback((IAsyncResult ar) =>
           {
-            bytesReceived = socket.EndReceive(ar);
+            if (socket.Connected) bytesReceived = socket.EndReceive(ar);
+            else bytesReceived = -1;
+
             if (bytesReceived > 0)
             {
               messages.Clear();
@@ -69,7 +72,7 @@ namespace AbevBot
               for (int i = 0; i < messages.Count; i++)
               {
                 // message[0] - header, message[1] - body
-                message = messages[i].Split("#" + Config.Data[Config.Keys.ChannelName].Value, StringSplitOptions.RemoveEmptyEntries).ToList();
+                message = messages[i].Split($"#{Config.Data[Config.Keys.ChannelName].Value}", StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
                 // Check if received message is incomplete (just for last received message)
                 if ((i == messages.Count - 1) && (receiveBuffer[bytesReceived + messageStartOffset - 1] != (byte)'\n') && (receiveBuffer[bytesReceived + messageStartOffset - 2] != (byte)'\r'))
@@ -77,10 +80,9 @@ namespace AbevBot
                   // Move the message to beginning of receiveBuffer
                   if (messageStartOffset == 0) Array.Clear(receiveBuffer);
 
-                  string s = string.Join("#" + Config.Data[Config.Keys.ChannelName].Value, message);
+                  string s = string.Join($"#{Config.Data[Config.Keys.ChannelName].Value}", message);
                   for (int j = 0; j < s.Length; j++) receiveBuffer[j + messageStartOffset] = (byte)s[j];
                   messageStartOffset += s.Length;
-                  // Program.ConsoleWarning(">> Received incomplete message, moving offset to " + messageStartOffset);
                   continue;
                 }
                 else messageStartOffset = 0;
@@ -89,15 +91,13 @@ namespace AbevBot
                 if (message[0].StartsWith("PING"))
                 {
                   string response = message[0].Replace("PING", "PONG");
-                  // MainWindow.ConsoleWriteLine(string.Join($"#{Program.ChannelName}", message));
-                  // Program.ConsoleWarning(">> " + response + ", " + DateTime.Now.ToString());
                   socket.Send(Encoding.UTF8.GetBytes(response + "\r\n"));
                   continue;
                 }
 
                 // Probably there was some "#channelName" parts in the message body
                 // Attach them together
-                if (message.Count < 2)
+                if (message.Length < 2)
                 {
                   // Some messages doesn't have body part :/
                   if (message[0].Contains("msg-id=sub") || message[0].Contains("msg-id=resub") ||
@@ -107,7 +107,7 @@ namespace AbevBot
                           message[0].StartsWith("@emote-only=") ||
                           message[0].Contains($":tmi.twitch.tv USERSTATE"))
                   {
-                    message.Add(":"); // Add fake message
+                    message = new string[] { message[0], ":" }; // Add fake message
                   }
                   else
                   {
@@ -116,151 +116,171 @@ namespace AbevBot
                     continue;
                   }
                 }
-                while (message.Count > 2)
+                else if (message.Length > 2)
                 {
-                  message[^2] += $"#{Config.Data[Config.Keys.ChannelName].Value}" + message[^1];
-                  message.RemoveAt(message.Count - 1);
+                  message[1] = string.Join("", message, 2, message.Length - 2); // Join the message
                 }
 
                 // Standard message without extra tags
-                if (message[0].StartsWith(':') && message[0].Contains("PRIVMSG"))
+                if (message[0].StartsWith(':') && message[0].EndsWith("PRIVMSG"))
                 {
-                  MainWindow.ConsoleWriteLine(
-                          String.Format("{0, 20}{1, 2}{2, -0}", message[0].Substring(1, message[0].IndexOf('!') - 1) // Username
+                  MainWindow.ConsoleWriteLine(string.Format("{0, 20}{1, 2}{2, -0}",
+                          message[0].Substring(1, message[0].IndexOf('!') - 1) // Username
                           , ": ",
                           message[1].Substring(message[1].IndexOf(':') + 1)) // message
                       );
                 }
                 // Standard message with extra tags
-                else if (message[0].StartsWith("@") && message[0].Contains("PRIVMSG"))
+                else if (message[0].StartsWith("@") && message[0].EndsWith("PRIVMSG"))
                 {
                   // Check if message was from custom reward
                   currentIndex = message[0].IndexOf("custom-reward-id=");
                   if (currentIndex > 0)
                   {
-                    currentIndex += 17;
+                    currentIndex += 17; // "custom-reward-id=".Length
                     customRewardID = message[0].Substring(currentIndex, message[0].IndexOf(';', currentIndex) - currentIndex);
-
-                    // Do something based on customRewardID
-                    switch (customRewardID)
-                    {
-                      // Cakez77 - TTS
-                      case "713be8e1-266a-4b5c-bf37-c42882ddc845":
-                        MainWindow.ConsoleWriteLine("> TTS");
-                        break;
-                      // Cakez77 - TTS Chipmunk
-                      case "de05a92e-380d-415d-83ed-963808c394cb":
-                        MainWindow.ConsoleWriteLine("> TTS Chipmunk");
-                        break;
-                      default:
-                        MainWindow.ConsoleWriteLine("> Custom reward ID: " + customRewardID);
-                        break;
-                    }
+                    MainWindow.ConsoleWriteLine($"> Custom reward with ID: {customRewardID}");
+                    continue;
                   }
 
                   // Check if message had some bits cheered
                   currentIndex = message[0].IndexOf("bits=");
                   if (currentIndex > 0)
                   {
-                    currentIndex += 5;
-                    MainWindow.ConsoleWriteLine($"> Cheered with {message[0].Substring(currentIndex, message[0].IndexOf(';', currentIndex) - currentIndex)} bits" +
-                                            (message[1].Length > 2 ? " Message: " + message[1].Substring(message[1].IndexOf(':') + 1) : ""));
+                    currentIndex += 5; // "bits=".Length
+                    MainWindow.ConsoleWriteLine(string.Concat(
+                      "> Cheered with ",
+                      message[0].Substring(currentIndex, message[0].IndexOf(';', currentIndex) - currentIndex),
+                      "bits. Message: ",
+                      message[1][1..]
+                    ));
                     continue;
                   }
 
-                  currentIndex = message[0].IndexOf("badges=") + 7;
+                  // Read chatter badges
+                  currentIndex = message[0].IndexOf("badges=") + 7; // 7 == "badges=".Length
                   userBadge = message[0].Substring(currentIndex, (nextIndex = message[0].IndexOf(';', currentIndex - 1)) - currentIndex);
-                  if (userBadge.Contains("broadcaster")) userBadge = "GOD";
+                  if (userBadge.Contains("broadcaster")) userBadge = "STR";
                   else if (userBadge.Contains("moderator")) userBadge = "MOD";
                   else if (userBadge.Contains("subscriber")) userBadge = "SUB";
                   else if (userBadge.Contains("vip")) userBadge = "VIP";
                   else userBadge = string.Empty;
                   currentIndex = nextIndex;
 
-                  userName = message[0].Substring(currentIndex = (message[0].IndexOf("display-name=") + 13), (nextIndex = message[0].IndexOf(';', currentIndex)) - currentIndex);
+                  // Read chatter name
+                  currentIndex = message[0].IndexOf("display-name=") + 13; // 13 == "display-name=".Length
+                  nextIndex = message[0].IndexOf(';', currentIndex);
+                  userName = message[0].Substring(currentIndex, nextIndex - currentIndex);
                   currentIndex = nextIndex;
 
-                  MainWindow.ConsoleWriteLine(string.Format("{0, -4}{1, 22}{2, 2}{3, -0}",
-                                              userBadge,
-                                              userName,
-                                              ": ",
-                                              message[1].Substring(message[1].IndexOf(":") + 1))
-                  );
+                  MainWindow.ConsoleWriteLine(string.Format(
+                    "{0, -4}{1, 22}{2, 2}{3, -0}",
+                    userBadge,
+                    userName,
+                    ": ",
+                    message[1][1..]
+                  ));
 
                   // Check if message starts with key to get automatic response
-                  currentIndex = message[1].IndexOf(':') + 1;
-                  nextIndex = message[1].IndexOf(' ', currentIndex);
-                  if (nextIndex < 0) nextIndex = message[1].Length - currentIndex;
-                  temp = message[1].Substring(currentIndex, nextIndex).Trim();
-                  if (ResponseMessages.TryGetValue(temp, out dictionaryResponse))
+                  if (ResponseMessages.Count > 0)
                   {
-                    // Check if the same message was send not long ago
-                    if (DateTime.Now - dictionaryResponse.Item2 >= CooldownBetweenTheSameMessage)
+                    currentIndex = message[1].IndexOf(' ', 1);
+                    if (currentIndex < 0) currentIndex = message[1].Length - 1;
+                    temp = message[1].Substring(1, currentIndex).Trim();
+                    if (ResponseMessages.TryGetValue(temp, out dictionaryResponse))
                     {
-                      socket.Send(Encoding.UTF8.GetBytes($"PRIVMSG #{Config.Data[Config.Keys.ChannelName].Value} :{dictionaryResponse.Item1}\r\n"));
-                      ResponseMessages[temp] = (ResponseMessages[temp].Item1, DateTime.Now);
+                      // Check if the same message was send not long ago
+                      if (DateTime.Now - dictionaryResponse.Item2 >= CooldownBetweenTheSameMessage)
+                      {
+                        socket.Send(Encoding.UTF8.GetBytes($"PRIVMSG #{Config.Data[Config.Keys.ChannelName].Value} :{dictionaryResponse.Item1}\r\n"));
+                        ResponseMessages[temp] = (ResponseMessages[temp].Item1, DateTime.Now);
+                      }
+                      else MainWindow.ConsoleWarning($">> Not sending response for \"{temp}\" key. Cooldown active.");
                     }
-                    else MainWindow.ConsoleWarning($">> Not sending response for \"{temp}\" key. Cooldown active.");
                   }
                 }
                 // Automated bot response
-                else if (message[0].Contains(":tmi.twitch.tv USERSTATE"))
+                else if (message[0].EndsWith("USERSTATE"))
                 {
-                  currentIndex = message[0].IndexOf("display-name=") + 13;
-                  userName = message[0].Substring(currentIndex, (nextIndex = (message[0].IndexOf(';', currentIndex))) - currentIndex);
+                  currentIndex = message[0].IndexOf("display-name=") + 13; // 13 == "display-name=".Length
+                  nextIndex = message[0].IndexOf(';', currentIndex);
+                  userName = message[0].Substring(currentIndex, nextIndex - currentIndex);
 
-                  MainWindow.ConsoleWriteLine(String.Format("{0, -4}{1, 20}{2, 2}{3, -0}",
-                                          "BOT",
-                                          userName,
-                                          ": ",
-                                          "Automated bot response (message is not available)"));
+                  MainWindow.ConsoleWriteLine(string.Format(
+                    "{0, -4}{1, 20}{2, 2}{3, -0}",
+                    "BOT",
+                    userName,
+                    ": ",
+                    "Automated bot response (message is not available)"));
                 }
-                // Notification - sub / announcement
-                else if (message[0].StartsWith("@") && message[0].Contains("USERNOTICE"))
+                // Notification visible in chat - sub, announcement, etc.
+                else if (message[0].StartsWith("@") && message[0].EndsWith("USERNOTICE"))
                 {
-                  currentIndex = message[0].IndexOf("display-name=") + 13;
-                  userName = message[0].Substring(currentIndex, (nextIndex = (message[0].IndexOf(';', currentIndex))) - currentIndex);
+                  currentIndex = message[0].IndexOf("display-name=") + 13; // 13 == "display-name=".Length
+                  nextIndex = message[0].IndexOf(';', currentIndex);
+                  userName = message[0].Substring(currentIndex, nextIndex - currentIndex);
                   currentIndex = nextIndex;
-                  currentIndex = message[0].IndexOf("msg-id=", currentIndex) + 7;
-                  switch (message[0].Substring(currentIndex, (message[0].IndexOf(';', currentIndex)) - currentIndex))
+                  currentIndex = message[0].IndexOf("msg-id=", currentIndex) + 7; // 13 == "msg-id=".Length
+                  switch (message[0].Substring(currentIndex, message[0].IndexOf(';', currentIndex) - currentIndex))
                   {
                     case "sub":
                     case "resub":
-                      MainWindow.ConsoleWriteLine("> " + userName +
-                                              (message[0].Contains("msg-param-was-gifted=true") ? " got gifted sub for " : " subscribed for ") +
-                                              message[0].Substring(currentIndex = (message[0].IndexOf("msg-param-cumulative-months=", currentIndex) + 28), (message[0].IndexOf(';', currentIndex)) - currentIndex) +
-                                              " months." +
-                                              (message[1].Length > 2 ? " Message: " + message[1].Substring(message[1].IndexOf(':') + 1) : "")
-                          );
+                      MainWindow.ConsoleWriteLine(string.Concat(
+                        "> ",
+                        userName,
+                        message[0].Contains("msg-param-was-gifted=true") ? " got gifted sub for " : " subscribed for ",
+                        message[0].Substring(currentIndex = message[0].IndexOf("msg-param-cumulative-months=", currentIndex) + 28, message[0].IndexOf(';', currentIndex) - currentIndex),
+                        " months.",
+                        message[1].Length > 2 ? $" Message: {message[1].Substring(message[1].IndexOf(':') + 1)}" : ""
+                      ));
                       break;
                     case "subgift":
-                      currentIndex = message[0].IndexOf("msg-param-recipient-display-name=") + 33;
-                      MainWindow.ConsoleWriteLine("> " + userName + " gifted a sub for " +
-                                              message[0].Substring(currentIndex, message[0].IndexOf(';', currentIndex) - currentIndex) +
-                                              (message[1].Length > 2 ? " Message: " + message[1].Substring(message[1].IndexOf(':') + 1) : "")
-                          );
+                      currentIndex = message[0].IndexOf("msg-param-recipient-display-name=") + 33; // 33 == "msg-param-recipient-display-name=".Length
+                      MainWindow.ConsoleWriteLine(string.Concat(
+                        "> ",
+                        userName,
+                        " gifted a sub for ",
+                        message[0].Substring(currentIndex, message[0].IndexOf(';', currentIndex) - currentIndex),
+                        message[1].Length > 2 ? $" Message: {message[1].Substring(message[1].IndexOf(':') + 1)}" : ""
+                      ));
                       break;
                     case "submysterygift":
-                      currentIndex = message[0].IndexOf("msg-param-mass-gift-count=") + 26;
-                      MainWindow.ConsoleWriteLine("> " + userName + " gifting " +
-                                              message[0].Substring(currentIndex, message[0].IndexOf(";", currentIndex) - currentIndex) +
-                                              " subs for random viewers" +
-                                              (message[1].Length > 2 ? " Message: " + message[1].Substring(message[1].IndexOf(':') + 1) : "")
-                          );
+                      currentIndex = message[0].IndexOf("msg-param-mass-gift-count=") + 26; // 26 == "msg-param-mass-gift-count=".Length
+                      MainWindow.ConsoleWriteLine(string.Concat(
+                        "> ",
+                        userName,
+                        " gifting ",
+                        message[0].Substring(currentIndex, message[0].IndexOf(";", currentIndex) - currentIndex),
+                        " subs for random viewers",
+                        message[1].Length > 2 ? $" Message: {message[1].Substring(message[1].IndexOf(':') + 1)}" : ""
+                      ));
                       break;
                     case "primepaidupgrade":
-                      MainWindow.ConsoleWriteLine("> " + userName +
-                                              " converted prime sub to standard sub." +
-                                              (message[1].Length > 2 ? " Message: " + message[1].Substring(message[1].IndexOf(':') + 1) : "")
-                          );
+                      MainWindow.ConsoleWriteLine(string.Concat(
+                        "> ",
+                        userName,
+                        " converted prime sub to standard sub.",
+                        message[1].Length > 2 ? $" Message: {message[1].Substring(message[1].IndexOf(':') + 1)}" : ""
+                      ));
                       break;
                     case "announcement":
-                      currentIndex = (message[1].IndexOf(":") + 1);
-                      MainWindow.ConsoleWriteLine("> " + userName + " announced that: " + message[1].Substring(currentIndex));
+                      currentIndex = message[1].IndexOf(":") + 1;
+                      MainWindow.ConsoleWriteLine(string.Concat(
+                        "> ",
+                        userName,
+                        " announced that: ",
+                        message[1].Substring(currentIndex)
+                      ));
                       break;
                     case "raid":
-                      currentIndex = (message[0].IndexOf("msg-param-viewerCount=") + 22);
-                      MainWindow.ConsoleWriteLine("> " + userName + " raided the channel with " + message[0].Substring(currentIndex, message[0].IndexOf(';', currentIndex) - currentIndex) + " viewers.");
+                      currentIndex = message[0].IndexOf("msg-param-viewerCount=") + 22; // 26 == "msg-param-viewerCount=".Length
+                      MainWindow.ConsoleWriteLine(string.Concat(
+                        "> ",
+                        userName,
+                        " raided the channel with ",
+                        message[0].Substring(currentIndex, message[0].IndexOf(';', currentIndex) - currentIndex),
+                        " viewers."
+                      ));
                       break;
                     default:
                       MainWindow.ConsoleWriteLine(string.Join($"#{Config.Data[Config.Keys.ChannelName].Value}", message));
@@ -330,19 +350,27 @@ namespace AbevBot
         if (socket != null)
         {
           // Connection lost
-          MainWindow.ConsoleWarning(">> Connection lost, waiting 2 sec to reconnect.");
+          MainWindow.ConsoleWarning(">> Chat bot connection lost, waiting 2 sec to reconnect.");
           Thread.Sleep(2000);
         }
 
         // Try to connect
-        MainWindow.ConsoleWarning(">> Connecting...");
+        MainWindow.ConsoleWarning(">> Chat bot connecting...");
         socket = new Socket(SocketType.Stream, ProtocolType.Tcp);
-        socket.Connect("irc.chat.twitch.tv", 6667);
-        MainWindow.ConsoleWarning(">> Connected.");
-        socket.Send(Encoding.UTF8.GetBytes($"PASS {Config.Data[Config.Keys.BotOAuthToken].Value}\r\n"));
-        socket.Send(Encoding.UTF8.GetBytes($"NICK {Config.Data[Config.Keys.BotNick].Value}\r\n"));
-        socket.Send(Encoding.UTF8.GetBytes($"JOIN #{Config.Data[Config.Keys.ChannelName].Value},#{Config.Data[Config.Keys.ChannelName].Value}\r\n"));
-        socket.Send(Encoding.UTF8.GetBytes("CAP REQ :twitch.tv/commands twitch.tv/tags\r\n")); // request extended chat messages
+        try { socket.Connect("irc.chat.twitch.tv", 6667); }
+        catch (Exception ex)
+        {
+          MainWindow.ConsoleWarning($"Chat bot connection error: {ex.Message}");
+          socket = null;
+        }
+        if (socket?.Connected == true)
+        {
+          MainWindow.ConsoleWarning(">> Chat bot connected.");
+          socket.Send(Encoding.UTF8.GetBytes($"PASS {Config.Data[Config.Keys.BotOAuthToken].Value}\r\n"));
+          socket.Send(Encoding.UTF8.GetBytes($"NICK {Config.Data[Config.Keys.BotNick].Value}\r\n"));
+          socket.Send(Encoding.UTF8.GetBytes($"JOIN #{Config.Data[Config.Keys.ChannelName].Value},#{Config.Data[Config.Keys.ChannelName].Value}\r\n"));
+          socket.Send(Encoding.UTF8.GetBytes("CAP REQ :twitch.tv/commands twitch.tv/tags\r\n")); // request extended chat messages
+        }
       }
     }
 
@@ -355,38 +383,52 @@ namespace AbevBot
       if (messagesFile.Exists == false)
       {
         MainWindow.ConsoleWarning(">> ResponseMessages.csv file not found. Generating new one.");
+        if (!messagesFile.Directory.Exists) messagesFile.Directory.Create();
 
-        using (var writer = messagesFile.Create())
+        using (StreamWriter writer = new StreamWriter(messagesFile.FullName))
         {
-          writer.Write(Encoding.UTF8.GetBytes("key; message" + Environment.NewLine));
-          writer.Write(Encoding.UTF8.GetBytes("!example; This is an example response." + Environment.NewLine));
+          writer.WriteLine("key; message");
+          writer.WriteLine("!example; This is example response.");
+          writer.WriteLine("//!example2; This is example response that is commented out - not active.");
         }
       }
 
       // Read the file
       uint responseCount = 0;
-      string[] lines = File.ReadAllLines(messagesFile.FullName);
-      for (int i = 0; i < lines.Length; i++)
+      using (StreamReader reader = new StreamReader(messagesFile.FullName))
       {
-        List<string> text = lines[i].Split(';', StringSplitOptions.RemoveEmptyEntries).ToList();
-        while (text.Count > 2)
+        string line;
+        string[] text = new string[2];
+        int lineIndex = 0, separatorIndex;
+        while ((line = reader.ReadLine()) != null)
         {
-          text[^2] += ";" + text[^1];
-          text.RemoveAt(text.Count - 1);
-        }
-        text[0] = text[0].Trim(); // Lead leading and trailing white space characters
-        text[1] = text[1].Trim();
-        if ((text[0] == "key") && (text[1] == "message")) continue; // This is the header, skip it
-        if (text[0].StartsWith("//")) continue; // Commented out line - skip it
+          lineIndex++;
+          if (string.IsNullOrWhiteSpace(line)) continue;
+          separatorIndex = line.IndexOf(';');
+          if (separatorIndex < 0)
+          {
+            MainWindow.ConsoleWarning($">> Broken response message in line {lineIndex}.");
+            continue;
+          }
 
-        if (ResponseMessages.TryAdd(text[0], (text[1], new DateTime())))
-        {
-          MainWindow.ConsoleWarning($">> Added respoonse to \"{text[0]}\" key");
-          responseCount++;
+          text[0] = line.Substring(0, separatorIndex).Trim();
+          text[1] = line.Substring(separatorIndex + 1).Trim();
+
+          if (text[0].StartsWith("//")) { continue; } // Commented out line - skip it
+          else if ((text[0] == "key") && (text[1] == "message")) { continue; } // This is the header, skip it
+          else
+          {
+            // Try to add response message
+            if (ResponseMessages.TryAdd(text[0], (text[1], new DateTime())))
+            {
+              MainWindow.ConsoleWarning($">> Added respoonse to \"{text[0]}\" key.");
+              responseCount++;
+            }
+            else MainWindow.ConsoleWarning($">> Redefiniton of \"{text[0]}\" key in line {lineIndex}."); // TryAdd returned false - probably a duplicate
+          }
         }
-        else MainWindow.ConsoleWarning($">> Redefiniton of \"{text[0]}\" key, in line {(i + 1)}."); // TryAdd returned false - probably a duplicate
+        MainWindow.ConsoleWarning($">> Loaded {responseCount} automated response messages.");
       }
-      MainWindow.ConsoleWarning($">> Loaded {responseCount} automated response messages.");
     }
   }
 }
