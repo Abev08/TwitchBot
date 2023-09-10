@@ -71,7 +71,7 @@ namespace AbevBot
               for (int i = 0; i < messages.Count; i++)
               {
                 // message[0] - header, message[1] - body
-                currentIndex = messages[i].IndexOf(Config.Data[Config.Keys.ChannelName].Value) - 1;
+                currentIndex = messages[i].IndexOf($"#{Config.Data[Config.Keys.ChannelName].Value}");
                 if (currentIndex < 0)
                 {
                   message[0] = messages[i].Trim();
@@ -123,7 +123,21 @@ namespace AbevBot
                   {
                     currentIndex += 17; // "custom-reward-id=".Length
                     customRewardID = message[0].Substring(currentIndex, message[0].IndexOf(';', currentIndex) - currentIndex);
-                    MainWindow.ConsoleWriteLine($"> Custom reward with ID: {customRewardID}");
+                    currentIndex = message[0].IndexOf("display-name=") + 13; // 13 == "display-name=".Length
+                    if (currentIndex >= 0)
+                    {
+                      nextIndex = message[0].IndexOf(';', currentIndex);
+                      userName = message[0].Substring(currentIndex, nextIndex - currentIndex);
+                    }
+                    else { userName = "?"; }
+                    MainWindow.ConsoleWriteLine(string.Concat(
+                      "> ",
+                      userName,
+                      " redeemed custom reward with ID: ",
+                      customRewardID,
+                      ". ",
+                      message[1][1..]
+                    ));
                     continue;
                   }
 
@@ -135,7 +149,7 @@ namespace AbevBot
                     MainWindow.ConsoleWriteLine(string.Concat(
                       "> Cheered with ",
                       message[0].Substring(currentIndex, message[0].IndexOf(';', currentIndex) - currentIndex),
-                      "bits. Message: ",
+                      "bits. ",
                       message[1][1..]
                     ));
                     continue;
@@ -215,7 +229,7 @@ namespace AbevBot
                         message[0].Contains("msg-param-was-gifted=true") ? " got gifted sub for " : " subscribed for ",
                         message[0].Substring(currentIndex = message[0].IndexOf("msg-param-cumulative-months=", currentIndex) + 28, message[0].IndexOf(';', currentIndex) - currentIndex),
                         " months.",
-                        message[1].Length > 2 ? $" Message: {message[1].Substring(message[1].IndexOf(':') + 1)}" : ""
+                        message[1].Length > 2 ? message[1].Substring(message[1].IndexOf(':') + 1) : ""
                       ));
                       break;
                     case "subgift":
@@ -225,7 +239,7 @@ namespace AbevBot
                         userName,
                         " gifted a sub for ",
                         message[0].Substring(currentIndex, message[0].IndexOf(';', currentIndex) - currentIndex),
-                        message[1].Length > 2 ? $" Message: {message[1].Substring(message[1].IndexOf(':') + 1)}" : ""
+                        message[1].Length > 2 ? message[1].Substring(message[1].IndexOf(':') + 1) : ""
                       ));
                       break;
                     case "submysterygift":
@@ -236,7 +250,7 @@ namespace AbevBot
                         " gifting ",
                         message[0].Substring(currentIndex, message[0].IndexOf(";", currentIndex) - currentIndex),
                         " subs for random viewers",
-                        message[1].Length > 2 ? $" Message: {message[1].Substring(message[1].IndexOf(':') + 1)}" : ""
+                        message[1].Length > 2 ? message[1].Substring(message[1].IndexOf(':') + 1) : ""
                       ));
                       break;
                     case "primepaidupgrade":
@@ -244,7 +258,7 @@ namespace AbevBot
                         "> ",
                         userName,
                         " converted prime sub to standard sub.",
-                        message[1].Length > 2 ? $" Message: {message[1].Substring(message[1].IndexOf(':') + 1)}" : ""
+                        message[1].Length > 2 ? message[1].Substring(message[1].IndexOf(':') + 1) : ""
                       ));
                       break;
                     case "announcement":
