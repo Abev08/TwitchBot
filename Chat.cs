@@ -9,9 +9,9 @@ namespace AbevBot
 {
   public static class Chat
   {
-    private static bool BotStarted;
-    private static Dictionary<string, (string, DateTime)> ResponseMessages = new Dictionary<string, (string, DateTime)>();
-    private static TimeSpan CooldownBetweenTheSameMessage = new TimeSpan(0, 0, 10);
+    public static bool BotStarted { get; private set; }
+    private static readonly TimeSpan CooldownBetweenTheSameMessage = new TimeSpan(0, 0, 10);
+    private static readonly Dictionary<string, (string, DateTime)> ResponseMessages = new Dictionary<string, (string, DateTime)>();
     private static Thread ChatThread;
 
     public static void Start()
@@ -38,10 +38,9 @@ namespace AbevBot
       string userBadge, userName, customRewardID, temp;
       List<string> messages = new();
       /// <summary> message[0] - header, message[1] - body </summary>
-      string[] message;
+      string[] message = new string[2];
       (string, DateTime) dictionaryResponse;
-      ManualResetEvent receiveEvent = new ManualResetEvent(false);
-      // Background worker for async handling received messages
+      ManualResetEvent receiveEvent = new(false);
       while (true)
       {
         while (socket?.Connected == true)
@@ -72,7 +71,17 @@ namespace AbevBot
               for (int i = 0; i < messages.Count; i++)
               {
                 // message[0] - header, message[1] - body
-                message = messages[i].Split($"#{Config.Data[Config.Keys.ChannelName].Value}", StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                currentIndex = messages[i].IndexOf(Config.Data[Config.Keys.ChannelName].Value) - 1;
+                if (currentIndex < 0)
+                {
+                  message[0] = messages[i].Trim();
+                  message[1] = ":"; // Add fake message
+                }
+                else
+                {
+                  message[0] = messages[i].Substring(0, currentIndex).Trim();
+                  message[1] = messages[i].Substring(currentIndex + Config.Data[Config.Keys.ChannelName].Value.Length + 1).Trim(); // +1 because of '#' symbol in channel name
+                }
 
                 // Check if received message is incomplete (just for last received message)
                 if ((i == messages.Count - 1) && (receiveBuffer[bytesReceived + messageStartOffset - 1] != (byte)'\n') && (receiveBuffer[bytesReceived + messageStartOffset - 2] != (byte)'\r'))
@@ -95,40 +104,15 @@ namespace AbevBot
                   continue;
                 }
 
-                // Probably there was some "#channelName" parts in the message body
-                // Attach them together
-                if (message.Length < 2)
-                {
-                  // Some messages doesn't have body part :/
-                  if (message[0].Contains("msg-id=sub") || message[0].Contains("msg-id=resub") ||
-                          message[0].Contains("msg-id=subgift") || message[0].Contains("msg-id=submysterygift") ||
-                          message[0].Contains("msg-id=raid") ||
-                          message[0].Contains("msg-id=primepaidupgrade") ||
-                          message[0].StartsWith("@emote-only=") ||
-                          message[0].Contains($":tmi.twitch.tv USERSTATE"))
-                  {
-                    message = new string[] { message[0], ":" }; // Add fake message
-                  }
-                  else
-                  {
-                    // Program.ConsoleWarning(">> Something went wrong with the message, skipping it");
-                    MainWindow.ConsoleWriteLine(string.Join($"#{Config.Data[Config.Keys.ChannelName].Value}", message));
-                    continue;
-                  }
-                }
-                else if (message.Length > 2)
-                {
-                  message[1] = string.Join("", message, 2, message.Length - 2); // Join the message
-                }
-
                 // Standard message without extra tags
                 if (message[0].StartsWith(':') && message[0].EndsWith("PRIVMSG"))
                 {
-                  MainWindow.ConsoleWriteLine(string.Format("{0, 20}{1, 2}{2, -0}",
-                          message[0].Substring(1, message[0].IndexOf('!') - 1) // Username
-                          , ": ",
-                          message[1].Substring(message[1].IndexOf(':') + 1)) // message
-                      );
+                  MainWindow.ConsoleWriteLine(string.Format(
+                    "{0, 20}{1, 2}{2, -0}",
+                    message[0].Substring(1, message[0].IndexOf('!') - 1) // Username
+                    , ": ",
+                    message[1].Substring(message[1].IndexOf(':') + 1) // message
+                  ));
                 }
                 // Standard message with extra tags
                 else if (message[0].StartsWith("@") && message[0].EndsWith("PRIVMSG"))
@@ -283,7 +267,8 @@ namespace AbevBot
                       ));
                       break;
                     default:
-                      MainWindow.ConsoleWriteLine(string.Join($"#{Config.Data[Config.Keys.ChannelName].Value}", message));
+                      if (message[1].Equals(":")) MainWindow.ConsoleWriteLine(message[0]);
+                      else MainWindow.ConsoleWriteLine(string.Join(" : ", message));
                       break;
                   }
                 }
@@ -325,7 +310,8 @@ namespace AbevBot
                 // Other message type
                 else
                 {
-                  MainWindow.ConsoleWarning(string.Join($"#{Config.Data[Config.Keys.ChannelName].Value}", message), ConsoleColor.Magenta);
+                  if (message[1].Equals(":")) MainWindow.ConsoleWriteLine(message[0]);
+                  else MainWindow.ConsoleWriteLine(string.Join(" : ", message));
                 }
               }
               zeroBytesReceivedCounter = 0;
