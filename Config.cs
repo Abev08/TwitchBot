@@ -1,32 +1,35 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Text;
+using System.Net.Http;
 
 namespace AbevBot
 {
-  public class Config
+  public static class Config
   {
     public enum Keys
     {
-      ChannelName,
+      ChannelName, BroadcasterID,
       BotNick, BotClientID, BotPass,
-      BotOAuthToken, // I would like to generate this token programmatically but I don't know how :/
-      NgrokAuthtoken,
-      FollowsNotifications, BitsNotifications, RedemptionsNotifications
+      BotOAuthToken, BotOAuthRefreshToken
     };
-    public static Dictionary<Keys, DataType> Data = Enum.GetValues(typeof(Keys)).Cast<Keys>().ToDictionary(k => k, k => new DataType()
-    {
-      BoolValue = k == Keys.FollowsNotifications || k == Keys.BitsNotifications || k == Keys.RedemptionsNotifications
-    });
 
-    public static bool RequiredUserToken { get; private set; } = false;
-    public static string BotAppAccessToken { get; set; } = string.Empty;
-    public static string BotUserAccessToken { get; set; } = string.Empty;
-    public static string BotUserRefreshToken { get; set; } = string.Empty;
-    public static string BroadcasterID { get; set; } = string.Empty;
-    public static string NgrokTunnelAddress { get; set; } = string.Empty;
+    private static Dictionary<Keys, string> _Data;
+    public static Dictionary<Keys, string> Data
+    {
+      get
+      {
+        if (_Data is null)
+        {
+          _Data = new();
+          foreach (var key in Enum.GetValues(typeof(Keys)))
+          {
+            _Data.Add((Keys)key, string.Empty);
+          }
+        }
+        return _Data;
+      }
+    }
 
     public static bool ParseConfigFile()
     {
@@ -35,92 +38,99 @@ namespace AbevBot
       FileInfo configFile = new FileInfo(@"./Config.ini");
       if (configFile.Exists == false)
       {
-        // The file doesn't exist - create empty one
-        using (var stream = configFile.Create())
-        {
-          foreach (var data in Data)
-          {
-            if (data.Value.BoolValue) stream.Write(Encoding.UTF8.GetBytes(data.Key.ToString() + " = false" + Environment.NewLine));
-            else stream.Write(Encoding.UTF8.GetBytes(data.Key.ToString() + " = " + Environment.NewLine));
-          }
-          stream.Flush();
-        }
-        // Notify the user and close bot
-        MainWindow.ConsoleWarning("Missing required info in Config.ini file." + Environment.NewLine +
-                                "The file was generated." + Environment.NewLine + "Please fill it up and restart the bot.");
-        Console.ReadLine();
+        CreateConfigFile(configFile);
         return true;
       }
       else
       {
-        using (var reader = configFile.OpenText())
+        using (StreamReader reader = new(configFile.FullName))
         {
-          string[] lines = reader.ReadToEnd().Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries);
-          Keys key;
-          foreach (string line in lines)
+          string line;
+          int lineIndex = 0;
+          while ((line = reader.ReadLine()) != null)
           {
-            string[] text = line.Split('=');
-            if (text.Length < 2) continue;
-            for (int i = 0; i < text.Length; i++) text[i] = text[i].Trim(); // Trim white spaces
-            if (string.IsNullOrEmpty(text[1])) continue; // Skip if nothing was assigned
-            try
+            lineIndex++;
+            if (line.StartsWith("//") || string.IsNullOrWhiteSpace(line)) continue;
+            string[] text = line.Split('=', StringSplitOptions.TrimEntries);
+            if (text.Length < 2 || string.IsNullOrWhiteSpace(text[1]))
             {
-              key = (Keys)Enum.Parse(typeof(Keys), text[0]);
-              switch (key)
-              {
-                case Keys.NgrokAuthtoken:
-                  Data[key].Value = text[1];
-                  break;
-                case Keys.FollowsNotifications:
-                case Keys.BitsNotifications:
-                case Keys.RedemptionsNotifications:
-                  Data[key].BoolValue = bool.Parse(text[1].ToLower());
-                  break;
-                default:
-                  Data[key].Value = text[1].ToLower();
-                  break;
-              }
-              Data[key].Readed = true;
+              MainWindow.ConsoleWarning($">> Bad Config.ini line: {lineIndex}.");
+              continue;
             }
-            catch (Exception ex) { MainWindow.ConsoleWarning(ex.Message); }
+            object key;
+            if (Enum.TryParse(typeof(Keys), text[0], out key))
+            {
+              if ((Keys)key == Keys.ChannelName) Data[(Keys)key] = text[1].ToLower();
+              else Data[(Keys)key] = text[1];
+            }
+            else { MainWindow.ConsoleWarning($">> Not recognized key in line {lineIndex}."); }
           }
         }
 
         // Check if all needed data was read
-        bool configDataMissing = false;
-        foreach (var data in Data)
+        if (Data[Keys.ChannelName].Length == 0 ||
+            Data[Keys.BotNick].Length == 0 || Data[Keys.BotClientID].Length == 0 || Data[Keys.BotPass].Length == 0)
         {
-          if (data.Value.Readed == false)
-          {
-            configDataMissing = true;
-            MainWindow.ConsoleWarning($"Missing {data.Key.ToString()} key.");
-          }
-        }
-
-        // Check if something is missing
-        if (configDataMissing)
-        {
-          MainWindow.ConsoleWarning("Missing required info in Config.ini file." + Environment.NewLine +
-                          "Look inside \"Required information in Config.ini\" section in README for help." + Environment.NewLine +
-                          "You can delete Config.ini file to generate new one. ! WARNING - ALL DATA INSIDE IT WILL BE LOST !");
+          MainWindow.ConsoleWarning(string.Concat(
+            ">> Missing required info in Config.ini file.", Environment.NewLine,
+            "Look inside \"Required information in Config.ini\" section in README for help.", Environment.NewLine,
+            "You can delete Config.ini file to generate new one. ! WARNING - ALL DATA INSIDE IT WILL BE LOST !"
+          ));
           Console.ReadLine();
           return true;
         }
-
-        RequiredUserToken = Data[Keys.BitsNotifications].BoolValue || Data[Keys.RedemptionsNotifications].BoolValue; // Check if user token will be required
+        else
+        {
+          // Nothing is missing, do some setup things
+          AccessTokens.GetAccessTokens();
+          GetBroadcasterID();
+        }
       }
 
       return false;
     }
-  }
 
-  public class DataType
-  {
-    /// <summary> Data was readed from Config.ini </summary>
-    public bool Readed;
-    /// <summary> Value readed from Config.ini </summary>
-    public string Value = string.Empty;
-    /// <summary> Value readed from Config.ini parsed to bool </summary>
-    public bool BoolValue;
+    private static void CreateConfigFile(FileInfo configFile)
+    {
+      using (StreamWriter writer = new(configFile.FullName))
+      {
+        writer.WriteLine(string.Concat(Keys.ChannelName.ToString(), " = "));
+        writer.WriteLine(string.Concat(Keys.BotNick.ToString(), " = "));
+        writer.WriteLine(string.Concat(Keys.BotClientID.ToString(), " = "));
+        writer.WriteLine(string.Concat(Keys.BotPass.ToString(), " = "));
+      }
+
+      // Notify the user
+      MainWindow.ConsoleWarning(string.Concat(
+        ">> Missing required info in Config.ini file.", Environment.NewLine,
+        "The file was generated.", Environment.NewLine,
+         "Please fill it up and restart the bot."
+      ));
+      Console.ReadLine();
+    }
+
+    private static void GetBroadcasterID()
+    {
+      MainWindow.ConsoleWarning(">> Getting broadcaster ID.");
+      string uri = $"https://api.twitch.tv/helix/users?login={Data[Keys.ChannelName]}";
+      using (HttpRequestMessage request = new HttpRequestMessage(new HttpMethod("GET"), uri))
+      {
+        request.Headers.Add("Authorization", $"Bearer {Data[Keys.BotOAuthToken]}");
+        request.Headers.Add("Client-Id", Data[Keys.BotClientID]);
+
+        using (HttpClient client = new HttpClient())
+        {
+          ChannelIDResponse response = ChannelIDResponse.Deserialize(client.SendAsync(request).Result.Content.ReadAsStringAsync().Result);
+          if (response != null && response?.Data?.Length == 1)
+          {
+            Data[Keys.BroadcasterID] = response.Data[0].ID;
+          }
+          else
+          {
+            MainWindow.ConsoleWarning(">> Couldn't acquire broadcaster ID. Probably defined channel name doesn't exist.");
+          }
+        }
+      }
+    }
   }
 }

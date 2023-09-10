@@ -39,17 +39,17 @@ namespace AbevBot
 
       // Get broadcaster ID
       MainWindow.ConsoleWarning(">> Getting broadcaster ID.");
-      string uri = $"https://api.twitch.tv/helix/users?login={Config.Data[Config.Keys.ChannelName].Value}";
+      string uri = $"https://api.twitch.tv/helix/users?login={Config.Data[Config.Keys.ChannelName]}";
       using (HttpRequestMessage request = new HttpRequestMessage(new HttpMethod("GET"), uri))
       {
-        request.Headers.Add("Authorization", $"Bearer {Config.BotAppAccessToken}");
-        request.Headers.Add("Client-Id", $"{Config.Data[Config.Keys.BotClientID].Value}");
+        request.Headers.Add("Authorization", $"Bearer {Config.Data[Config.Keys.BotOAuthToken]}");
+        request.Headers.Add("Client-Id", $"{Config.Data[Config.Keys.BotClientID]}");
 
         string response = Client.SendAsync(request).Result.Content.ReadAsStringAsync().Result;
         if (response.Contains("\"id\":"))
         {
           int index = response.IndexOf("\"id\":") + 6;
-          Config.BroadcasterID = response.Substring(index, response.IndexOf("\",", index) - index);
+          Config.Data[Config.Keys.BroadcasterID] = response.Substring(index, response.IndexOf("\",", index) - index);
         }
         else
         {
@@ -76,18 +76,18 @@ namespace AbevBot
       ManualEvent = new ManualResetEvent(false); // Reset manual event
       bool awaitingResponse = false;
 
-      if (Config.Data[Config.Keys.FollowsNotifications].BoolValue)
+      // if (Config.Data[Config.Keys.FollowsNotifications].BoolValue)
       {
         // Subscribe to follow events (possible with app token and user token)
         MainWindow.ConsoleWarning(">> Subscribing to channel follow event.");
         using (HttpRequestMessage request = new HttpRequestMessage(new HttpMethod("POST"), "https://api.twitch.tv/helix/eventsub/subscriptions"))
         {
-          request.Headers.Add("Authorization", $"Bearer {Config.BotAppAccessToken}");
-          request.Headers.Add("Client-Id", $"{Config.Data[Config.Keys.BotClientID].Value}");
-          request.Content = new StringContent("{\"type\":\"channel.follow\"," +
-                                              "\"version\":\"1\"," +
-                                              "\"condition\":{\"broadcaster_user_id\":\"" + Config.BroadcasterID + "\"}," +
-                                              "\"transport\":{\"method\":\"webhook\",\"callback\":\"" + Config.NgrokTunnelAddress + "\",\"secret\":\"secretsecret\"}}");
+          request.Headers.Add("Authorization", $"Bearer {Config.Data[Config.Keys.BotOAuthToken]}");
+          request.Headers.Add("Client-Id", $"{Config.Data[Config.Keys.BotClientID]}");
+          // request.Content = new StringContent("{\"type\":\"channel.follow\"," +
+          //                                     "\"version\":\"1\"," +
+          //                                     "\"condition\":{\"broadcaster_user_id\":\"" + Config.Data[Config.Keys.BroadcasterID] + "\"}," +
+          //                                     "\"transport\":{\"method\":\"webhook\",\"callback\":\"" + Config.NgrokTunnelAddress + "\",\"secret\":\"secretsecret\"}}");
           request.Content.Headers.ContentType = MediaTypeHeaderValue.Parse("application/json");
 
           string response = Client.SendAsync(request).Result.Content.ReadAsStringAsync().Result;
@@ -102,18 +102,18 @@ namespace AbevBot
       }
 
       // Subscription to those events require user token
-      if (Config.Data[Config.Keys.RedemptionsNotifications].BoolValue)
+      // if (Config.Data[Config.Keys.RedemptionsNotifications].BoolValue)
       {
         // Subscribe to custom rewards redemptions events (possible only with user token)
         MainWindow.ConsoleWarning(">> Subscribing to channel custom reward redemption event.");
         using (HttpRequestMessage request = new HttpRequestMessage(new HttpMethod("POST"), "https://api.twitch.tv/helix/eventsub/subscriptions"))
         {
-          request.Headers.Add("Authorization", $"Bearer {Config.BotAppAccessToken}");
-          request.Headers.Add("Client-Id", $"{Config.Data[Config.Keys.BotClientID].Value}");
-          request.Content = new StringContent("{\"type\":\"channel.channel_points_custom_reward_redemption.add\"," +
-                                              "\"version\":\"1\"," +
-                                              "\"condition\":{\"broadcaster_user_id\":\"" + Config.BroadcasterID + "\"}," +
-                                              "\"transport\":{\"method\":\"webhook\",\"callback\":\"" + Config.NgrokTunnelAddress + "\",\"secret\":\"secretsecret\"}}");
+          request.Headers.Add("Authorization", $"Bearer {Config.Data[Config.Keys.BotOAuthToken]}");
+          request.Headers.Add("Client-Id", $"{Config.Data[Config.Keys.BotClientID]}");
+          // request.Content = new StringContent("{\"type\":\"channel.channel_points_custom_reward_redemption.add\"," +
+          //                                     "\"version\":\"1\"," +
+          //                                     "\"condition\":{\"broadcaster_user_id\":\"" + Config.BroadcasterID + "\"}," +
+          //                                     "\"transport\":{\"method\":\"webhook\",\"callback\":\"" + Config.NgrokTunnelAddress + "\",\"secret\":\"secretsecret\"}}");
           request.Content.Headers.ContentType = MediaTypeHeaderValue.Parse("application/json");
 
           string response = Client.SendAsync(request).Result.Content.ReadAsStringAsync().Result;
@@ -128,17 +128,17 @@ namespace AbevBot
       }
 
       // Subscribe to cheer events (possible only with user token)
-      if (Config.Data[Config.Keys.BitsNotifications].BoolValue)
+      // if (Config.Data[Config.Keys.BitsNotifications].BoolValue)
       {
         MainWindow.ConsoleWarning(">> Subscribing to cheer event.");
         using (HttpRequestMessage request = new HttpRequestMessage(new HttpMethod("POST"), "https://api.twitch.tv/helix/eventsub/subscriptions"))
         {
-          request.Headers.Add("Authorization", $"Bearer {Config.BotAppAccessToken}");
-          request.Headers.Add("Client-Id", $"{Config.Data[Config.Keys.BotClientID].Value}");
-          request.Content = new StringContent("{\"type\":\"channel.cheer\"," +
-                                              "\"version\":\"1\"," +
-                                              "\"condition\":{\"broadcaster_user_id\":\"" + Config.BroadcasterID + "\"}," +
-                                              "\"transport\":{\"method\":\"webhook\",\"callback\":\"" + Config.NgrokTunnelAddress + "\",\"secret\":\"secretsecret\"}}");
+          request.Headers.Add("Authorization", $"Bearer {Config.Data[Config.Keys.BotOAuthToken]}");
+          request.Headers.Add("Client-Id", $"{Config.Data[Config.Keys.BotClientID]}");
+          // request.Content = new StringContent("{\"type\":\"channel.cheer\"," +
+          //                                     "\"version\":\"1\"," +
+          //                                     "\"condition\":{\"broadcaster_user_id\":\"" + Config.BroadcasterID + "\"}," +
+          //                                     "\"transport\":{\"method\":\"webhook\",\"callback\":\"" + Config.NgrokTunnelAddress + "\",\"secret\":\"secretsecret\"}}");
           request.Content.Headers.ContentType = MediaTypeHeaderValue.Parse("application/json");
 
           string response = Client.SendAsync(request).Result.Content.ReadAsStringAsync().Result;
@@ -157,81 +157,7 @@ namespace AbevBot
 
     static void GetNewAccessToken()
     {
-      MainWindow.ConsoleWarning(">> Getting new access token.");
 
-      if (Config.RequiredUserToken)
-      {
-        string uri = "https://id.twitch.tv/oauth2/authorize?" +
-                    $"client_id={Config.Data[Config.Keys.BotClientID].Value}" +
-                    "&redirect_uri=http://localhost:3000" +
-                    "&response_type=code" +
-                    "&scope=" + ("bits:read" // View Bits information for a channel
-                                + "+channel:read:redemptions" // View Channel Points custom rewards and their redemptions on a channel.
-                                ).Replace(":", "%3A");
-
-        // Open the link for the user to complete authorization
-        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo() { FileName = uri, UseShellExecute = true });
-
-        HttpListenerContext context = LocalServer.GetContext(); // Await connection
-
-        // For now lets just redirect to twitch to hide received code in browser url
-        using (HttpListenerResponse resp = context.Response)
-        {
-          resp.Headers.Set("Content-Type", "text/plain");
-          resp.Redirect(@"https://www.twitch.tv");
-        }
-
-        string requestUrl = context.Request.Url != null ? context.Request.Url.Query : string.Empty;
-        // Parse received request url
-        if (requestUrl.StartsWith("?code="))
-        {
-          // Next step - request user token with received authorization code
-          string code = requestUrl.Substring(6, requestUrl.IndexOf('&', 6) - 6);
-          using (HttpRequestMessage request = new HttpRequestMessage(new HttpMethod("POST"), "https://id.twitch.tv/oauth2/token"))
-          {
-            request.Content = new StringContent($"client_id={Config.Data[Config.Keys.BotClientID].Value}" +
-                                                $"&client_secret={Config.Data[Config.Keys.BotPass].Value}" +
-                                                $"&code={code}" +
-                                                "&grant_type=authorization_code" +
-                                                "&redirect_uri=http://localhost:3000");
-            request.Content.Headers.ContentType = MediaTypeHeaderValue.Parse("application/x-www-form-urlencoded");
-
-            string response2 = Client.SendAsync(request).Result.Content.ReadAsStringAsync().Result;
-            TwitchUserTokenResponse? response = JsonSerializer.Deserialize<TwitchUserTokenResponse>(response2);
-            if (response != null)
-            {
-              Config.BotUserAccessToken = response.access_token;
-              Config.BotUserRefreshToken = response.refresh_token;
-            }
-          }
-        }
-        else
-        {
-          // Something went wrong
-          throw new NotImplementedException("Implement something here :)");
-        }
-      }
-
-      // Access token without getting user involved (just app token)
-      using (HttpRequestMessage request = new HttpRequestMessage(new HttpMethod("POST"), "https://id.twitch.tv/oauth2/token"))
-      {
-        request.Content = new StringContent($"client_id={Config.Data[Config.Keys.BotClientID].Value}" +
-                                            $"&client_secret={Config.Data[Config.Keys.BotPass].Value}" +
-                                            "&grant_type=client_credentials");
-        request.Content.Headers.ContentType = MediaTypeHeaderValue.Parse("application/x-www-form-urlencoded");
-
-        string response = Client.SendAsync(request).Result.Content.ReadAsStringAsync().Result;
-        if ((response != null) && (response.Contains("access_token")))
-        {
-          int index = response.IndexOf("access_token") + 15;
-          Config.BotAppAccessToken = response.Substring(index, response.IndexOf(',', index) - index - 1);
-        }
-        else
-        {
-          // Something went wrong
-          throw new NotImplementedException("Implement something here :)");
-        }
-      }
     }
 
     static bool GetLocalTunnel()
@@ -255,7 +181,7 @@ namespace AbevBot
       NgrokProcess.StartInfo.RedirectStandardOutput = true;
       NgrokProcess.StartInfo.RedirectStandardError = true;
       NgrokProcess.StartInfo.FileName = "cmd.exe";
-      NgrokProcess.StartInfo.Arguments = $"/C ngrok http 3000 --authtoken={Config.Data[Config.Keys.NgrokAuthtoken].Value} --host-header=\"localhost:3000\"";
+      // NgrokProcess.StartInfo.Arguments = $"/C ngrok http 3000 --authtoken={Config.Data[Config.Keys.NgrokAuthtoken].Value} --host-header=\"localhost:3000\"";
       NgrokProcess.Start(); // In debugging make sure that ngrok.exe procces is closed otherwise you will get spammed :D
 
       using (HttpRequestMessage request = new HttpRequestMessage(new HttpMethod("GET"), "http://localhost:4040/api/tunnels"))
@@ -271,7 +197,7 @@ namespace AbevBot
         else
         {
           index += 13;
-          Config.NgrokTunnelAddress = response.Substring(index, response.IndexOf('"', index) - index);
+          // Config.NgrokTunnelAddress = response.Substring(index, response.IndexOf('"', index) - index);
         }
       }
 
@@ -331,8 +257,8 @@ namespace AbevBot
       // Get subscription list
       using (HttpRequestMessage request = new HttpRequestMessage(new HttpMethod("GET"), "https://api.twitch.tv/helix/eventsub/subscriptions"))
       {
-        request.Headers.Add("Authorization", $"Bearer {Config.BotAppAccessToken}");
-        request.Headers.Add("Client-Id", $"{Config.Data[Config.Keys.BotClientID].Value}");
+        request.Headers.Add("Authorization", $"Bearer {Config.Data[Config.Keys.BotOAuthToken]}");
+        request.Headers.Add("Client-Id", $"{Config.Data[Config.Keys.BotClientID]}");
 
         string response = Client.SendAsync(request).Result.Content.ReadAsStringAsync().Result;
         if (response != null)
@@ -350,8 +276,8 @@ namespace AbevBot
                 MainWindow.ConsoleWarning(">> Deleting event subscription with ID: " + message["data"][i]["id"] + ".");
                 using (HttpRequestMessage request2 = new HttpRequestMessage(new HttpMethod("DELETE"), "https://api.twitch.tv/helix/eventsub/subscriptions?id=" + message["data"][i]["id"]))
                 {
-                  request2.Headers.Add("Authorization", $"Bearer {Config.BotAppAccessToken}");
-                  request2.Headers.Add("Client-Id", $"{Config.Data[Config.Keys.BotClientID].Value}");
+                  request2.Headers.Add("Authorization", $"Bearer {Config.Data[Config.Keys.BotOAuthToken]}");
+                  request2.Headers.Add("Client-Id", $"{Config.Data[Config.Keys.BotClientID]}");
 
                   string response2 = Client.SendAsync(request2).Result.Content.ReadAsStringAsync().Result;
                   if (string.IsNullOrEmpty(response2) == false) MainWindow.ConsoleWriteLine(response2);

@@ -71,7 +71,7 @@ namespace AbevBot
               for (int i = 0; i < messages.Count; i++)
               {
                 // message[0] - header, message[1] - body
-                currentIndex = messages[i].IndexOf($"#{Config.Data[Config.Keys.ChannelName].Value}");
+                currentIndex = messages[i].IndexOf($"#{Config.Data[Config.Keys.ChannelName]}");
                 if (currentIndex < 0)
                 {
                   message[0] = messages[i].Trim();
@@ -80,7 +80,7 @@ namespace AbevBot
                 else
                 {
                   message[0] = messages[i].Substring(0, currentIndex).Trim();
-                  message[1] = messages[i].Substring(currentIndex + Config.Data[Config.Keys.ChannelName].Value.Length + 1).Trim(); // +1 because of '#' symbol in channel name
+                  message[1] = messages[i].Substring(currentIndex + Config.Data[Config.Keys.ChannelName].Length + 1).Trim(); // +1 because of '#' symbol in channel name
                 }
 
                 // Check if received message is incomplete (just for last received message)
@@ -89,7 +89,7 @@ namespace AbevBot
                   // Move the message to beginning of receiveBuffer
                   if (messageStartOffset == 0) Array.Clear(receiveBuffer);
 
-                  string s = string.Join($"#{Config.Data[Config.Keys.ChannelName].Value}", message);
+                  string s = string.Join($"#{Config.Data[Config.Keys.ChannelName]}", message);
                   for (int j = 0; j < s.Length; j++) receiveBuffer[j + messageStartOffset] = (byte)s[j];
                   messageStartOffset += s.Length;
                   continue;
@@ -190,7 +190,7 @@ namespace AbevBot
                       // Check if the same message was send not long ago
                       if (DateTime.Now - dictionaryResponse.Item2 >= CooldownBetweenTheSameMessage)
                       {
-                        socket.Send(Encoding.UTF8.GetBytes($"PRIVMSG #{Config.Data[Config.Keys.ChannelName].Value} :{dictionaryResponse.Item1}\r\n"));
+                        socket.Send(Encoding.UTF8.GetBytes($"PRIVMSG #{Config.Data[Config.Keys.ChannelName]} :{dictionaryResponse.Item1}\r\n"));
                         ResponseMessages[temp] = (ResponseMessages[temp].Item1, DateTime.Now);
                       }
                       else MainWindow.ConsoleWarning($">> Not sending response for \"{temp}\" key. Cooldown active.");
@@ -228,7 +228,7 @@ namespace AbevBot
                         userName,
                         message[0].Contains("msg-param-was-gifted=true") ? " got gifted sub for " : " subscribed for ",
                         message[0].Substring(currentIndex = message[0].IndexOf("msg-param-cumulative-months=", currentIndex) + 28, message[0].IndexOf(';', currentIndex) - currentIndex),
-                        " months.",
+                        " months. ",
                         message[1].Length > 2 ? message[1].Substring(message[1].IndexOf(':') + 1) : ""
                       ));
                       break;
@@ -366,9 +366,9 @@ namespace AbevBot
         if (socket?.Connected == true)
         {
           MainWindow.ConsoleWarning(">> Chat bot connected.");
-          socket.Send(Encoding.UTF8.GetBytes($"PASS {Config.Data[Config.Keys.BotOAuthToken].Value}\r\n"));
-          socket.Send(Encoding.UTF8.GetBytes($"NICK {Config.Data[Config.Keys.BotNick].Value}\r\n"));
-          socket.Send(Encoding.UTF8.GetBytes($"JOIN #{Config.Data[Config.Keys.ChannelName].Value},#{Config.Data[Config.Keys.ChannelName].Value}\r\n"));
+          socket.Send(Encoding.UTF8.GetBytes($"PASS oauth:{Config.Data[Config.Keys.BotOAuthToken]}\r\n"));
+          socket.Send(Encoding.UTF8.GetBytes($"NICK {Config.Data[Config.Keys.BotNick]}\r\n"));
+          socket.Send(Encoding.UTF8.GetBytes($"JOIN #{Config.Data[Config.Keys.ChannelName]},#{Config.Data[Config.Keys.ChannelName]}\r\n"));
           socket.Send(Encoding.UTF8.GetBytes("CAP REQ :twitch.tv/commands twitch.tv/tags\r\n")); // request extended chat messages
         }
       }

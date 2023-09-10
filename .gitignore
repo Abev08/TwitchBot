@@ -6,6 +6,7 @@
 # Do not add user specyfic files
 Config.ini
 ResponseMessages.csv
+.tokens
 
 # User-specific files
 *.rsuser
@@ -305,7 +306,7 @@ node_modules/
 *.dsw
 *.dsp
 
-# Visual Studio 6 technical files 
+# Visual Studio 6 technical files
 *.ncb
 *.aps
 
