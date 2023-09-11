@@ -9,7 +9,7 @@ namespace AbevBot
   {
     public enum Keys
     {
-      ChannelName, BroadcasterID,
+      ChannelName, ChannelID,
       BotNick, BotClientID, BotPass,
       BotOAuthToken, BotOAuthRefreshToken
     };
@@ -123,7 +123,7 @@ namespace AbevBot
           ChannelIDResponse response = ChannelIDResponse.Deserialize(client.SendAsync(request).Result.Content.ReadAsStringAsync().Result);
           if (response != null && response?.Data?.Length == 1)
           {
-            Data[Keys.BroadcasterID] = response.Data[0].ID;
+            Data[Keys.ChannelID] = response.Data[0].ID;
           }
           else
           {

@@ -35,8 +35,8 @@ namespace AbevBot
         return;
       }
 
-      // Events.Start(); // Start events bot
       Chat.Start(); // Start chat bot
+      Events.Start(); // Start events bot
       // Notifications.Start(); // Start notifications on MainWindow
 
       // For testing purposes some bot functions are assigned to buttons.

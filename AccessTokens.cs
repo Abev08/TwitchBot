@@ -32,8 +32,13 @@ namespace AbevBot
           // Check if readed token works
           if (!ValidateOAuthToken())
           {
-            // The verification failed, get new access token
-            GetNewOAuthToken();
+            // The verification failed. First try to refresh access token before requesting new one
+            RefreshAccessToken();
+            if (!ValidateOAuthToken())
+            {
+              // Refreshing access token also failed, request new one
+              GetNewOAuthToken();
+            }
           }
         }
       }
@@ -72,19 +77,20 @@ namespace AbevBot
         "&response_type=code",
         // When asking for permissions the scope of permissions has to be determined
         // if tried to follow to event without getting permissions for it, the follow returns an error
+        // https://dev.twitch.tv/docs/authentication/scopes/
         "&scope=",
           string.Concat(
-            "chat:read",
-            "+chat:edit",
-            "+whispers:read",
-            "+whispers:edit",
-            "+channel:moderate",
-            "+channel_editor",
-            "+channel:manage:polls",
-            "+channel:read:polls",
-            "+channel:read:redemptions", // View Channel Points custom rewards and their redemptions on a channel.
+            // Chat bot scopes
+            "chat:read", // View live stream chat messages
+            "+chat:edit", // 	Send live stream chat messages
+            "+whispers:read", // View your whisper messages
+            "+whispers:edit", // 	Send whisper messages
             "+bits:read", // View Bits information for a channel
-            "+moderator:read:followers" // Read followers, needs to be a moderator...
+
+            // Events bot scopes
+            "+channel:read:redemptions", // View Channel Points custom rewards and their redemptions on a channel
+            "+channel:read:subscriptions", // View a list of all subscribers to a channel and check if a user is subscribed to a channel
+            "+moderator:read:followers" // Read the followers of a broadcaster
           ).Replace(":", "%3A") // Change to url encoded
         );
 

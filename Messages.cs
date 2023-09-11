@@ -57,10 +57,10 @@ namespace AbevBot
     [JsonPropertyName("transport")]
     public Transport? Transport { get; set; }
 
-    public SubscriptionMessage(string type, string channelID, string sessionID)
+    public SubscriptionMessage(string type, string version, string channelID, string sessionID)
     {
       Type = type;
-      Version = "2";
+      Version = version;
       Condition = new Condition(channelID);
       Transport = new Transport("websocket", sessionID);
     }

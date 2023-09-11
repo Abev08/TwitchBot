@@ -86,9 +86,9 @@ namespace AbevBot
       Started = true;
 
       // First acquire audio and start playing
-      if (ReadText && Events.BotStarted)
+      if (ReadText && Events.Started)
       {
-        AudioPlayer = Events.GetTTS(Text);
+        // AudioPlayer = Events.GetTTS(Text);
       }
       // Then display the text because acquiring the audio could take a while
       if (DisplayText) MainWindow.SetTextDisplayed(Text);

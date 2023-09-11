@@ -9,15 +9,15 @@ namespace AbevBot
 {
   public static class Chat
   {
-    public static bool BotStarted { get; private set; }
+    public static bool Started { get; private set; }
     private static readonly TimeSpan CooldownBetweenTheSameMessage = new TimeSpan(0, 0, 10);
     private static readonly Dictionary<string, (string, DateTime)> ResponseMessages = new Dictionary<string, (string, DateTime)>();
     private static Thread ChatThread;
 
     public static void Start()
     {
-      if (BotStarted) return;
-      BotStarted = true;
+      if (Started) return;
+      Started = true;
 
       MainWindow.ConsoleWarning(">> Starting chat bot.");
       LoadResponseMessages();
@@ -332,11 +332,11 @@ namespace AbevBot
             }
             else
             {
-              MainWindow.ConsoleWarning(">> Received 0 bytes.");
+              MainWindow.ConsoleWarning(">> Chat bot received 0 bytes.");
               zeroBytesReceivedCounter++;
               if (zeroBytesReceivedCounter >= 5)
               {
-                MainWindow.ConsoleWarning(">> Closing connection.");
+                MainWindow.ConsoleWarning(">> Chat bot closing connection.");
                 socket.Close(); // Close connection if 5 times in a row received 0 bytes
               }
             }
