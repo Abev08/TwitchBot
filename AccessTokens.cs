@@ -11,6 +11,7 @@ namespace AbevBot
   public static class AccessTokens
   {
     public static DateTime BotOAuthTokenExpiration { get; private set; }
+    // Time before OAuth token expiries to try to refresh it
     public static TimeSpan OAuthTokenExpirationSomething { get; } = new TimeSpan(0, 10, 0);
     private static Timer RefreshTimer;
 
@@ -98,7 +99,7 @@ namespace AbevBot
       Process.Start(new ProcessStartInfo() { FileName = uri, UseShellExecute = true });
 
       // Local server is needed to get response to user authorizing the app (to grab the access token)
-      using HttpListener localServer = new HttpListener();
+      using HttpListener localServer = new();
       localServer.Prefixes.Add("http://localhost:3000/"); // Where local server should listen for connections, maybe it should be in Config.ini? Hmm
       localServer.Start();
       HttpListenerContext context = localServer.GetContext(); // Await connection
@@ -119,7 +120,7 @@ namespace AbevBot
       {
         // Next step - request user token with received authorization code
         string code = requestUrl.Substring(6, requestUrl.IndexOf('&', 6) - 6);
-        using (HttpRequestMessage request = new HttpRequestMessage(new HttpMethod("POST"), "https://id.twitch.tv/oauth2/token"))
+        using (HttpRequestMessage request = new(new HttpMethod("POST"), "https://id.twitch.tv/oauth2/token"))
         {
           request.Content = new StringContent(string.Concat(
               "client_id=", Config.Data[Config.Keys.BotClientID],
@@ -127,12 +128,12 @@ namespace AbevBot
               "&code=", code,
               "&grant_type=authorization_code",
               "&redirect_uri=http://localhost:3000"
-          ));
+            ));
           request.Content.Headers.ContentType = MediaTypeHeaderValue.Parse("application/x-www-form-urlencoded");
 
-          using (HttpClient client = new HttpClient())
+          using (HttpClient client = new())
           {
-            AccessTokenResponse response = AccessTokenResponse.Deserialize(client.SendAsync(request).Result.Content.ReadAsStringAsync().Result);
+            AccessTokenResponse response = AccessTokenResponse.Deserialize(client.Send(request).Content.ReadAsStringAsync().Result);
             if (response is null || response.Token is null || response.RefreshToken is null) throw new Exception("Response was empty or didn't received access token!");
             Console.WriteLine(response.ToString());
             // Read information from received data
@@ -151,13 +152,13 @@ namespace AbevBot
 
     private static bool ValidateOAuthToken()
     {
-      using (HttpRequestMessage request = new HttpRequestMessage(new HttpMethod("GET"), "https://id.twitch.tv/oauth2/validate"))
+      using (HttpRequestMessage request = new(new HttpMethod("GET"), "https://id.twitch.tv/oauth2/validate"))
       {
         request.Headers.Add("Authorization", $"OAuth {Config.Data[Config.Keys.BotOAuthToken]}");
 
-        using (HttpClient client = new HttpClient())
+        using (HttpClient client = new())
         {
-          AccessTokenValidationResponse response = AccessTokenValidationResponse.Deserialize(client.SendAsync(request).Result.Content.ReadAsStringAsync().Result);
+          AccessTokenValidationResponse response = AccessTokenValidationResponse.Deserialize(client.Send(request).Content.ReadAsStringAsync().Result);
           if (response?.ClientID?.Equals(Config.Data[Config.Keys.BotClientID]) == true && response?.ExpiresIn > 0)
           {
             BotOAuthTokenExpiration = DateTime.Now + new TimeSpan(0, 0, response.ExpiresIn.Value) - OAuthTokenExpirationSomething;
@@ -179,7 +180,7 @@ namespace AbevBot
       if (DateTime.Now < BotOAuthTokenExpiration) return;
 
       MainWindow.ConsoleWarning(">> Refreshing access token.");
-      using (HttpRequestMessage request = new HttpRequestMessage(new HttpMethod("POST"), "https://id.twitch.tv/oauth2/token"))
+      using (HttpRequestMessage request = new(new HttpMethod("POST"), "https://id.twitch.tv/oauth2/token"))
       {
         request.Content = new StringContent(string.Concat(
             "client_id=", Config.Data[Config.Keys.BotClientID],
@@ -189,9 +190,9 @@ namespace AbevBot
         ));
         request.Content.Headers.ContentType = MediaTypeHeaderValue.Parse("application/x-www-form-urlencoded");
 
-        using (HttpClient client = new HttpClient())
+        using (HttpClient client = new())
         {
-          AccessTokenResponse response = AccessTokenResponse.Deserialize(client.SendAsync(request).Result.Content.ReadAsStringAsync().Result);
+          AccessTokenResponse response = AccessTokenResponse.Deserialize(client.Send(request).Content.ReadAsStringAsync().Result);
           if (response is null || response.Token is null || response.RefreshToken is null) throw new Exception("Response was empty or didn't received access token!");
           Console.WriteLine(response.ToString());
           // Read information from received data

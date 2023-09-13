@@ -1,9 +1,9 @@
-﻿<Application x:Class="TwitchBotWPF.App"
+﻿<Application x:Class="AbevBot.App"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:local="clr-namespace:TwitchBotWPF"
+             xmlns:local="clr-namespace:AbevBot"
              StartupUri="MainWindow.xaml">
     <Application.Resources>
-         
+
     </Application.Resources>
 </Application>

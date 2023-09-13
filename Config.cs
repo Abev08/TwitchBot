@@ -35,7 +35,7 @@ namespace AbevBot
     {
       MainWindow.ConsoleWarning(">> Reading Config.ini file.");
 
-      FileInfo configFile = new FileInfo(@"./Config.ini");
+      FileInfo configFile = new(@"./Config.ini");
       if (configFile.Exists == false)
       {
         CreateConfigFile(configFile);
@@ -113,14 +113,14 @@ namespace AbevBot
     {
       MainWindow.ConsoleWarning(">> Getting broadcaster ID.");
       string uri = $"https://api.twitch.tv/helix/users?login={Data[Keys.ChannelName]}";
-      using (HttpRequestMessage request = new HttpRequestMessage(new HttpMethod("GET"), uri))
+      using (HttpRequestMessage request = new(new HttpMethod("GET"), uri))
       {
         request.Headers.Add("Authorization", $"Bearer {Data[Keys.BotOAuthToken]}");
         request.Headers.Add("Client-Id", Data[Keys.BotClientID]);
 
-        using (HttpClient client = new HttpClient())
+        using (HttpClient client = new())
         {
-          ChannelIDResponse response = ChannelIDResponse.Deserialize(client.SendAsync(request).Result.Content.ReadAsStringAsync().Result);
+          ChannelIDResponse response = ChannelIDResponse.Deserialize(client.Send(request).Content.ReadAsStringAsync().Result);
           if (response != null && response?.Data?.Length == 1)
           {
             Data[Keys.ChannelID] = response.Data[0].ID;

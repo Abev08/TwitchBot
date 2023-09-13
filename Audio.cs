@@ -1,14 +1,30 @@
 ﻿using NAudio.Wave;
 using System.IO;
 
-public class Audio
+namespace AbevBot
 {
-    public static WaveOut PlaySound(object? _stream)
+  public static class Audio
+  {
+    public static WaveOut PlayMp3Sound(object _stream, float volume)
     {
-        WaveOut waveOut = new WaveOut();
-        waveOut.Init(new Mp3FileReader(_stream as Stream));
-        waveOut.Play();
+      if (_stream is null) return null;
 
-        return waveOut;
+      WaveOut waveOut = new();
+      waveOut.Init(new Mp3FileReader(_stream as Stream));
+      waveOut.Volume = volume;
+      waveOut.Play();
+
+      return waveOut;
     }
+
+    public static WaveOut PlayWavSound(string path, float volume)
+    {
+      WaveOut waveOut = new();
+      waveOut.Init(new WaveFileReader(new FileInfo(path).FullName));
+      waveOut.Volume = volume;
+      waveOut.Play();
+
+      return waveOut;
+    }
+  }
 }

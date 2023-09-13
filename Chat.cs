@@ -9,9 +9,10 @@ namespace AbevBot
 {
   public static class Chat
   {
+    /// <summary> Chat bot started. </summary>
     public static bool Started { get; private set; }
-    private static readonly TimeSpan CooldownBetweenTheSameMessage = new TimeSpan(0, 0, 10);
-    private static readonly Dictionary<string, (string, DateTime)> ResponseMessages = new Dictionary<string, (string, DateTime)>();
+    private static readonly TimeSpan CooldownBetweenTheSameMessage = new(0, 0, 10);
+    private static readonly Dictionary<string, (string, DateTime)> ResponseMessages = new();
     private static Thread ChatThread;
 
     public static void Start()
@@ -33,7 +34,7 @@ namespace AbevBot
     private static void Update()
     {
       Socket socket = null;
-      byte[] receiveBuffer = new byte[8192]; // Max IRC message is 4096 bytes? let's allocate 2 times that
+      byte[] receiveBuffer = new byte[16384]; // Max IRC message is 4096 bytes? let's allocate 4 times that, 2 times max message length wasn't enaugh for really fast chats
       int zeroBytesReceivedCounter = 0, currentIndex, nextIndex, bytesReceived, messageStartOffset = 0;
       string userBadge, userName, customRewardID, temp;
       List<string> messages = new();
@@ -111,7 +112,7 @@ namespace AbevBot
                     "{0, 20}{1, 2}{2, -0}",
                     message[0].Substring(1, message[0].IndexOf('!') - 1) // Username
                     , ": ",
-                    message[1].Substring(message[1].IndexOf(':') + 1) // message
+                    message[1][1..] // message
                   ));
                 }
                 // Standard message with extra tags
@@ -179,8 +180,12 @@ namespace AbevBot
                     message[1][1..]
                   ));
 
-                  // Check if message starts with key to get automatic response
-                  if (ResponseMessages.Count > 0)
+                  if (message[1][1..].StartsWith("!tts")) // Check if message starts with !tts key
+                  {
+                    if (Notifications.ChatTTSEnabled) Notifications.CreateTTSNotification(message[1][6..]); // 6.. - without ":!tts "
+                    else socket.Send(Encoding.UTF8.GetBytes($"PRIVMSG #{Config.Data[Config.Keys.ChannelName]} : @{userName} TTS disabled peepoSad\r\n"));
+                  }
+                  else if (ResponseMessages.Count > 0) // Check if message starts with key to get automatic response
                   {
                     currentIndex = message[1].IndexOf(' ', 1);
                     if (currentIndex < 0) currentIndex = message[1].Length - 1;
@@ -223,23 +228,40 @@ namespace AbevBot
                   {
                     case "sub":
                     case "resub":
-                      MainWindow.ConsoleWriteLine(string.Concat(
-                        "> ",
-                        userName,
-                        message[0].Contains("msg-param-was-gifted=true") ? " got gifted sub for " : " subscribed for ",
-                        message[0].Substring(currentIndex = message[0].IndexOf("msg-param-cumulative-months=", currentIndex) + 28, message[0].IndexOf(';', currentIndex) - currentIndex),
-                        " months. ",
-                        message[1].Length > 2 ? message[1].Substring(message[1].IndexOf(':') + 1) : ""
-                      ));
+                      currentIndex = message[0].IndexOf("system-msg=");
+                      if (currentIndex > 0)
+                      {
+                        currentIndex += 11; // "system-msg=".Length
+                        nextIndex = message[0].IndexOf(";", currentIndex);
+                        MainWindow.ConsoleWriteLine(string.Concat(
+                          "> ",
+                          message[0].Substring(currentIndex, nextIndex - currentIndex).Replace("\\s", " "),
+                          " ",
+                          message[1].Length > 2 ? message[1][1..] : ""
+                        ));
+                      }
+                      else
+                      {
+                        // If the message didn't contain system message part, try the old parser
+                        MainWindow.ConsoleWriteLine(string.Concat(
+                          "> ",
+                          userName,
+                          message[0].Contains("msg-param-was-gifted=true") ? " got gifted sub for " : " subscribed for ",
+                          message[0].Substring(currentIndex = message[0].IndexOf("msg-param-cumulative-months=", currentIndex) + 28, message[0].IndexOf(';', currentIndex) - currentIndex),
+                          " months. ",
+                          message[1].Length > 2 ? message[1][1..] : ""
+                        ));
+                      }
                       break;
                     case "subgift":
                       currentIndex = message[0].IndexOf("msg-param-recipient-display-name=") + 33; // 33 == "msg-param-recipient-display-name=".Length
                       MainWindow.ConsoleWriteLine(string.Concat(
                         "> ",
                         userName,
-                        " gifted a sub for ",
+                        " gifted a sub for",
                         message[0].Substring(currentIndex, message[0].IndexOf(';', currentIndex) - currentIndex),
-                        message[1].Length > 2 ? message[1].Substring(message[1].IndexOf(':') + 1) : ""
+                        ". ",
+                        message[1].Length > 2 ? message[1][1..] : ""
                       ));
                       break;
                     case "submysterygift":
@@ -249,8 +271,8 @@ namespace AbevBot
                         userName,
                         " gifting ",
                         message[0].Substring(currentIndex, message[0].IndexOf(";", currentIndex) - currentIndex),
-                        " subs for random viewers",
-                        message[1].Length > 2 ? message[1].Substring(message[1].IndexOf(':') + 1) : ""
+                        " subs for random viewers. ",
+                        message[1].Length > 2 ? message[1][1..] : ""
                       ));
                       break;
                     case "primepaidupgrade":
@@ -258,16 +280,15 @@ namespace AbevBot
                         "> ",
                         userName,
                         " converted prime sub to standard sub.",
-                        message[1].Length > 2 ? message[1].Substring(message[1].IndexOf(':') + 1) : ""
+                        message[1].Length > 2 ? message[1][1..] : ""
                       ));
                       break;
                     case "announcement":
-                      currentIndex = message[1].IndexOf(":") + 1;
                       MainWindow.ConsoleWriteLine(string.Concat(
                         "> ",
                         userName,
                         " announced that: ",
-                        message[1].Substring(currentIndex)
+                        message[1].Length > 2 ? message[1][1..] : "no message :("
                       ));
                       break;
                     case "raid":
@@ -289,7 +310,7 @@ namespace AbevBot
                 // Timeout
                 else if (message[0].StartsWith("@ban-duration="))
                 {
-                  userName = message[1].Substring(message[1].IndexOf(':') + 1);
+                  userName = message[1][1..];
                   MainWindow.ConsoleWriteLine($"> User {userName} got timed out for {message[0].Substring(14, message[0].IndexOf(';') - 14)} sec.");
                 }
                 // Timeout?
@@ -301,18 +322,17 @@ namespace AbevBot
                 // Different timeout?
                 else if (message[0].StartsWith("@") && message[0].Contains("CLEARCHAT"))
                 {
-                  userName = message[1].Substring(message[1].IndexOf(":") + 1);
-                  MainWindow.ConsoleWriteLine($"> User {userName} got banned.");
+                  MainWindow.ConsoleWriteLine($"> Chat got cleared.");
                 }
                 // Emote only activated
                 else if (message[0].StartsWith("@emote-only=1"))
                 {
-                  MainWindow.ConsoleWriteLine("> Emote only activated");
+                  MainWindow.ConsoleWriteLine("> Emote only activated.");
                 }
                 // Emote only deactivated
                 else if (message[0].StartsWith("@emote-only=0"))
                 {
-                  MainWindow.ConsoleWriteLine("> Emote only deactivated");
+                  MainWindow.ConsoleWriteLine("> Emote only deactivated.");
                 }
                 // Emote only
                 else if (message[0].StartsWith("@msg-id=emote_only_"))
@@ -378,14 +398,14 @@ namespace AbevBot
     {
       MainWindow.ConsoleWarning(">> Loading response messages.");
 
-      FileInfo messagesFile = new FileInfo(@"Resources/ResponseMessages.csv");
+      FileInfo messagesFile = new(@"Resources/ResponseMessages.csv");
       // The file doesn't exist - create new one
       if (messagesFile.Exists == false)
       {
         MainWindow.ConsoleWarning(">> ResponseMessages.csv file not found. Generating new one.");
         if (!messagesFile.Directory.Exists) messagesFile.Directory.Create();
 
-        using (StreamWriter writer = new StreamWriter(messagesFile.FullName))
+        using (StreamWriter writer = new(messagesFile.FullName))
         {
           writer.WriteLine("key; message");
           writer.WriteLine("!example; This is example response.");
@@ -395,7 +415,7 @@ namespace AbevBot
 
       // Read the file
       uint responseCount = 0;
-      using (StreamReader reader = new StreamReader(messagesFile.FullName))
+      using (StreamReader reader = new(messagesFile.FullName))
       {
         string line;
         string[] text = new string[2];

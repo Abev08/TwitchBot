@@ -1,6 +1,6 @@
-﻿using System;
+using System;
+using System.IO;
 using System.Runtime.InteropServices;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -37,19 +37,16 @@ namespace AbevBot
 
       Chat.Start(); // Start chat bot
       Events.Start(); // Start events bot
-      // Notifications.Start(); // Start notifications on MainWindow
+      Notifications.Start(); // Start notifications on MainWindow
 
       // For testing purposes some bot functions are assigned to buttons.
       // In real bot appliaction these things should be fired from received events in Event class or chat commands from Chat class or even keyboard buttons bindings
       btnTestTTS.Click += (sender, e) =>
       {
-        string text = tbText.Text;
+        string text = tbTTSText.Text;
+        string voice = tbTTSVoice.Text;
         if (string.IsNullOrEmpty(text)) return;
-        // It can freeze the main thread so better use Task to add new notification
-        new Task(() =>
-              {
-                Notifications.AddNotification(new Notification(text, true, true));
-              }).Start();
+        Notifications.AddNotification(new Notification(text, true, true, voice));
       };
       btnPause.Click += (sender, e) =>
       {
@@ -66,9 +63,15 @@ namespace AbevBot
       VideoPlayer.UnloadedBehavior = System.Windows.Controls.MediaState.Manual;
 
       // Wait for window to be loaded (visible) to start a demo video
-      this.Loaded += (sender, e) =>
+      window.Loaded += (sender, e) =>
       {
-        VideoPlayer.Source = new Uri(@"Resources/peepoHey.mp4", UriKind.Relative);
+        VideoPlayer.Source = new Uri(new FileInfo("Resources/peepoHey.mp4").FullName);
+        VideoPlayer.Play();
+      };
+
+      btnTestVideo.Click += (sender, e) =>
+      {
+        VideoPlayer.Source = new Uri(new FileInfo("Resources/peepoHey.mp4").FullName);
         VideoPlayer.Play();
       };
     }
@@ -91,6 +94,11 @@ namespace AbevBot
       {
         TextOutput.Text = text;
       }));
+    }
+
+    private void ChkTTS_CheckChanged(object sender, RoutedEventArgs e)
+    {
+      Notifications.ChatTTSEnabled = ((CheckBox)sender).IsChecked == true;
     }
   }
 }

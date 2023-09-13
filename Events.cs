@@ -9,6 +9,7 @@ namespace AbevBot
 {
   public static class Events
   {
+    /// <summary> Events bot started. </summary>
     public static bool Started { get; private set; }
     private static Thread EventsThread;
     private static ClientWebSocket WebSocketClient;
@@ -33,7 +34,7 @@ namespace AbevBot
     {
       WebSocketReceiveResult receiveResult;
       byte[] receiveBuffer = new byte[8192];
-      string sessionID = null;
+      string sessionID;
       string message;
       EventMessage messageDeserialized;
       int zeroBytesReceivedCounter = 0;
@@ -42,7 +43,6 @@ namespace AbevBot
       while (true)
       {
         // Create WebSocket connection
-        // We need to set client ID and auth before connecting
         if (WebSocketClient is null)
         {
           WebSocketClient = new();
@@ -64,15 +64,15 @@ namespace AbevBot
 
             // Subscribe to every event you want to
             // We have <10 sec to subscribe to an event, also another connection has to be used because we can't send messages to websocket server
-            bool subscriptionSuccessful = false;
-            subscriptionSuccessful |= Subscribe("channel.follow", "2", sessionID); // Channel got new follow
-            subscriptionSuccessful |= Subscribe("channel.subscribe", "1", sessionID); // Channel got new subscription
-            subscriptionSuccessful |= Subscribe("channel.subscription.gift", "1", sessionID); // Channel got gift subscription
-            subscriptionSuccessful |= Subscribe("channel.subscription.message", "1", sessionID); // Channel got resubscription
-            subscriptionSuccessful |= Subscribe("channel.cheer", "1", sessionID); // Channel got cheered
-            subscriptionSuccessful |= Subscribe("channel.channel_points_custom_reward_redemption.add", "1", sessionID); // User redeemed channel points
+            bool anySubscriptionSucceeded = false;
+            anySubscriptionSucceeded |= Subscribe("channel.follow", "2", sessionID); // Channel got new follow
+            anySubscriptionSucceeded |= Subscribe("channel.subscribe", "1", sessionID); // Channel got new subscription
+            anySubscriptionSucceeded |= Subscribe("channel.subscription.gift", "1", sessionID); // Channel got gift subscription
+            anySubscriptionSucceeded |= Subscribe("channel.subscription.message", "1", sessionID); // Channel got resubscription
+            anySubscriptionSucceeded |= Subscribe("channel.cheer", "1", sessionID); // Channel got cheered
+            anySubscriptionSucceeded |= Subscribe("channel.channel_points_custom_reward_redemption.add", "1", sessionID); // User redeemed channel points
 
-            if (!subscriptionSuccessful)
+            if (!anySubscriptionSucceeded)
             {
               MainWindow.ConsoleWarning(">> Events bot: every subscription failed, websocket connection would get disconnected every 10 seconds, closing events bot!");
               return;
@@ -84,8 +84,11 @@ namespace AbevBot
 
         while (WebSocketClient.State == WebSocketState.Open)
         {
-          receiveResult = WebSocketClient.ReceiveAsync(receiveBuffer, CancellationToken.None).Result;
-          if (receiveResult.Count > 0)
+          // During debugging ReceiveAsync may return an exception when paused for too long
+          try { receiveResult = WebSocketClient.ReceiveAsync(receiveBuffer, CancellationToken.None).Result; }
+          catch (AggregateException ex) { MainWindow.ConsoleWarning($">> Events bot error: {ex.Message}"); receiveResult = null; }
+
+          if (receiveResult?.Count > 0)
           {
             zeroBytesReceivedCounter = 0;
 
@@ -103,6 +106,32 @@ namespace AbevBot
               {
                 // Received channel follow event
                 MainWindow.ConsoleWarning($">> New follow from {messageDeserialized?.Payload?.Event?.UserName}.");
+                Notifications.CreateFollowNotification(messageDeserialized?.Payload?.Event?.UserName);
+              }
+              else if (messageDeserialized?.Metadata?.SubscriptionType?.Equals("channel.subscribe") == true)
+              {
+                // Received channel follow event
+                MainWindow.ConsoleWarning($">> New subscription from {messageDeserialized?.Payload?.Event?.UserName}.");
+              }
+              else if (messageDeserialized?.Metadata?.SubscriptionType?.Equals("channel.subscription.gift") == true)
+              {
+                // Received channel follow event
+                MainWindow.ConsoleWarning($">> New gifted subscription from {messageDeserialized?.Payload?.Event?.UserName}.");
+              }
+              else if (messageDeserialized?.Metadata?.SubscriptionType?.Equals("channel.subscription.message") == true)
+              {
+                // Received channel follow event
+                MainWindow.ConsoleWarning($">> New subscription from {messageDeserialized?.Payload?.Event?.UserName}.");
+              }
+              else if (messageDeserialized?.Metadata?.SubscriptionType?.Equals("channel.cheer") == true)
+              {
+                // Received channel follow event
+                MainWindow.ConsoleWarning($">> {messageDeserialized?.Payload?.Event?.UserName} cheered with bits.");
+              }
+              else if (messageDeserialized?.Metadata?.SubscriptionType?.Equals("channel.channel_points_custom_reward_redemption") == true)
+              {
+                // Received channel follow event
+                MainWindow.ConsoleWarning($">> {messageDeserialized?.Payload?.Event?.UserName} redeemed something with channel points.");
               }
               else
               {
@@ -147,13 +176,13 @@ namespace AbevBot
     {
       // https://dev.twitch.tv/docs/eventsub/eventsub-subscription-types/
       MainWindow.ConsoleWarning($">> Events bot subscribing to {type} event.");
-      using (HttpRequestMessage request = new HttpRequestMessage(new HttpMethod("POST"), "https://api.twitch.tv/helix/eventsub/subscriptions"))
+      using (HttpRequestMessage request = new(new HttpMethod("POST"), "https://api.twitch.tv/helix/eventsub/subscriptions"))
       {
         request.Headers.Add("Client-Id", Config.Data[Config.Keys.BotClientID]);
         request.Headers.Add("Authorization", $"Bearer {Config.Data[Config.Keys.BotOAuthToken]}");
         request.Content = new StringContent(new SubscriptionMessage(type, version, Config.Data[Config.Keys.ChannelID], sessionID).ToJsonString());
         request.Content.Headers.ContentType = MediaTypeHeaderValue.Parse("application/json");
-        ResponseMessage response = ResponseMessage.Deserialize(HttpClient.SendAsync(request).Result.Content.ReadAsStringAsync().Result);
+        ResponseMessage response = ResponseMessage.Deserialize(HttpClient.Send(request).Content.ReadAsStringAsync().Result);
         if (response.Error != null) { MainWindow.ConsoleWarning(string.Concat(">> Events bot subscription error: ", response.Message)); }
         else
         {

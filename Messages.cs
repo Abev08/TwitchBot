@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -297,6 +298,65 @@ namespace AbevBot
     public string? BroadcasterUserName { get; set; }
     [JsonPropertyName("followed_at")]
     public string? FollowedAt { get; set; }
+  }
+
+  public class StreamElementsResponse
+  {
+    [JsonPropertyName("statusCode")]
+    public int? StatusCode { get; set; }
+    [JsonPropertyName("error")]
+    public string? Error { get; set; }
+    [JsonPropertyName("message")]
+    public string? Message { get; set; }
+
+    public static StreamElementsResponse Deserialize(string message)
+    {
+      StreamElementsResponse? ret = JsonSerializer.Deserialize<StreamElementsResponse>(message);
+      if (ret is null) throw new JsonException("Couldn't parse stream elements response.");
+
+      return ret;
+    }
+  }
+
+  public class GlotPaste
+  {
+    // Glot.io
+    [JsonPropertyName("language")]
+    public string? Language { get; set; }
+    [JsonPropertyName("title")]
+    public string? Title { get; set; }
+    [JsonPropertyName("public")]
+    public bool Public { get; set; }
+    [JsonPropertyName("files")]
+    public List<GlotFile> Files { get; set; } = new();
+
+    public string ToJsonString()
+    {
+      return JsonSerializer.Serialize(this);
+    }
+  }
+
+  public class GlotFile
+  {
+    [JsonPropertyName("name")]
+    public string? Name { get; set; }
+    [JsonPropertyName("content")]
+    public string? Content { get; set; }
+  }
+
+  public class GlotResponse
+  {
+    // Just Url is needed
+    [JsonPropertyName("url")]
+    public string? Url { get; set; }
+
+    public static GlotResponse Deserialize(string message)
+    {
+      GlotResponse? ret = JsonSerializer.Deserialize<GlotResponse>(message);
+      if (ret is null) throw new JsonException("Couldn't parse Glot.io response.");
+
+      return ret;
+    }
   }
 
 #nullable restore
