@@ -77,7 +77,7 @@ namespace AbevBot
     [JsonPropertyName("metadata")]
     public Metadata? Metadata { get; set; }
     [JsonPropertyName("payload")]
-    public Payload? Payload { get; set; }
+    public object? Payload { get; set; }
 
     public static EventMessage Deserialize(string message)
     {
@@ -173,6 +173,32 @@ namespace AbevBot
     public Subscription? Subscription { get; set; }
     [JsonPropertyName("event")]
     public Event? Event { get; set; }
+
+    public static Payload Deserialize(object o)
+    {
+      Payload? ret = JsonSerializer.Deserialize<Payload>(o.ToString());
+      if (ret is null) throw new JsonException("Couldn't parse access token validation response.");
+
+      return ret;
+    }
+  }
+
+  public class PayloadCheer
+  {
+    [JsonPropertyName("session")]
+    public Session? Session { get; set; }
+    [JsonPropertyName("subscription")]
+    public Subscription? Subscription { get; set; }
+    [JsonPropertyName("event")]
+    public EventCheer? Event { get; set; }
+
+    public static PayloadCheer Deserialize(object o)
+    {
+      PayloadCheer? ret = JsonSerializer.Deserialize<PayloadCheer>(o.ToString());
+      if (ret is null) throw new JsonException("Couldn't parse access token validation response.");
+
+      return ret;
+    }
   }
 
   public class Session
@@ -320,8 +346,48 @@ namespace AbevBot
     // channel.subscribe
     [JsonPropertyName("is_gift")]
     public bool? IsGift { get; set; }
+    [JsonPropertyName("is_anonymous")]
+    public bool? IsAnonymous { get; set; }
     [JsonPropertyName("tier")]
     public string? Tier { get; set; }
+    [JsonPropertyName("total")]
+    public int? TotalGifted { get; set; }
+    [JsonPropertyName("cumulative_months")]
+    public int? MonthsCumulative { get; set; }
+    [JsonPropertyName("duration_months")]
+    public int? MonthsDuration { get; set; }
+    [JsonPropertyName("streak_months")]
+    public int? MonthsStreak { get; set; }
+    [JsonPropertyName("message")]
+    public EventPayloadMessage? Message { get; set; }
+  }
+
+  // Twitch used the same json name for different type variable between sub and cheer event message...
+  public class EventCheer : Event
+  {
+    // channel.cheer
+    [JsonPropertyName("bits")]
+    public int? Bits { get; set; }
+    [JsonPropertyName("message")]
+    public new string? Message { get; set; }
+  }
+
+  public class EventPayloadMessage
+  {
+    [JsonPropertyName("emotes")]
+    public EventMessageEmote[]? Emotes { get; set; }
+    [JsonPropertyName("text")]
+    public string? Text { get; set; }
+  }
+
+  public class EventMessageEmote
+  {
+    [JsonPropertyName("begin")]
+    public int? Begin { get; set; }
+    [JsonPropertyName("end")]
+    public int? End { get; set; }
+    [JsonPropertyName("id")]
+    public string? ID { get; set; }
   }
 
   public class StreamElementsResponse

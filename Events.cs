@@ -115,56 +115,72 @@ namespace AbevBot
               if (messageDeserialized?.Metadata?.SubscriptionType?.Equals("channel.follow") == true)
               {
                 // Received channel follow event
-                MainWindow.ConsoleWarning($">> New follow from {messageDeserialized?.Payload?.Event?.UserName}.");
-                Notifications.CreateFollowNotification(messageDeserialized?.Payload?.Event?.UserName);
+                Payload payload = Payload.Deserialize(messageDeserialized?.Payload);
+                MainWindow.ConsoleWarning($">> New follow from {payload?.Event?.UserName}.");
+                Notifications.CreateFollowNotification(payload?.Event?.UserName);
               }
               else if (messageDeserialized?.Metadata?.SubscriptionType?.Equals("channel.subscribe") == true)
               {
                 // Received subscription event
-                MainWindow.ConsoleWarning($">> New subscription from {messageDeserialized?.Payload?.Event?.UserName}.");
-                if (messageDeserialized?.Payload?.Event?.IsGift == false)
+                Payload payload = Payload.Deserialize(messageDeserialized?.Payload);
+                if (payload?.Event?.IsGift == true)
+                {
+                  MainWindow.ConsoleWarning($">> {payload?.Event?.UserName} received a gift subscription.");
+                  Notifications.CreateReceiveGiftSubscriptionNotification(payload?.Event?.UserName);
+                }
+                else
                 {
                   // FIXME: fix subscription message, not present in twitch cli mock program?
-                  Notifications.CreateSubscriptionNotification(messageDeserialized?.Payload?.Event?.UserName, messageDeserialized?.Payload?.Event?.Tier, "");
+                  MainWindow.ConsoleWarning($">> New subscription from {payload?.Event?.UserName}.");
+                  Notifications.CreateSubscriptionNotification(payload?.Event?.UserName, payload?.Event?.Tier, "");
                 }
                 // MainWindow.ConsoleWriteLine(message);
               }
               else if (messageDeserialized?.Metadata?.SubscriptionType?.Equals("channel.subscription.gift") == true)
               {
-                // Received channel follow event
-                MainWindow.ConsoleWarning($">> New gifted subscription from {messageDeserialized?.Payload?.Event?.UserName}.");
-                MainWindow.ConsoleWriteLine(message);
+                // Received gifted subscription event
+                Payload payload = Payload.Deserialize(messageDeserialized?.Payload);
+                MainWindow.ConsoleWarning($">> {payload?.Event?.UserName} gifted {payload?.Event?.TotalGifted} subscription(s).");
+                // FIXME: fix subscription message, not present in twitch cli mock program?
+                Notifications.CreateGiftSubscriptionNotification(payload?.Event?.UserName, payload?.Event?.Tier, (int)payload?.Event?.TotalGifted, "");
+                // MainWindow.ConsoleWriteLine(message);
               }
               else if (messageDeserialized?.Metadata?.SubscriptionType?.Equals("channel.subscription.message") == true)
               {
-                // Received channel follow event
-                MainWindow.ConsoleWarning($">> New subscription from {messageDeserialized?.Payload?.Event?.UserName}.");
-                MainWindow.ConsoleWriteLine(message);
+                // Received subscription with message event
+                Payload payload = Payload.Deserialize(messageDeserialized?.Payload);
+                MainWindow.ConsoleWarning($">> New subscription from {payload?.Event?.UserName}. {payload?.Event?.Message.Text}");
+                Notifications.CreateSubscriptionNotification(payload?.Event?.UserName, payload?.Event?.Tier, (int)payload?.Event?.MonthsDuration, (int)payload?.Event?.MonthsStreak, payload?.Event?.Message);
+                // MainWindow.ConsoleWriteLine(message);
               }
               else if (messageDeserialized?.Metadata?.SubscriptionType?.Equals("channel.cheer") == true)
               {
-                // Received channel follow event
-                MainWindow.ConsoleWarning($">> {messageDeserialized?.Payload?.Event?.UserName} cheered with bits.");
-                MainWindow.ConsoleWriteLine(message);
+                // Received cheer event
+                PayloadCheer payload = PayloadCheer.Deserialize(messageDeserialized?.Payload);
+                MainWindow.ConsoleWarning($">> {payload?.Event?.UserName} cheered with {payload?.Event?.Bits} bits.");
+                Notifications.CreateCheerNotification(payload?.Event?.UserName, (int)payload?.Event?.Bits, payload?.Event?.Message);
+                // MainWindow.ConsoleWriteLine(message);
               }
               else if (messageDeserialized?.Metadata?.SubscriptionType?.Equals("channel.channel_points_custom_reward_redemption") == true)
               {
-                // Received channel follow event
-                MainWindow.ConsoleWarning($">> {messageDeserialized?.Payload?.Event?.UserName} redeemed something with channel points.");
+                // Received channel points redemption event
+                Payload payload = Payload.Deserialize(messageDeserialized?.Payload);
+                MainWindow.ConsoleWarning($">> {payload?.Event?.UserName} redeemed something with channel points.");
                 MainWindow.ConsoleWriteLine(message);
               }
               else if (messageDeserialized?.Metadata?.SubscriptionType?.Equals("channel.ban") == true)
               {
                 // Received user banned event
-                if (messageDeserialized.Payload.Event.IsPermanent == true)
+                Payload payload = Payload.Deserialize(messageDeserialized?.Payload);
+                if (payload?.Event.IsPermanent == true)
                 {
-                  MainWindow.ConsoleWarning($">> {messageDeserialized?.Payload?.Event?.UserName} has been permanently banned. {messageDeserialized?.Payload?.Event?.Reason}.");
+                  MainWindow.ConsoleWarning($">> {payload?.Event?.UserName} has been permanently banned. {payload?.Event?.Reason}.");
                 }
                 else
                 {
-                  DateTime start = DateTime.Parse(messageDeserialized.Payload.Event.BannedAt);
-                  DateTime end = DateTime.Parse(messageDeserialized.Payload.Event.EndsAt);
-                  MainWindow.ConsoleWarning($">> {messageDeserialized?.Payload?.Event?.UserName} was banned for {end - start}. {messageDeserialized?.Payload?.Event?.Reason}.");
+                  DateTime start = DateTime.Parse(payload?.Event.BannedAt);
+                  DateTime end = DateTime.Parse(payload?.Event.EndsAt);
+                  MainWindow.ConsoleWarning($">> {payload?.Event?.UserName} was banned for {end - start}. {payload?.Event?.Reason}.");
                 }
               }
               else

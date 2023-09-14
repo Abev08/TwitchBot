@@ -102,9 +102,61 @@ namespace AbevBot
       AddNotification(new Notification()
       {
         TextToDisplay = $"Thank you {userName}!\n{message}",
-        TextToRead = $"Thank you {userName} for {tier} tier sub! {message}",
+        TextToRead = $"Thank you {userName} for tier {tier} sub! {message}",
         VideoPath = "Resources/peepoHey.mp4",
         SoundVolume = 0.8f
+      });
+    }
+
+    public static void CreateReceiveGiftSubscriptionNotification(string userName)
+    {
+      AddNotification(new Notification()
+      {
+        TextToDisplay = $"New subscriber {userName}!",
+        SoundPath = "Resources/tone1.wav",
+        SoundVolume = 0.3f
+      });
+    }
+
+    public static void CreateGiftSubscriptionNotification(string userName, string tier, int count, string message)
+    {
+      AddNotification(new Notification()
+      {
+        TextToDisplay = $"Thank you {userName} for {count} subs!\n{message}",
+        TextToRead = $"Thank you {userName} for gifting {count} tier {tier} subs! {message}",
+        VideoPath = "Resources/peepoHey.mp4",
+        SoundVolume = 0.8f
+      });
+    }
+
+    public static void CreateSubscriptionNotification(string userName, string tier, int duration, int streak, EventPayloadMessage message)
+    {
+      // TODO: Create message to read - remove emotes from the message using message.Emotes[], don't read them
+
+      AddNotification(new Notification()
+      {
+        TextToDisplay = $"Thank you {userName}!\n{message.Text}",
+        TextToRead = string.Concat(
+          "Thank you ", userName, " for ",
+          duration > 1 ? $"{duration} months in advance" : "",
+          " tier ", tier, " sub!",
+          streak > 1 ? $" It's your {streak} month in a row!" : "",
+          " ", message.Text
+          ),
+        VideoPath = "Resources/peepoHey.mp4",
+        SoundVolume = 0.8f
+      });
+    }
+
+    public static void CreateCheerNotification(string userName, int count, string message)
+    {
+      AddNotification(new Notification()
+      {
+        TextToDisplay = $"Thank you {userName} for {count} bits!\n{message}",
+        TextToRead = $"Thank you {userName} for {count} bits! {message}",
+        TTSVolume = 0.8f,
+        SoundPath = "Resources/tone1.wav",
+        SoundVolume = 0.3f
       });
     }
 
@@ -224,10 +276,13 @@ namespace AbevBot
 
   public class Notification
   {
+    private static readonly TimeSpan MinimumNotificationTime = new(0, 0, 2);
     public bool Started { get; private set; }
+    public DateTime StartTime { get; private set; }
     public string TextToDisplay { get; init; }
     public string TextToRead { get; init; }
     public string TTSVoice { get; init; }
+    public float TTSVolume { get; init; } = 1f;
     public string SoundPath { get; init; }
     public float SoundVolume { get; init; } = 1f;
     public string VideoPath { get; init; }
@@ -236,14 +291,19 @@ namespace AbevBot
     private bool VideoEnded;
     private bool VideoStarted;
     private bool TextDisplayed;
+    private bool SoundPlayed;
+    private bool VoicePlayed;
 
     /// <summary> Initializes required things and starts the notification </summary>
     public void Start()
     {
       if (Started) return;
       Started = true;
+      StartTime = DateTime.Now;
 
       VideoEnded = VideoPath is null || VideoPath.Length == 0;
+      SoundPlayed = SoundPath is null || SoundPath.Length == 0;
+      VoicePlayed = TextToRead is null || TextToRead.Length == 0;
     }
 
     /// <summary> Update status of playing notification. </summary>
@@ -270,31 +330,34 @@ namespace AbevBot
       }
 
       // Display text
-      if (!Notifications.NotificationsPaused && !Notifications.SkipNotification && TextToDisplay.Length > 0 && !TextDisplayed)
+      if (!TextDisplayed && !Notifications.NotificationsPaused && !Notifications.SkipNotification && TextToDisplay.Length > 0)
       {
         TextDisplayed = true;
         MainWindow.SetTextDisplayed(TextToDisplay);
       }
 
-      // Create audio player and play the sound
-      if (AudioPlayer is null && (TextToRead?.Length > 0 || SoundPath?.Length > 0)) { CreateAudioPlayer(); }
-      if (Notifications.SkipNotification) { AudioPlayer?.Stop(); }
-      else
+      // Create audio player and play
+      if (!SoundPlayed || !VoicePlayed)
       {
-        if (Notifications.NotificationsPaused)
-        {
-          AudioPlayer?.Pause();
-        }
+        if (Notifications.SkipNotification) { AudioPlayer?.Stop(); }
+        else if (AudioPlayer is null && (TextToRead?.Length > 0 || SoundPath?.Length > 0)) { CreateAudioPlayer(); }
         else
         {
-          AudioPlayer?.Play();
+          if (Notifications.NotificationsPaused) { AudioPlayer?.Pause(); }
+          else { AudioPlayer?.Play(); }
         }
+
+        if (AudioPlayer?.PlaybackState == PlaybackState.Stopped)
+        {
+          AudioPlayer?.Dispose(); // Probably it's better to dispose the player after it finished
+          AudioPlayer = null;
+        }
+        return false;
       }
+      if (AudioPlayer != null && AudioPlayer.PlaybackState != PlaybackState.Stopped) return false;
 
-      if (AudioPlayer?.PlaybackState != PlaybackState.Stopped) return false;
       // The notification is over, clear after it
-
-      AudioPlayer?.Dispose(); // Probably it's better to dispose the player after it finished
+      if (DateTime.Now - StartTime < MinimumNotificationTime) return false;
       MainWindow.SetTextDisplayed(string.Empty); // Clear displayed text
 
       if (Notifications.SkipNotification) Notifications.SkipNotification = false;
@@ -304,9 +367,16 @@ namespace AbevBot
 
     private void CreateAudioPlayer()
     {
-      if (!string.IsNullOrEmpty(SoundPath)) AudioPlayer = Audio.PlayWavSound(SoundPath, SoundVolume);
-      else if (TextToRead?.Length > 0) AudioPlayer = Notifications.GetTTS(TextToRead, TTSVoice, SoundVolume);
-      if (TextToDisplay?.Length > 0) MainWindow.SetTextDisplayed(TextToDisplay);
+      if (!SoundPlayed && !string.IsNullOrEmpty(SoundPath))
+      {
+        AudioPlayer = Audio.PlayWavSound(SoundPath, SoundVolume);
+        SoundPlayed = true;
+      }
+      else if (TextToRead?.Length > 0)
+      {
+        AudioPlayer = Notifications.GetTTS(TextToRead, TTSVoice, TTSVolume);
+        VoicePlayed = true;
+      }
     }
   }
 }
