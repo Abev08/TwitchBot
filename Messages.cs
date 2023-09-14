@@ -296,8 +296,32 @@ namespace AbevBot
     public string? BroadcasterUserLogin { get; set; }
     [JsonPropertyName("broadcaster_user_name")]
     public string? BroadcasterUserName { get; set; }
+    [JsonPropertyName("moderator_user_id")]
+    public string? ModeratorUserID { get; set; }
+    [JsonPropertyName("moderator_user_login")]
+    public string? ModeratorUserLogin { get; set; }
+    [JsonPropertyName("moderator_user_name")]
+    public string? ModeratorUserName { get; set; }
+
+    // channel.follow
     [JsonPropertyName("followed_at")]
     public string? FollowedAt { get; set; }
+
+    // channel.ban
+    [JsonPropertyName("banned_at")]
+    public string? BannedAt { get; set; }
+    [JsonPropertyName("ends_at")]
+    public string? EndsAt { get; set; }
+    [JsonPropertyName("is_permanent")]
+    public bool? IsPermanent { get; set; }
+    [JsonPropertyName("reason")]
+    public string? Reason { get; set; }
+
+    // channel.subscribe
+    [JsonPropertyName("is_gift")]
+    public bool? IsGift { get; set; }
+    [JsonPropertyName("tier")]
+    public string? Tier { get; set; }
   }
 
   public class StreamElementsResponse

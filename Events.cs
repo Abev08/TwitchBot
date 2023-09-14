@@ -9,6 +9,15 @@ namespace AbevBot
 {
   public static class Events
   {
+#if true
+    private const string WEBSOCKETURL = "wss://eventsub.wss.twitch.tv/ws";
+    private const string SUBSCRIPTIONRUL = "https://api.twitch.tv/helix/eventsub/subscriptions";
+#else
+    // Test url with Twitch CLI client
+    private const string WEBSOCKETURL = "ws://127.0.0.1:8080/ws";
+    private const string SUBSCRIPTIONRUL = "http://127.0.0.1:8080/eventsub/subscriptions";
+#endif
+
     /// <summary> Events bot started. </summary>
     public static bool Started { get; private set; }
     private static Thread EventsThread;
@@ -48,11 +57,12 @@ namespace AbevBot
           WebSocketClient = new();
           WebSocketClient.Options.SetRequestHeader("Client-Id", Config.Data[Config.Keys.BotClientID]);
           WebSocketClient.Options.SetRequestHeader("Authorization", $"Bearer {Config.Data[Config.Keys.BotOAuthToken]}");
-          WebSocketClient.ConnectAsync(new Uri("wss://eventsub.wss.twitch.tv/ws"), CancellationToken.None).Wait();
+          try { WebSocketClient.ConnectAsync(new Uri(WEBSOCKETURL), CancellationToken.None).Wait(); }
+          catch (AggregateException ex) { MainWindow.ConsoleWarning($">> Events bot error: {ex.Message}"); }
 
           // Check if it worked
           receiveResult = WebSocketClient.ReceiveAsync(receiveBuffer, CancellationToken.None).Result;
-          if (receiveResult.Count <= 0) { MainWindow.ConsoleWarning(">> Events bot couldn't connect to wss://eventsub.wss.twitch.tv/ws."); }
+          if (receiveResult.Count <= 0) { MainWindow.ConsoleWarning($">> Events bot couldn't connect to {WEBSOCKETURL}."); }
           else
           {
             MainWindow.ConsoleWarning(">> Events bot connected.");
@@ -101,7 +111,7 @@ namespace AbevBot
             }
             else if (messageDeserialized?.Metadata?.MessageType?.Equals("notification") == true)
             {
-              // Received notification event
+              // Received a notification
               if (messageDeserialized?.Metadata?.SubscriptionType?.Equals("channel.follow") == true)
               {
                 // Received channel follow event
@@ -110,28 +120,52 @@ namespace AbevBot
               }
               else if (messageDeserialized?.Metadata?.SubscriptionType?.Equals("channel.subscribe") == true)
               {
-                // Received channel follow event
+                // Received subscription event
                 MainWindow.ConsoleWarning($">> New subscription from {messageDeserialized?.Payload?.Event?.UserName}.");
+                if (messageDeserialized?.Payload?.Event?.IsGift == false)
+                {
+                  // FIXME: fix subscription message, not present in twitch cli mock program?
+                  Notifications.CreateSubscriptionNotification(messageDeserialized?.Payload?.Event?.UserName, messageDeserialized?.Payload?.Event?.Tier, "");
+                }
+                // MainWindow.ConsoleWriteLine(message);
               }
               else if (messageDeserialized?.Metadata?.SubscriptionType?.Equals("channel.subscription.gift") == true)
               {
                 // Received channel follow event
                 MainWindow.ConsoleWarning($">> New gifted subscription from {messageDeserialized?.Payload?.Event?.UserName}.");
+                MainWindow.ConsoleWriteLine(message);
               }
               else if (messageDeserialized?.Metadata?.SubscriptionType?.Equals("channel.subscription.message") == true)
               {
                 // Received channel follow event
                 MainWindow.ConsoleWarning($">> New subscription from {messageDeserialized?.Payload?.Event?.UserName}.");
+                MainWindow.ConsoleWriteLine(message);
               }
               else if (messageDeserialized?.Metadata?.SubscriptionType?.Equals("channel.cheer") == true)
               {
                 // Received channel follow event
                 MainWindow.ConsoleWarning($">> {messageDeserialized?.Payload?.Event?.UserName} cheered with bits.");
+                MainWindow.ConsoleWriteLine(message);
               }
               else if (messageDeserialized?.Metadata?.SubscriptionType?.Equals("channel.channel_points_custom_reward_redemption") == true)
               {
                 // Received channel follow event
                 MainWindow.ConsoleWarning($">> {messageDeserialized?.Payload?.Event?.UserName} redeemed something with channel points.");
+                MainWindow.ConsoleWriteLine(message);
+              }
+              else if (messageDeserialized?.Metadata?.SubscriptionType?.Equals("channel.ban") == true)
+              {
+                // Received user banned event
+                if (messageDeserialized.Payload.Event.IsPermanent == true)
+                {
+                  MainWindow.ConsoleWarning($">> {messageDeserialized?.Payload?.Event?.UserName} has been permanently banned. {messageDeserialized?.Payload?.Event?.Reason}.");
+                }
+                else
+                {
+                  DateTime start = DateTime.Parse(messageDeserialized.Payload.Event.BannedAt);
+                  DateTime end = DateTime.Parse(messageDeserialized.Payload.Event.EndsAt);
+                  MainWindow.ConsoleWarning($">> {messageDeserialized?.Payload?.Event?.UserName} was banned for {end - start}. {messageDeserialized?.Payload?.Event?.Reason}.");
+                }
               }
               else
               {
@@ -176,7 +210,7 @@ namespace AbevBot
     {
       // https://dev.twitch.tv/docs/eventsub/eventsub-subscription-types/
       MainWindow.ConsoleWarning($">> Events bot subscribing to {type} event.");
-      using (HttpRequestMessage request = new(new HttpMethod("POST"), "https://api.twitch.tv/helix/eventsub/subscriptions"))
+      using (HttpRequestMessage request = new(new HttpMethod("POST"), SUBSCRIPTIONRUL))
       {
         request.Headers.Add("Client-Id", Config.Data[Config.Keys.BotClientID]);
         request.Headers.Add("Authorization", $"Bearer {Config.Data[Config.Keys.BotOAuthToken]}");

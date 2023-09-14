@@ -57,6 +57,7 @@ namespace AbevBot
               // Update returned true == notificaion has ended, remove it from queue
               NotificationQueue.RemoveAt(0);
               notificationEnded = true;
+              MainWindow.SetNotificationQueueCount(NotificationQueue.Count);
             }
           }
 
@@ -81,8 +82,30 @@ namespace AbevBot
         lock (NotificationQueue)
         {
           NotificationQueue.Add(notification);
+          MainWindow.SetNotificationQueueCount(NotificationQueue.Count);
         }
       }).Start();
+    }
+
+    public static void CreateFollowNotification(string userName)
+    {
+      AddNotification(new Notification()
+      {
+        TextToDisplay = $"New follower {userName}!",
+        SoundPath = "Resources/tone1.wav",
+        SoundVolume = 0.3f
+      });
+    }
+
+    public static void CreateSubscriptionNotification(string userName, string tier, string message)
+    {
+      AddNotification(new Notification()
+      {
+        TextToDisplay = $"Thank you {userName}!\n{message}",
+        TextToRead = $"Thank you {userName} for {tier} tier sub! {message}",
+        VideoPath = "Resources/peepoHey.mp4",
+        SoundVolume = 0.8f
+      });
     }
 
     public static void CreateTTSNotification(string text)
@@ -116,12 +139,12 @@ namespace AbevBot
         else { voice = null; }
       }
 
-      AddNotification(new(message, readText: true, voice: voice, soundVolume: 0.6f));
-    }
-
-    public static void CreateFollowNotification(string userName)
-    {
-      AddNotification(new($"New follower {userName}!", displayText: true, soundPath: "Resources/tone1.wav", soundVolume: 0.3f));
+      AddNotification(new Notification()
+      {
+        TextToRead = message,
+        TTSVoice = voice,
+        SoundVolume = 0.6f
+      });
     }
 
     public static NAudio.Wave.WaveOut GetTTS(string text, string voice = "Brian", float soundVolume = 1f)
@@ -202,27 +225,17 @@ namespace AbevBot
   public class Notification
   {
     public bool Started { get; private set; }
-    public string Text { get; private set; }
-    public string TTSVoice { get; private set; }
-    public bool DisplayText { get; private set; }
-    public bool ReadText { get; private set; }
-    public string SoundPath { get; private set; }
-    public float SoundVolume { get; private set; }
+    public string TextToDisplay { get; init; }
+    public string TextToRead { get; init; }
+    public string TTSVoice { get; init; }
+    public string SoundPath { get; init; }
+    public float SoundVolume { get; init; } = 1f;
+    public string VideoPath { get; init; }
+    public float VideoVolume { get; init; } = 1f;
     private WaveOut AudioPlayer;
-
-    /// <summary> A notification to be displayed on stream </summary>
-    /// <param name="text">Notification text</param>
-    /// <param name="displayText">Display notification text on window?</param>
-    /// <param name="readText">Read notification text out loud?</param>
-    public Notification(string text, bool displayText = false, bool readText = false, string voice = null, string soundPath = null, float soundVolume = 1f)
-    {
-      Text = text;
-      DisplayText = displayText;
-      ReadText = readText;
-      TTSVoice = voice;
-      SoundPath = soundPath;
-      SoundVolume = soundVolume;
-    }
+    private bool VideoEnded;
+    private bool VideoStarted;
+    private bool TextDisplayed;
 
     /// <summary> Initializes required things and starts the notification </summary>
     public void Start()
@@ -230,43 +243,70 @@ namespace AbevBot
       if (Started) return;
       Started = true;
 
-      if (!string.IsNullOrEmpty(SoundPath)) AudioPlayer = Audio.PlayWavSound(SoundPath, SoundVolume);
-      else if (ReadText) AudioPlayer = Notifications.GetTTS(Text, TTSVoice, SoundVolume);
-      if (DisplayText) MainWindow.SetTextDisplayed(Text);
+      VideoEnded = VideoPath is null || VideoPath.Length == 0;
     }
 
     /// <summary> Update status of playing notification. </summary>
     /// <returns> <value>true</value> if notification ended. </returns>
     public bool Update()
     {
-      if (Started == false) return false;
+      if (!Started) return false;
 
-      if (Notifications.SkipNotification)
+      if (!VideoEnded)
       {
-        AudioPlayer.Stop();
-        Notifications.SkipNotification = false;
+        if (!VideoStarted)
+        {
+          // Start the video
+          VideoStarted = true;
+          MainWindow.StartVideoPlayer(VideoPath, VideoVolume);
+        }
+        else if (Notifications.SkipNotification)
+        {
+          MainWindow.StopVideoPlayer();
+          VideoEnded = true;
+        }
+        else if (MainWindow.VideoEnded) { VideoEnded = true; }
+        if (!VideoEnded) return false;
       }
+
+      // Display text
+      if (!Notifications.NotificationsPaused && !Notifications.SkipNotification && TextToDisplay.Length > 0 && !TextDisplayed)
+      {
+        TextDisplayed = true;
+        MainWindow.SetTextDisplayed(TextToDisplay);
+      }
+
+      // Create audio player and play the sound
+      if (AudioPlayer is null && (TextToRead?.Length > 0 || SoundPath?.Length > 0)) { CreateAudioPlayer(); }
+      if (Notifications.SkipNotification) { AudioPlayer?.Stop(); }
       else
       {
         if (Notifications.NotificationsPaused)
         {
-          AudioPlayer.Pause();
+          AudioPlayer?.Pause();
         }
         else
         {
-          AudioPlayer.Play();
+          AudioPlayer?.Play();
         }
       }
 
-      if (AudioPlayer.PlaybackState != PlaybackState.Stopped) return false;
+      if (AudioPlayer?.PlaybackState != PlaybackState.Stopped) return false;
       // The notification is over, clear after it
-      else
-      {
-        AudioPlayer.Dispose(); // Probably it's better to dispose the player after it finished
-        MainWindow.SetTextDisplayed(string.Empty); // Clear displayed text
-      }
 
-      return true;
+      AudioPlayer?.Dispose(); // Probably it's better to dispose the player after it finished
+      MainWindow.SetTextDisplayed(string.Empty); // Clear displayed text
+
+      if (Notifications.SkipNotification) Notifications.SkipNotification = false;
+
+      return true; // return true when notification has ended
+    }
+
+    private void CreateAudioPlayer()
+    {
+      if (!string.IsNullOrEmpty(SoundPath)) AudioPlayer = Audio.PlayWavSound(SoundPath, SoundVolume);
+      else if (TextToRead?.Length > 0) AudioPlayer = Notifications.GetTTS(TextToRead, TTSVoice, SoundVolume);
+      if (TextToDisplay?.Length > 0) MainWindow.SetTextDisplayed(TextToDisplay);
     }
   }
 }

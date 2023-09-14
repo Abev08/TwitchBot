@@ -135,7 +135,7 @@ namespace AbevBot
           {
             AccessTokenResponse response = AccessTokenResponse.Deserialize(client.Send(request).Content.ReadAsStringAsync().Result);
             if (response is null || response.Token is null || response.RefreshToken is null) throw new Exception("Response was empty or didn't received access token!");
-            Console.WriteLine(response.ToString());
+            MainWindow.ConsoleWarning(response.ToString());
             // Read information from received data
             Config.Data[Config.Keys.BotOAuthToken] = response.Token;
             Config.Data[Config.Keys.BotOAuthRefreshToken] = response.RefreshToken;
@@ -194,7 +194,7 @@ namespace AbevBot
         {
           AccessTokenResponse response = AccessTokenResponse.Deserialize(client.Send(request).Content.ReadAsStringAsync().Result);
           if (response is null || response.Token is null || response.RefreshToken is null) throw new Exception("Response was empty or didn't received access token!");
-          Console.WriteLine(response.ToString());
+          MainWindow.ConsoleWarning(response.ToString());
           // Read information from received data
           Config.Data[Config.Keys.BotOAuthToken] = response.Token;
           Config.Data[Config.Keys.BotOAuthRefreshToken] = response.RefreshToken;

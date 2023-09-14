@@ -7,6 +7,7 @@
 Config.ini
 ResponseMessages.csv
 .tokens
+twitch-cli*/
 
 # User-specific files
 *.rsuser

@@ -15,14 +15,19 @@ namespace AbevBot
     [DllImport("Kernel32")]
     public static extern void FreeConsole();
 
-    static MainWindow window;
-    static TextBlock TextOutput; // For some reason it have to be done via temp variable
+    private static MainWindow WindowRef;
+    private static TextBlock TextOutputRef;
+    private static TextBlock NotificationsQueueCountRef;
+    private static MediaElement VideoPlayerRef;
+    public static bool VideoEnded { get; private set; }
 
     public MainWindow()
     {
       InitializeComponent();
-      window = this;
-      TextOutput = tbTextOutput;
+      WindowRef = this;
+      TextOutputRef = tbTextOutput;
+      NotificationsQueueCountRef = tbNotificationsQueue;
+      VideoPlayerRef = VideoPlayer;
 
       AllocConsole();
       this.Closing += (sender, e) => FreeConsole(); // Free console window on program close
@@ -46,7 +51,12 @@ namespace AbevBot
         string text = tbTTSText.Text;
         string voice = tbTTSVoice.Text;
         if (string.IsNullOrEmpty(text)) return;
-        Notifications.AddNotification(new Notification(text, true, true, voice));
+        Notifications.AddNotification(new Notification()
+        {
+          TextToDisplay = text,
+          TextToRead = text,
+          TTSVoice = voice
+        });
       };
       btnPause.Click += (sender, e) =>
       {
@@ -57,22 +67,26 @@ namespace AbevBot
       btnSkip.Click += (sender, e) => Notifications.SkipNotification = true;
 
       // Automatically set source to null after video ended
-      VideoPlayer.MediaEnded += (sender, e) => VideoPlayer.Source = null;
+      VideoPlayerRef.MediaEnded += (sender, e) =>
+      {
+        VideoPlayerRef.Source = null;
+        VideoEnded = true;
+      };
       // Take control over video player
-      VideoPlayer.LoadedBehavior = System.Windows.Controls.MediaState.Manual;
-      VideoPlayer.UnloadedBehavior = System.Windows.Controls.MediaState.Manual;
+      VideoPlayerRef.LoadedBehavior = System.Windows.Controls.MediaState.Manual;
+      VideoPlayerRef.UnloadedBehavior = System.Windows.Controls.MediaState.Manual;
 
       // Wait for window to be loaded (visible) to start a demo video
-      window.Loaded += (sender, e) =>
+      this.Loaded += (sender, e) =>
       {
-        VideoPlayer.Source = new Uri(new FileInfo("Resources/peepoHey.mp4").FullName);
-        VideoPlayer.Play();
+        VideoPlayerRef.Source = new Uri(new FileInfo("Resources/peepoHey.mp4").FullName);
+        VideoPlayerRef.Play();
       };
 
       btnTestVideo.Click += (sender, e) =>
       {
-        VideoPlayer.Source = new Uri(new FileInfo("Resources/peepoHey.mp4").FullName);
-        VideoPlayer.Play();
+        VideoPlayerRef.Source = new Uri(new FileInfo("Resources/peepoHey.mp4").FullName);
+        VideoPlayerRef.Play();
       };
     }
 
@@ -85,14 +99,44 @@ namespace AbevBot
 
     public static void ConsoleWriteLine(string text)
     {
-      Console.WriteLine(text.ToString());
+      Console.WriteLine(text);
     }
 
     public static void SetTextDisplayed(string text)
     {
-      window.Dispatcher.Invoke(new Action(() =>
+      WindowRef.Dispatcher.Invoke(new Action(() =>
       {
-        TextOutput.Text = text;
+        TextOutputRef.Text = text;
+      }));
+    }
+
+    public static void StartVideoPlayer(string path, float volume)
+    {
+      WindowRef.Dispatcher.Invoke(new Action(() =>
+      {
+        if (VideoPlayerRef.Source != null) return;
+        VideoEnded = false;
+        VideoPlayerRef.Source = new Uri(new FileInfo(path).FullName);
+        VideoPlayerRef.Volume = volume;
+        VideoPlayerRef.Play();
+      }));
+    }
+
+    public static void StopVideoPlayer()
+    {
+      WindowRef.Dispatcher.Invoke(new Action(() =>
+      {
+        VideoPlayerRef.Stop();
+        VideoPlayerRef.Source = null;
+        VideoEnded = true;
+      }));
+    }
+
+    public static void SetNotificationQueueCount(int count)
+    {
+      WindowRef.Dispatcher.Invoke(new Action(() =>
+      {
+        NotificationsQueueCountRef.Text = $"Notifications in queue: {count}";
       }));
     }
 
