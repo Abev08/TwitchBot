@@ -32,7 +32,7 @@
     <!-- Video player, text display, etc -->
     <Grid Grid.Column="1" Background="#FF00FF00">
       <MediaElement x:Name="VideoPlayer"/>
-      <TextBlock x:Name="tbTextOutput" FontSize="32" Foreground="White" MaxWidth="500" TextWrapping="Wrap" VerticalAlignment="Center" HorizontalAlignment="Center" TextAlignment="Center"/>
+      <TextBlock x:Name="tbTextOutput" FontSize="32" Foreground="White" TextWrapping="Wrap" TextAlignment="Center" VerticalAlignment="Center" HorizontalAlignment="Stretch" />
     </Grid>
   </Grid>
 </Window>
