@@ -174,5 +174,10 @@ namespace AbevBot
     {
       Notifications.ChatTTSEnabled = ((CheckBox)sender).IsChecked == true;
     }
+
+    private void ChkGamba_CheckChanged(object sender, RoutedEventArgs e)
+    {
+      MinigameGamba.Enabled = ((CheckBox)sender).IsChecked == true;
+    }
   }
 }

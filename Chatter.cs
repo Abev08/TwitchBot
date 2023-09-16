@@ -72,19 +72,28 @@ namespace AbevBot
       return c;
     }
 
-    /// <summary> Returns a chatter, if doesn't found returns null. Doesn't create new chatters. </summary>
+    /// <summary> Returns a chatter or tries to create new one by acquiring all chatters and finding him. </summary>
     public static Chatter GetChatterByName(string userName)
     {
       if (Chatters is null) LoadChattersFile();
 
-      string name = userName.Trim();
+      string name = userName.Trim().ToLower();
       var chatter = Chatters.GetEnumerator();
       while (chatter.MoveNext())
       {
-        if (chatter.Current.Value.Name.Equals(name)) return chatter.Current.Value;
+        if (chatter.Current.Value.Name.ToLower().Equals(name)) return chatter.Current.Value;
       }
 
-      MainWindow.ConsoleWarning($">> Chatter {name} not found. Maybe implement getting chatter id and adding new chatter here?");
+      var chatters = Chat.GetChatters();
+      foreach (var c in chatters)
+      {
+        if (c.name.ToLower().Equals(name))
+        {
+          return GetChatterByID(c.id, c.name);
+        }
+      }
+
+      MainWindow.ConsoleWarning($">> Chatter {userName.Trim()} not found!");
       return null;
     }
 

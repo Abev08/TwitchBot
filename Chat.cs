@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Net.Http;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
@@ -515,6 +516,46 @@ namespace AbevBot
       {
         MessageQueue.Add(message);
       }
+    }
+
+    public static List<(long id, string name)> GetChatters()
+    {
+      MainWindow.ConsoleWarning(">> Acquiring chatters.");
+      List<(long, string)> chatters = new();
+
+      string uri = $"https://api.twitch.tv/helix/chat/chatters?broadcaster_id={Config.Data[Config.Keys.ChannelID]}&moderator_id={Config.Data[Config.Keys.ChannelID]}&first=1000";
+      using (HttpRequestMessage request = new(new HttpMethod("GET"), uri))
+      {
+        request.Headers.Add("Authorization", $"Bearer {Config.Data[Config.Keys.BotOAuthToken]}");
+        request.Headers.Add("Client-Id", Config.Data[Config.Keys.BotClientID]);
+
+        using (HttpClient client = new())
+        {
+          string s = client.Send(request).Content.ReadAsStringAsync().Result;
+          GetChattersResponse response = GetChattersResponse.Deserialize(s);
+          if (response?.Data?.Length > 0)
+          {
+            long id;
+            for (int i = 0; i < response.Data.Length; i++)
+            {
+              if (long.TryParse(response.Data[i].UserID, out id))
+              {
+                chatters.Add((id, response.Data[i].UserName));
+              }
+            }
+            if (response.Data.Length > response.Total)
+            {
+              MainWindow.ConsoleWarning(">> There were too many chatters to acquire in one request. A loop needs to be implemented here.");
+            }
+          }
+          else
+          {
+            MainWindow.ConsoleWarning(">> Couldn't acquire chatters.");
+          }
+        }
+      }
+
+      return chatters;
     }
   }
 }

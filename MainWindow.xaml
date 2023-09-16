@@ -19,6 +19,7 @@
       <Button x:Name="btnSkip" Width="150" Height="25" Content="Skip notification" Margin="0,10,0,0"/>
       <TextBlock x:Name="tbNotificationsQueue" Text="Notifications in queue: 0" Margin="5,10,5,0"/>
       <CheckBox x:Name="chkTTS" Width="150" Height="25" Content="!tts enabled (chat)" IsChecked="True" Margin="0,30,0,0" Checked="ChkTTS_CheckChanged" Unchecked="ChkTTS_CheckChanged"/>
+      <CheckBox x:Name="chkGamba" Width="150" Height="25" Content="!gamba enabled" IsChecked="True" Margin="0,0,0,0" Checked="ChkGamba_CheckChanged" Unchecked="ChkGamba_CheckChanged"/>
     </StackPanel>
 
     <!-- Test elements -->

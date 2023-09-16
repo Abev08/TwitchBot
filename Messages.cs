@@ -151,6 +151,24 @@ namespace AbevBot
     }
   }
 
+  public class GetChattersResponse
+  {
+    [JsonPropertyName("data")]
+    public GetChattersData[]? Data { get; set; }
+    [JsonPropertyName("pagination")]
+    public Pagination? Pagination { get; set; }
+    [JsonPropertyName("total")]
+    public int? Total { get; set; }
+
+    public static GetChattersResponse Deserialize(string message)
+    {
+      GetChattersResponse? ret = JsonSerializer.Deserialize<GetChattersResponse>(message);
+      if (ret is null) throw new JsonException("Couldn't parse get chatters response.");
+
+      return ret;
+    }
+  }
+
   public class Metadata
   {
     [JsonPropertyName("message_id")]
@@ -388,6 +406,22 @@ namespace AbevBot
     public int? End { get; set; }
     [JsonPropertyName("id")]
     public string? ID { get; set; }
+  }
+
+  public class GetChattersData
+  {
+    [JsonPropertyName("user_id")]
+    public string? UserID { get; set; }
+    [JsonPropertyName("user_login")]
+    public string? UserLogin { get; set; }
+    [JsonPropertyName("user_name")]
+    public string? UserName { get; set; }
+  }
+
+  public class Pagination
+  {
+    [JsonPropertyName("cursor")]
+    public string? Cursor { get; set; }
   }
 
   public class StreamElementsResponse

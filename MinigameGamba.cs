@@ -8,10 +8,13 @@ namespace AbevBot
   {
     private const int MAXLADDERENTRIES = 10;
 
+    public static bool Enabled { get; set; }
     public static readonly GambaLadderComparer GambaLadderComparer = new();
 
     public static void NewGamba(long userID, string userName, string message)
     {
+      if (!Enabled) return;
+
       Chatter chatter = Chatter.GetChatterByID(userID, userName);
 
       string msg = message.Trim().ToLower();
