@@ -14,6 +14,7 @@ namespace AbevBot
 
     [DllImport("Kernel32")]
     public static extern void FreeConsole();
+    public static bool ConsoleFreed { get; private set; }
 
     private static MainWindow WindowRef;
     private static TextBlock TextOutputRef;
@@ -21,7 +22,7 @@ namespace AbevBot
     private static MediaElement VideoPlayerRef;
     public static bool VideoEnded { get; private set; }
 
-    public MainWindow()
+    public MainWindow(string[] args = null)
     {
       InitializeComponent();
       WindowRef = this;
@@ -30,14 +31,38 @@ namespace AbevBot
       VideoPlayerRef = VideoPlayer;
 
       AllocConsole();
-      this.Closing += (sender, e) => FreeConsole(); // Free console window on program close
+      // Free console window on program close
+      this.Closing += (sender, e) =>
+      {
+        ConsoleFreed = true;
+        FreeConsole();
+      };
+
+      // Catch all unhandled exceptions and print them into a file
+      AppDomain.CurrentDomain.UnhandledException += (sender, ex) =>
+      {
+        using (StreamWriter writer = new("error.txt"))
+        {
+          writer.WriteLine(DateTime.Now);
+          writer.WriteLine(ex.ExceptionObject);
+        }
+      };
+
       ConsoleWarning(">> Hi. I'm AbevBot.");
 
       // Read Config.ini
       if (Config.ParseConfigFile())
       {
+        ConsoleFreed = true;
         FreeConsole();
         return;
+      }
+
+      if (args.Length > 0 && args[0] == "--consoleVisible") { } // Force console visibility in vscode with command line args
+      else if (!Config.ConsoleVisible)
+      {
+        ConsoleFreed = true;
+        FreeConsole();
       }
 
       Chat.Start(); // Start chat bot
@@ -92,6 +117,8 @@ namespace AbevBot
 
     public static void ConsoleWarning(string text, ConsoleColor color = ConsoleColor.DarkRed)
     {
+      if (ConsoleFreed) return;
+
       Console.ForegroundColor = color;
       Console.WriteLine(text);
       Console.ResetColor();
@@ -99,6 +126,8 @@ namespace AbevBot
 
     public static void ConsoleWriteLine(string text)
     {
+      if (ConsoleFreed) return;
+
       Console.WriteLine(text);
     }
 

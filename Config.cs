@@ -11,7 +11,9 @@ namespace AbevBot
     {
       ChannelName, ChannelID,
       BotNick, BotClientID, BotPass,
-      BotOAuthToken, BotOAuthRefreshToken
+      BotOAuthToken, BotOAuthRefreshToken,
+      ConsoleVisible, PeriodicMessageTimeInterval,
+      msg
     };
 
     private static Dictionary<Keys, string> _Data;
@@ -30,6 +32,7 @@ namespace AbevBot
         return _Data;
       }
     }
+    public static bool ConsoleVisible { get; private set; }
 
     public static bool ParseConfigFile()
     {
@@ -50,20 +53,48 @@ namespace AbevBot
           while ((line = reader.ReadLine()) != null)
           {
             lineIndex++;
-            if (line.StartsWith("//") || string.IsNullOrWhiteSpace(line)) continue;
-            string[] text = line.Split('=', StringSplitOptions.TrimEntries);
+            // Skip commented out lines
+            if (line.StartsWith("//") || line.StartsWith(';') || line.StartsWith('#') || string.IsNullOrWhiteSpace(line)) continue;
+
+            string[] text = line.Split(';')[0].Split('=', StringSplitOptions.TrimEntries);
             if (text.Length < 2 || string.IsNullOrWhiteSpace(text[1]))
             {
-              MainWindow.ConsoleWarning($">> Bad Config.ini line: {lineIndex}.");
+              // MainWindow.ConsoleWarning($">> Bad Config.ini line: {lineIndex}.");
               continue;
             }
             object key;
             if (Enum.TryParse(typeof(Keys), text[0], out key))
             {
-              if ((Keys)key == Keys.ChannelName) Data[(Keys)key] = text[1].ToLower();
-              else Data[(Keys)key] = text[1];
+              switch ((Keys)key)
+              {
+                case Keys.ChannelName:
+                  Data[(Keys)key] = text[1].Trim().ToLower();
+                  break;
+
+                case Keys.msg:
+                  // If there are '=' symbols in the message the previous splitting would brake it
+                  string msg = line.Substring(line.IndexOf('=') + 1).Trim();
+                  if (msg.Length > 0) Chat.PeriodicMessages.Add(msg);
+                  break;
+
+                case Keys.ConsoleVisible:
+                  if (bool.TryParse(text[1], out bool result)) ConsoleVisible = result;
+                  break;
+
+                case Keys.PeriodicMessageTimeInterval:
+                  if (TimeSpan.TryParse(text[1], out TimeSpan timeSpan))
+                  {
+                    if (timeSpan.TotalSeconds > 0) Chat.PeriodicMessageInterval = timeSpan;
+                  }
+                  break;
+
+                default:
+                  if (Data.ContainsKey((Keys)key)) { Data[(Keys)key] = text[1].Trim(); }
+                  else MainWindow.ConsoleWarning($">> Not recognized key '{text[0]}' on line {lineIndex} in Config.ini file.");
+                  break;
+              }
             }
-            else { MainWindow.ConsoleWarning($">> Not recognized key in line {lineIndex}."); }
+            else { MainWindow.ConsoleWarning($">> Not recognized key '{text[0]}' on line {lineIndex} in Config.ini file."); }
           }
         }
 
@@ -82,6 +113,7 @@ namespace AbevBot
         else
         {
           // Nothing is missing, do some setup things
+          MainWindow.ConsoleWarning($">> Loaded {Chat.PeriodicMessages.Count} periodic messages.");
           AccessTokens.GetAccessTokens();
           GetBroadcasterID();
         }
@@ -94,10 +126,20 @@ namespace AbevBot
     {
       using (StreamWriter writer = new(configFile.FullName))
       {
+        writer.WriteLine("; Required things, needs to be filled in");
         writer.WriteLine(string.Concat(Keys.ChannelName.ToString(), " = "));
         writer.WriteLine(string.Concat(Keys.BotNick.ToString(), " = "));
         writer.WriteLine(string.Concat(Keys.BotClientID.ToString(), " = "));
         writer.WriteLine(string.Concat(Keys.BotPass.ToString(), " = "));
+
+        writer.WriteLine();
+        writer.WriteLine("; Additional things, can be left empty");
+        writer.WriteLine("ConsoleVisible = false ; Debug console visibility");
+        writer.WriteLine("PeriodicMessageTimeInterval = ; default 10 minutes, HH:MM:SS format");
+
+        writer.WriteLine();
+        writer.WriteLine("; Periodic messages (one message per line, each starting with \"msg = \"), can be left empty");
+        writer.WriteLine("; msg = Commented out periodic message (deactivated) peepoSad");
       }
 
       // Notify the user
