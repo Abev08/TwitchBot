@@ -10,6 +10,8 @@ namespace AbevBot
 {
   public static class AccessTokens
   {
+    private const string TOKENSFILE = ".tokens";
+
     public static DateTime BotOAuthTokenExpiration { get; private set; }
     // Time before OAuth token expiries to try to refresh it
     public static TimeSpan OAuthTokenExpirationSomething { get; } = new TimeSpan(0, 10, 0);
@@ -17,7 +19,7 @@ namespace AbevBot
 
     public static void GetAccessTokens()
     {
-      FileInfo oauthFile = new(".tokens");
+      FileInfo oauthFile = new(TOKENSFILE);
 
       if (oauthFile.Exists)
       {
@@ -51,16 +53,20 @@ namespace AbevBot
 
       UpdateTokensFile();
 
-      // Start refresh timer, every 2 min. check if access token should be refreshed
+      // Start refresh timer, every 1 min. check if access token should be refreshed, also do some periodic things
       if (RefreshTimer is null)
       {
-        RefreshTimer = new((e) => RefreshAccessToken(), null, TimeSpan.Zero, new TimeSpan(0, 2, 0));
+        RefreshTimer = new((e) =>
+        {
+          RefreshAccessToken();
+          Chatter.UpdateChattersFile();
+        }, null, TimeSpan.Zero, new TimeSpan(0, 1, 0));
       }
     }
 
     private static void UpdateTokensFile()
     {
-      File.WriteAllLines(".tokens",
+      File.WriteAllLines(TOKENSFILE,
         new string[] {
           Config.Data[Config.Keys.BotOAuthToken],
           Config.Data[Config.Keys.BotOAuthRefreshToken]

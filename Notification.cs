@@ -89,6 +89,7 @@ namespace AbevBot
 
     public static void CreateFollowNotification(string userName)
     {
+      Chat.AddMessageToQueue($"@{userName} thank you for the follow!");
       AddNotification(new Notification()
       {
         TextToDisplay = $"New follower {userName}!",
@@ -277,6 +278,7 @@ namespace AbevBot
   public class Notification
   {
     private static readonly TimeSpan MinimumNotificationTime = new(0, 0, 2);
+
     public bool Started { get; private set; }
     public DateTime StartTime { get; private set; }
     public string TextToDisplay { get; init; }

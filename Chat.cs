@@ -50,6 +50,7 @@ namespace AbevBot
       byte[] receiveBuffer = new byte[16384]; // Max IRC message is 4096 bytes? let's allocate 4 times that, 2 times max message length wasn't enaugh for really fast chats
       int zeroBytesReceivedCounter = 0, currentIndex, nextIndex, bytesReceived, messageStartOffset = 0;
       string userBadge, userName, customRewardID, temp;
+      long userID;
       List<string> messages = new();
       /// <summary> message[0] - header, message[1] - body </summary>
       string[] message = new string[2];
@@ -180,6 +181,9 @@ namespace AbevBot
                   currentIndex = nextIndex;
 
                   // Read chatter name
+                  currentIndex = message[0].LastIndexOf("user-id=") + 8; // 8 == "user-id=".Length
+                  nextIndex = message[0].IndexOf(';', currentIndex);
+                  userID = long.Parse(message[0].Substring(currentIndex, nextIndex - currentIndex));
                   currentIndex = message[0].IndexOf("display-name=") + 13; // 13 == "display-name=".Length
                   nextIndex = message[0].IndexOf(';', currentIndex);
                   userName = message[0].Substring(currentIndex, nextIndex - currentIndex);
@@ -193,10 +197,14 @@ namespace AbevBot
                     message[1][1..]
                   ));
 
-                  if (message[1][1..].StartsWith("!tts")) // Check if message starts with !tts key
+                  if (message[1][1..].StartsWith("!tts")) // Check if the message starts with !tts key
                   {
                     if (Notifications.ChatTTSEnabled) { Notifications.CreateTTSNotification(message[1][6..]); } // 6.. - without ":!tts "
                     else { AddMessageToQueue($"@{userName} TTS disabled peepoSad"); }
+                  }
+                  else if (message[1][1..].StartsWith("!gamba")) // Check if the message starts with !gamba key
+                  {
+                    GambaMinigame.NewGamba(userID, userName, message[1][7..]); // 7.. - without ":!gamba"
                   }
                   else if (ResponseMessages.Count > 0) // Check if message starts with key to get automatic response
                   {
@@ -429,7 +437,7 @@ namespace AbevBot
           }
         }
 
-        Thread.Sleep(100); // Minimum 100 ms between send messages
+        Thread.Sleep(200); // Minimum 200 ms between send messages
       }
     }
 
@@ -492,6 +500,9 @@ namespace AbevBot
 
     public static void AddMessageToQueue(string message)
     {
+      if (!Started) return;
+      if (string.IsNullOrWhiteSpace(message)) return;
+
       lock (MessageQueue)
       {
         MessageQueue.Add(message);

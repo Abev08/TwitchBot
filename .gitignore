@@ -9,6 +9,7 @@ ResponseMessages.csv
 .tokens
 twitch-cli*/
 error.txt
+.chatters
 
 # User-specific files
 *.rsuser

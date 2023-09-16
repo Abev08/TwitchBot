@@ -34,6 +34,7 @@ namespace AbevBot
       // Free console window on program close
       this.Closing += (sender, e) =>
       {
+        Chatter.UpdateChattersFile();
         ConsoleFreed = true;
         FreeConsole();
       };
