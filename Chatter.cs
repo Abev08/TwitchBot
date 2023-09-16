@@ -14,9 +14,10 @@ namespace AbevBot
     private static Dictionary<long, Chatter> Chatters;
 
     public string Name { get; set; }
-
     public int BackseatPoints { get; set; }
+    public int RudePoints { get; set; }
     public GambaStats Gamba { get; set; }
+    public FightStats Fight { get; set; }
 
     /// <summary> Sets starting values for new chatter. </summary>
     private void InitChatter()
@@ -48,6 +49,13 @@ namespace AbevBot
       UpdateRequired = true;
 
       BackseatPoints += point;
+    }
+
+    public void AddRudePoint(int point)
+    {
+      UpdateRequired = true;
+
+      RudePoints += point;
     }
 
     public static Dictionary<long, Chatter> GetChatters()

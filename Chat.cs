@@ -207,6 +207,14 @@ namespace AbevBot
                   {
                     MinigameGamba.NewGamba(userID, userName, message[1][7..]); // 7.. - without ":!gamba"
                   }
+                  else if (message[1][1..].StartsWith("!fight")) // Check if the message starts with !fight key
+                  {
+                    MinigameFight.NewFight(userID, userName, message[1][7..]); // 7.. - without ":!fight"
+                  }
+                  else if (message[1][1..].StartsWith("!rude")) // Check if the message starts with !rude key
+                  {
+                    MinigameRude.AddRudePoint(message[1][6..]); // 6.. - without ":!rude"
+                  }
                   else if (message[1][1..].StartsWith("!point")) // Check if the message starts with !point key
                   {
                     if (userBadge.Equals("STR")) MinigameBackseat.AddBackseatPoint(message[1][7..], 1); // 7.. - without ":!point"
