@@ -15,6 +15,7 @@ namespace AbevBot
 
     public string Name { get; set; }
 
+    public int BackseatPoints { get; set; }
     public GambaStats Gamba { get; set; }
 
     /// <summary> Sets starting values for new chatter. </summary>
@@ -42,7 +43,21 @@ namespace AbevBot
       }
     }
 
-    public static Chatter GetChatter(long userID, string userName)
+    public void AddBackseatPoint(int point)
+    {
+      UpdateRequired = true;
+
+      BackseatPoints += point;
+    }
+
+    public static Dictionary<long, Chatter> GetChatters()
+    {
+      if (Chatters is null) LoadChattersFile();
+      return Chatters;
+    }
+
+    /// <summary> Returns a chatter or creates new one. </summary>
+    public static Chatter GetChatterByID(long userID, string userName)
     {
       if (Chatters is null) LoadChattersFile();
 
@@ -52,9 +67,25 @@ namespace AbevBot
         c.InitChatter();
         Chatters.Add(userID, c);
       }
-      c.Name = userName; // Always update chatter name
+      if (userName?.Length > 0) c.Name = userName; // Update chatter name if provided
 
       return c;
+    }
+
+    /// <summary> Returns a chatter, if doesn't found returns null. Doesn't create new chatters. </summary>
+    public static Chatter GetChatterByName(string userName)
+    {
+      if (Chatters is null) LoadChattersFile();
+
+      string name = userName.Trim();
+      var chatter = Chatters.GetEnumerator();
+      while (chatter.MoveNext())
+      {
+        if (chatter.Current.Value.Name.Equals(name)) return chatter.Current.Value;
+      }
+
+      MainWindow.ConsoleWarning($">> Chatter {name} not found. Maybe implement getting chatter id and adding new chatter here?");
+      return null;
     }
 
     public static void UpdateChattersFile()
@@ -80,24 +111,6 @@ namespace AbevBot
         Chatters = JsonSerializer.Deserialize<Dictionary<long, Chatter>>(data);
       }
       else { Chatters = new(); }
-    }
-
-    public static SortedList<int, string> GetGambaLadder()
-    {
-      SortedList<int, string> ladder = new(GambaMinigame.GambaLadderComparer);
-
-      var chatter = Chatters.GetEnumerator();
-      Chatter c;
-      while (chatter.MoveNext())
-      {
-        c = chatter.Current.Value;
-        if (c.Gamba.Wins != 0 || c.Gamba.Looses != 0)
-        {
-          ladder.Add(c.Gamba.Points, c.Name);
-        }
-      }
-
-      return ladder;
     }
   }
 }

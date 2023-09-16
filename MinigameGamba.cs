@@ -4,15 +4,15 @@ using System.Text;
 
 namespace AbevBot
 {
-  public static class GambaMinigame
+  public static class MinigameGamba
   {
-    public const int MAXLADDERENTRIES = 10;
+    private const int MAXLADDERENTRIES = 10;
 
     public static readonly GambaLadderComparer GambaLadderComparer = new();
 
     public static void NewGamba(long userID, string userName, string message)
     {
-      Chatter chatter = Chatter.GetChatter(userID, userName);
+      Chatter chatter = Chatter.GetChatterByID(userID, userName);
 
       string msg = message.Trim().ToLower();
       int pointsToRoll;
@@ -77,21 +77,33 @@ namespace AbevBot
 
     private static void GetLadder()
     {
-      var ladder = Chatter.GetGambaLadder();
+      SortedList<int, string> ladder = new(GambaLadderComparer);
+
+      var chatter = Chatter.GetChatters().GetEnumerator();
+      Chatter c;
+      while (chatter.MoveNext())
+      {
+        c = chatter.Current.Value;
+        if (c.Gamba.Wins != 0 || c.Gamba.Looses != 0)
+        {
+          ladder.Add(c.Gamba.Points, c.Name);
+        }
+      }
+
       if (ladder.Count == 0) return;
 
-      StringBuilder sb = new StringBuilder();
+      StringBuilder sb = new();
       sb.Append("GAMBA ladder -> ");
 
-      var chatter = ladder.GetEnumerator();
+      var ladderEntry = ladder.GetEnumerator();
       int index = 0;
       bool first = true;
-      while (chatter.MoveNext())
+      while (ladderEntry.MoveNext())
       {
         if (index > MAXLADDERENTRIES) break;
         if (!first) sb.Append(" | ");
 
-        sb.Append(chatter.Current.Value).Append(": ").Append(chatter.Current.Key);
+        sb.Append(ladderEntry.Current.Value).Append(": ").Append(ladderEntry.Current.Key);
 
         first = false;
         index++;

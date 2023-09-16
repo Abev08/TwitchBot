@@ -204,7 +204,15 @@ namespace AbevBot
                   }
                   else if (message[1][1..].StartsWith("!gamba")) // Check if the message starts with !gamba key
                   {
-                    GambaMinigame.NewGamba(userID, userName, message[1][7..]); // 7.. - without ":!gamba"
+                    MinigameGamba.NewGamba(userID, userName, message[1][7..]); // 7.. - without ":!gamba"
+                  }
+                  else if (message[1][1..].StartsWith("!point")) // Check if the message starts with !point key
+                  {
+                    if (userBadge.Equals("STR")) MinigameBackseat.AddBackseatPoint(message[1][7..], 1); // 7.. - without ":!point"
+                  }
+                  else if (message[1][1..].StartsWith("!unpoint")) // Check if the message starts with !unpoint key
+                  {
+                    if (userBadge.Equals("STR")) MinigameBackseat.AddBackseatPoint(message[1][9..], -1); // 9.. - without ":!unpoint"
                   }
                   else if (ResponseMessages.Count > 0) // Check if message starts with key to get automatic response
                   {
