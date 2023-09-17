@@ -185,7 +185,7 @@ namespace AbevBot
 
           AddNotification(new Notification()
           {
-            VideoPath = videos[Random.Shared.Next(0, videos.Count + 1)],
+            VideoPath = videos[Random.Shared.Next(0, videos.Count)],
             VideoVolume = 0.8f
           });
         }
