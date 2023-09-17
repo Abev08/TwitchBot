@@ -332,7 +332,7 @@ namespace AbevBot
       }
 
       // Display text
-      if (!TextDisplayed && !Notifications.NotificationsPaused && !Notifications.SkipNotification && TextToDisplay.Length > 0)
+      if (!TextDisplayed && !Notifications.NotificationsPaused && !Notifications.SkipNotification && TextToDisplay?.Length > 0)
       {
         TextDisplayed = true;
         MainWindow.SetTextDisplayed(TextToDisplay);
