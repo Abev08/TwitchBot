@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
@@ -222,6 +223,22 @@ namespace AbevBot
                   else if (message[1][1..].StartsWith("!unpoint")) // Check if the message starts with !unpoint key
                   {
                     if (userBadge.Equals("STR")) MinigameBackseat.AddBackseatPoint(message[1][9..], -1); // 9.. - without ":!unpoint"
+                  }
+                  else if (message[1][1..].StartsWith("!vanish")) // Check if the message starts with !vanish key
+                  {
+                    if (message[1].Length == 8)
+                    {
+                      // Vanish the command user
+                      if (!userBadge.Equals("STR")) VanishChatter(userID, userName);
+                    }
+                    else
+                    {
+                      // Vanish other user, only available for streamer and moderators
+                      if (userBadge.Equals("STR") || userBadge.Equals("MOD"))
+                      {
+                        VanishChatter(-1, message[1][8..]); // 8.. - without ":!vanish"
+                      }
+                    }
                   }
                   else if (ResponseMessages.Count > 0) // Check if message starts with key to get automatic response
                   {
@@ -563,6 +580,33 @@ namespace AbevBot
       }
 
       return chatters;
+    }
+
+    public static void VanishChatter(long id, string userName = null)
+    {
+      if (id < 0 && (userName is null || userName.Length == 0)) return;
+
+      Chatter c;
+      if (id > 0) { c = Chatter.GetChatterByID(id, userName); }
+      else { c = Chatter.GetChatterByName(userName); }
+
+      if (c is null) return;
+
+      MainWindow.ConsoleWarning($"> Vanishing {c.Name} from chat.");
+
+      string uri = $"https://api.twitch.tv/helix/moderation/bans?broadcaster_id={Config.Data[Config.Keys.ChannelID]}&moderator_id={Config.Data[Config.Keys.ChannelID]}";
+      using (HttpRequestMessage request = new(new HttpMethod("POST"), uri))
+      {
+        request.Content = new StringContent("{\"data\": {\"user_id\":\"" + c.ID + "\",\"reason\":\"!vanish command\",\"duration\":15}}");
+        request.Headers.Add("Authorization", $"Bearer {Config.Data[Config.Keys.BotOAuthToken]}");
+        request.Headers.Add("Client-Id", Config.Data[Config.Keys.BotClientID]);
+        request.Content.Headers.ContentType = MediaTypeHeaderValue.Parse("application/json");
+
+        using (HttpClient client = new())
+        {
+          client.Send(request); // We don't really need the result, just assume that it worked
+        }
+      }
     }
   }
 }

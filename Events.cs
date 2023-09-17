@@ -132,7 +132,6 @@ namespace AbevBot
                 }
                 else
                 {
-                  // FIXME: fix subscription message, not present in twitch cli mock program?
                   MainWindow.ConsoleWarning($">> New subscription from {payload?.Event?.UserName}.");
                   Notifications.CreateSubscriptionNotification(payload?.Event?.UserName, payload?.Event?.Tier, "");
                 }
@@ -143,7 +142,6 @@ namespace AbevBot
                 // Received gifted subscription event
                 Payload payload = Payload.Deserialize(messageDeserialized?.Payload);
                 MainWindow.ConsoleWarning($">> {payload?.Event?.UserName} gifted {payload?.Event?.TotalGifted} subscription(s).");
-                // FIXME: fix subscription message, not present in twitch cli mock program?
                 Notifications.CreateGiftSubscriptionNotification(payload?.Event?.UserName, payload?.Event?.Tier, (int)payload?.Event?.TotalGifted, "");
                 // MainWindow.ConsoleWriteLine(message);
               }

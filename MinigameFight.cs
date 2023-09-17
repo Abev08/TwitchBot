@@ -23,7 +23,7 @@ namespace AbevBot
       Chatter fighter2 = Chatter.GetChatterByName(message);
 
       if (fighter1 is null || fighter2 is null) return;
-      if (fighter1.Name.Equals(fighter2.Name)) return; // FIXME: ID comparasion would be better, for now lets leave it like this
+      if (fighter1.ID == fighter2.ID) return;
       if (InitFighters(fighter1, fighter2))
       {
         return; // One of the fighters can't fight

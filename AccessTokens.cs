@@ -98,7 +98,8 @@ namespace AbevBot
             "+channel:read:redemptions", // View Channel Points custom rewards and their redemptions on a channel
             "+channel:read:subscriptions", // View a list of all subscribers to a channel and check if a user is subscribed to a channel
             "+moderator:read:followers", // Read the followers of a broadcaster
-            "+moderator:read:chatters" // Read chatters
+            "+moderator:read:chatters", // Read chatters
+            "+moderator:manage:banned_users" // Ban chatters
           ).Replace(":", "%3A") // Change to url encoded
         );
 

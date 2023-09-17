@@ -13,6 +13,7 @@ namespace AbevBot
     private static bool UpdateRequired;
     private static Dictionary<long, Chatter> Chatters;
 
+    public long ID { get; set; }
     public string Name { get; set; }
     public int BackseatPoints { get; set; }
     public int RudePoints { get; set; }
@@ -20,8 +21,9 @@ namespace AbevBot
     public FightStats Fight { get; set; }
 
     /// <summary> Sets starting values for new chatter. </summary>
-    private void InitChatter()
+    private void InitChatter(long id)
     {
+      ID = id;
       Gamba = new()
       {
         Points = STARTINGGAMBAPOINTS
@@ -85,10 +87,10 @@ namespace AbevBot
       if (!Chatters.TryGetValue(userID, out Chatter c))
       {
         c = new();
-        c.InitChatter();
+        c.InitChatter(userID);
         Chatters.Add(userID, c);
       }
-      if (userName?.Length > 0) c.Name = userName; // Update chatter name if provided
+      if (userName?.Length > 0) c.Name = userName.Trim(); // Update chatter name if provided
 
       return c;
     }
@@ -138,6 +140,11 @@ namespace AbevBot
       if (chattersFile.Exists)
       {
         string data = File.ReadAllText(chattersFile.FullName);
+        if (data is null || data.Length == 0)
+        {
+          Chatters = new();
+          return;
+        }
         Chatters = JsonSerializer.Deserialize<Dictionary<long, Chatter>>(data);
       }
       else { Chatters = new(); }
