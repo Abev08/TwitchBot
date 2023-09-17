@@ -24,9 +24,23 @@ namespace AbevBot
 
       if (fighter1 is null || fighter2 is null) return;
       if (fighter1.ID == fighter2.ID) return;
-      if (InitFighters(fighter1, fighter2))
+      if (InitFighter(fighter1))
       {
-        return; // One of the fighters can't fight
+        Chat.AddMessageToQueue(string.Concat(
+          fighter1.Name, " is exhausted, needs to rest for another ",
+          Math.Ceiling((FIGHTINGTIMEOUT - (DateTime.Now - fighter1.Fight.LastFight)).TotalMinutes),
+          " minutes"
+        ));
+        return; // The fighter can't fight
+      }
+      if (InitFighter(fighter2))
+      {
+        Chat.AddMessageToQueue(string.Concat(
+          fighter2.Name, " is exhausted, needs to rest for another ",
+          Math.Ceiling((FIGHTINGTIMEOUT - (DateTime.Now - fighter2.Fight.LastFight)).TotalMinutes),
+          " minutes"
+        ));
+        return; // The fighter can't fight
       }
 
       // Fight
@@ -96,29 +110,18 @@ namespace AbevBot
       Chat.AddMessageToQueue(msg);
     }
 
-    private static bool InitFighters(Chatter fighter1, Chatter fighter2)
+    private static bool InitFighter(Chatter fighter)
     {
-      if (fighter1.Fight is null)
+      if (fighter.Fight is null)
       {
-        fighter1.Fight = new();
-        fighter1.Fight.Init();
+        fighter.Fight = new();
+        fighter.Fight.Init();
       }
       else
       {
-        if (DateTime.Now - fighter1.Fight.LastFight < FIGHTINGTIMEOUT) return true;
-        fighter1.Fight.CheckStats();
+        if (DateTime.Now - fighter.Fight.LastFight < FIGHTINGTIMEOUT) return true;
+        fighter.Fight.CheckStats();
       }
-      if (fighter2.Fight is null)
-      {
-        fighter2.Fight = new();
-        fighter2.Fight.Init();
-      }
-      else
-      {
-        if (DateTime.Now - fighter2.Fight.LastFight < FIGHTINGTIMEOUT) return true;
-        fighter2.Fight.CheckStats();
-      }
-
       return false;
     }
 
@@ -139,7 +142,7 @@ namespace AbevBot
 
     private static void GetLadder()
     {
-      SortedList<int, string> ladder = new(MinigameGamba.GambaLadderComparer);
+      List<(int level, string name)> ladder = new();
 
       var chatter = Chatter.GetChatters().GetEnumerator();
       Chatter c;
@@ -149,11 +152,14 @@ namespace AbevBot
         if (c.Fight is null) continue;
         if (c.Fight.Wins != 0 || c.Fight.Looses != 0 || c.Fight.Draws != 0)
         {
-          ladder.Add(c.Fight.Level, c.Name);
+          ladder.Add((c.Fight.Level, c.Name));
         }
       }
 
       if (ladder.Count == 0) return;
+
+      // Sort the ladder
+      ladder.Sort((a, b) => { return b.level - a.level; });
 
       StringBuilder sb = new();
       sb.Append("peepoBox ladder -> ");
@@ -166,7 +172,7 @@ namespace AbevBot
         if (index > MAXLADDERENTRIES) break;
         if (!first) sb.Append(" | ");
 
-        sb.Append(ladderEntry.Current.Value).Append(": ").Append(ladderEntry.Current.Key);
+        sb.Append(ladderEntry.Current.name).Append(": ").Append(ladderEntry.Current.level);
 
         first = false;
         index++;
