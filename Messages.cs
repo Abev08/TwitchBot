@@ -424,6 +424,37 @@ namespace AbevBot
     public string? Cursor { get; set; }
   }
 
+  public class BanMessageRequest
+  {
+    [JsonPropertyName(name: "data")]
+    public BanMessageRequestData? Data { get; set; }
+
+    public BanMessageRequest(long userID, int duration, string reason)
+    {
+      Data = new()
+      {
+        UserID = userID.ToString(),
+        Duration = duration,
+        Reason = reason
+      };
+    }
+
+    public string ToJsonString()
+    {
+      return JsonSerializer.Serialize(this);
+    }
+  }
+
+  public class BanMessageRequestData
+  {
+    [JsonPropertyName("user_id")]
+    public string? UserID { get; set; }
+    [JsonPropertyName("duration")]
+    public int? Duration { get; set; }
+    [JsonPropertyName("reason")]
+    public string? Reason { get; set; }
+  }
+
   public class StreamElementsResponse
   {
     [JsonPropertyName("statusCode")]

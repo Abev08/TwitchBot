@@ -229,14 +229,14 @@ namespace AbevBot
                     if (message[1].Length == 8)
                     {
                       // Vanish the command user
-                      if (!userBadge.Equals("STR")) VanishChatter(userID, userName);
+                      if (!userBadge.Equals("STR")) BanChatter("!vanish command", userID, userName);
                     }
                     else
                     {
                       // Vanish other user, only available for streamer and moderators
                       if (userBadge.Equals("STR") || userBadge.Equals("MOD"))
                       {
-                        VanishChatter(-1, message[1][8..]); // 8.. - without ":!vanish"
+                        BanChatter("!vanish command", -1, message[1][8..]); // 8.. - without ":!vanish"
                       }
                     }
                   }
@@ -582,7 +582,7 @@ namespace AbevBot
       return chatters;
     }
 
-    public static void VanishChatter(long id, string userName = null)
+    public static void BanChatter(string message, long id, string userName = null, int durSeconds = 15)
     {
       if (id < 0 && (userName is null || userName.Length == 0)) return;
 
@@ -592,12 +592,12 @@ namespace AbevBot
 
       if (c is null) return;
 
-      MainWindow.ConsoleWarning($"> Vanishing {c.Name} from chat.");
+      MainWindow.ConsoleWarning($"> Banning {c.Name} from chat for {durSeconds} seconds. {message}");
 
       string uri = $"https://api.twitch.tv/helix/moderation/bans?broadcaster_id={Config.Data[Config.Keys.ChannelID]}&moderator_id={Config.Data[Config.Keys.ChannelID]}";
       using (HttpRequestMessage request = new(new HttpMethod("POST"), uri))
       {
-        request.Content = new StringContent("{\"data\": {\"user_id\":\"" + c.ID + "\",\"reason\":\"!vanish command\",\"duration\":15}}");
+        request.Content = new StringContent(new BanMessageRequest(c.ID, durSeconds, message).ToJsonString());
         request.Headers.Add("Authorization", $"Bearer {Config.Data[Config.Keys.BotOAuthToken]}");
         request.Headers.Add("Client-Id", Config.Data[Config.Keys.BotClientID]);
         request.Content.Headers.ContentType = MediaTypeHeaderValue.Parse("application/json");
