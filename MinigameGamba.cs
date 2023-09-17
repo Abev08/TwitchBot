@@ -44,9 +44,19 @@ namespace AbevBot
       if (Random.Shared.Next(0, 2) == 1)
       {
         // won
+        // Check for a jackpot 1% chance
+        bool jackpot = false;
+        if (Random.Shared.Next(0, 100) == 0)
+        {
+          jackpot = true;
+          pointsToRoll *= 100;
+        }
+
         Chat.AddMessageToQueue(string.Concat(
           "@", chatter.Name, " won ",
-          pointsToRoll, " points peepoHappy and have ",
+          pointsToRoll, " points ",
+          jackpot ? "hitting a jackpot" : "",
+          " peepoHappy and have ",
           chatter.Gamba.Points + pointsToRoll, " points peepoHappy"
         ));
 
