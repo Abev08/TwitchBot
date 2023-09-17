@@ -30,10 +30,10 @@ Uses Windows Presentation Foundation (WPF, an UI framework) to open bot configur
   - Uses StreamElements api for TTS generation.
 - Implements chat interactions / commands:
   - Text To Speech (`!tts`),
-  - Gambling (`!gamba`), <center><img src="ReadmeImages/MinigameGamba.png" width=200 alt="Gamba minigame"></center>
-  - Fighting (`!fight`), <center><img src="ReadmeImages/MinigameFight.png" width=200 alt="Gamba minigame"></center>
-  - Backseat points (`!point`) - the streamer can reward the chatter for helping, <center><img src="ReadmeImages/MinigamePoint.png" width=200 alt="Gamba minigame"></center>
-  - Rude points (`!rude`) - chatters can point a chatter for being rude, <center><img src="ReadmeImages/MinigameRude.png" width=200 alt="Gamba minigame"></center>
+  - Gambling (`!gamba`), <p align="center"><img src="ReadmeImages/MinigameGamba.png" width=200 alt="Gamba minigame"></p>
+  - Fighting (`!fight`), <p align="center"><img src="ReadmeImages/MinigameFight.png" width=200 alt="Gamba minigame"></p>
+  - Backseat points (`!point`) - the streamer can reward the chatter for helping, <p align="center"><img src="ReadmeImages/MinigamePoint.png" width=200 alt="Gamba minigame"></p>
+  - Rude points (`!rude`) - chatters can point a chatter for being rude, <p align="center"><img src="ReadmeImages/MinigameRude.png" width=200 alt="Gamba minigame"></p>
   - Vanish (`!vanish`) - self timeout for the chatter, also deletes chatter messages.
 - Bot configuration is carried out in:
   - Config.ini (channel name, passwords, etc.),
@@ -45,7 +45,7 @@ Uses Windows Presentation Foundation (WPF, an UI framework) to open bot configur
  - Bot's name (`BotNick`) - Name of the registered application on https://dev.twitch.tv/console/apps.
  - Bot's client ID (`BotClientID`) - Customer ID of the registered application on https://dev.twitch.tv/console/apps.
  - Bot's password (`BotPass`) - Customer password of the registered application on https://dev.twitch.tv/console/apps.
-</br><center><img src="ReadmeImages/BotLogin.png" height="400" alt="Bot's Nick, ClientID and Password"></center>  
+<p align="center"><img src="ReadmeImages/BotLogin.png" height="400" alt="Bot's Nick, ClientID and Password"></p>  
 <br><br>
 
 [Deprecated source code explanation (maybe it will be updated someday)](SourceCodeExplanation.md)
