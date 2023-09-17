@@ -161,6 +161,15 @@ namespace AbevBot
       });
     }
 
+    public static void CreateRedemptionNotificaiton(string userName, string id, string message)
+    {
+      // TODO: check id and do something
+      if (id.Equals(""))
+      {
+
+      }
+    }
+
     public static void CreateTTSNotification(string text)
     {
       if (!ChatTTSEnabled) return;

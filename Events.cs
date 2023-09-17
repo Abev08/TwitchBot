@@ -61,9 +61,10 @@ namespace AbevBot
           catch (AggregateException ex) { MainWindow.ConsoleWarning($">> Events bot error: {ex.Message}"); }
 
           // Check if it worked
-          receiveResult = WebSocketClient.ReceiveAsync(receiveBuffer, CancellationToken.None).Result;
-          if (receiveResult.Count <= 0) { MainWindow.ConsoleWarning($">> Events bot couldn't connect to {WEBSOCKETURL}."); }
-          else
+          if (WebSocketClient.State == WebSocketState.Open) receiveResult = WebSocketClient.ReceiveAsync(receiveBuffer, CancellationToken.None).Result;
+          else receiveResult = null;
+
+          if (receiveResult?.Count > 0)
           {
             MainWindow.ConsoleWarning(">> Events bot connected.");
             message = Encoding.UTF8.GetString(receiveBuffer, 0, receiveResult.Count);
@@ -88,6 +89,7 @@ namespace AbevBot
               return;
             }
           }
+          else { MainWindow.ConsoleWarning($">> Events bot couldn't connect to {WEBSOCKETURL}."); }
 
           zeroBytesReceivedCounter = 0;
         }
@@ -161,12 +163,13 @@ namespace AbevBot
                 Notifications.CreateCheerNotification(payload?.Event?.UserName, (int)payload?.Event?.Bits, payload?.Event?.Message);
                 // MainWindow.ConsoleWriteLine(message);
               }
-              else if (messageDeserialized?.Metadata?.SubscriptionType?.Equals("channel.channel_points_custom_reward_redemption") == true)
+              else if (messageDeserialized?.Metadata?.SubscriptionType?.Equals("channel.channel_points_custom_reward_redemption.add") == true)
               {
                 // Received channel points redemption event
                 Payload payload = Payload.Deserialize(messageDeserialized?.Payload);
-                MainWindow.ConsoleWarning($">> {payload?.Event?.UserName} redeemed something with channel points.");
-                MainWindow.ConsoleWriteLine(message);
+                MainWindow.ConsoleWarning($">> {payload?.Event?.UserName} redeemed ID: {payload?.Subscription?.ID} with channel points.");
+                Notifications.CreateRedemptionNotificaiton(payload?.Event?.UserName, payload?.Subscription?.ID, null);
+                // MainWindow.ConsoleWriteLine(message);
               }
               else if (messageDeserialized?.Metadata?.SubscriptionType?.Equals("channel.ban") == true)
               {
@@ -215,7 +218,7 @@ namespace AbevBot
         if (WebSocketClient.State != WebSocketState.Open)
         {
           MainWindow.ConsoleWarning($">> Events bot connection lost, waiting 2 sec to reconnect. {WebSocketClient.CloseStatus} {WebSocketClient.CloseStatusDescription}");
-          WebSocketClient.CloseAsync(WebSocketCloseStatus.NormalClosure, null, CancellationToken.None);
+          if (WebSocketClient.State != WebSocketState.Closed && WebSocketClient.State != WebSocketState.Aborted) WebSocketClient.CloseAsync(WebSocketCloseStatus.NormalClosure, null, CancellationToken.None);
           Thread.Sleep(2000);
           WebSocketClient = null;
         }
