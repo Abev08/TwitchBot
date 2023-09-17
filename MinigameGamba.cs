@@ -24,6 +24,23 @@ namespace AbevBot
       else if (msg.Equals("all")) { pointsToRoll = chatter.Gamba.Points; }
       else if (msg.Equals("half")) { pointsToRoll = chatter.Gamba.Points / 2; }
       else if (msg.Equals("quarter")) { pointsToRoll = chatter.Gamba.Points / 4; }
+      else if (msg.Equals("life"))
+      {
+        // Gambling a life - if lost the chatter will get banned, if won nothing?
+        Chat.AddMessageToQueue(string.Concat("@", chatter.Name, " GAMBA is putting a life at risk peepoShake"));
+        if (Random.Shared.Next(0, 2) == 1)
+        {
+          // won
+          Chat.AddMessageToQueue(string.Concat("@", chatter.Name, " this time fate was on your side monkaS"));
+        }
+        else
+        {
+          // lost
+          Chat.AddMessageToQueue(string.Concat("@", chatter.Name, " has left the chat Deadge"));
+          Chat.BanChatter("Lost in !gamba life", chatter.ID, durSeconds: 5 * 60); // 5 min ban
+        }
+        return;
+      }
       else
       {
         // try to parse points

@@ -582,6 +582,7 @@ namespace AbevBot
       return chatters;
     }
 
+    /// <summary> Bans a chatter. Duration == 0 seconds -> perma ban. </summary>
     public static void BanChatter(string message, long id, string userName = null, int durSeconds = 15)
     {
       if (id < 0 && (userName is null || userName.Length == 0)) return;
