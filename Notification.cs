@@ -168,6 +168,28 @@ namespace AbevBot
       {
 
       }
+      else if (id.Equals(""))
+      {
+        // Random video
+        DirectoryInfo dir = new("Resources/videos");
+        if (dir.Exists)
+        {
+          List<string> videos = new();
+          foreach (FileInfo file in dir.GetFiles())
+          {
+            if (file.Exists && file.Extension == ".mp4")
+            {
+              videos.Add(file.FullName);
+            }
+          }
+
+          AddNotification(new Notification()
+          {
+            VideoPath = videos[Random.Shared.Next(0, videos.Count + 1)],
+            VideoVolume = 0.8f
+          });
+        }
+      }
     }
 
     public static void CreateTTSNotification(string text)
