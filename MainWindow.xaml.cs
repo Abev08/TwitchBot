@@ -179,5 +179,10 @@ namespace AbevBot
     {
       MinigameGamba.Enabled = ((CheckBox)sender).IsChecked == true;
     }
+
+    private void ChkFight_CheckChanged(object sender, RoutedEventArgs e)
+    {
+      MinigameFight.Enabled = ((CheckBox)sender).IsChecked == true;
+    }
   }
 }

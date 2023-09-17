@@ -30,8 +30,6 @@ namespace AbevBot
 
     public void AddGambaPoints(int points)
     {
-      UpdateRequired = true;
-
       if (points > 0) Gamba.Wins++;
       else if (points < 0) Gamba.Looses++;
       else MainWindow.ConsoleWarning($"> Gamba: {Name} gambler won {points} points. Something is not right Hmm.");
@@ -42,20 +40,35 @@ namespace AbevBot
         Gamba.Points = STARTINGGAMBAPOINTS;
         Gamba.Bankruptcies++;
       }
+
+      UpdateRequired = true;
     }
 
     public void AddBackseatPoint(int point)
     {
-      UpdateRequired = true;
-
       BackseatPoints += point;
+
+      UpdateRequired = true;
     }
 
     public void AddRudePoint(int point)
     {
-      UpdateRequired = true;
-
       RudePoints += point;
+
+      UpdateRequired = true;
+    }
+
+    public void AddFightExp(int exp)
+    {
+      Fight.CurrentExp += exp;
+      if (Fight.CurrentExp >= Fight.RequiredExp)
+      {
+        Fight.Level++;
+        Fight.CurrentExp -= Fight.RequiredExp;
+        Fight.CheckStats(true);
+      }
+
+      UpdateRequired = true;
     }
 
     public static Dictionary<long, Chatter> GetChatters()

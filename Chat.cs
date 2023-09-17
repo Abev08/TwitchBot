@@ -539,8 +539,7 @@ namespace AbevBot
 
         using (HttpClient client = new())
         {
-          string s = client.Send(request).Content.ReadAsStringAsync().Result;
-          GetChattersResponse response = GetChattersResponse.Deserialize(s);
+          GetChattersResponse response = GetChattersResponse.Deserialize(client.Send(request).Content.ReadAsStringAsync().Result);
           if (response?.Data?.Length > 0)
           {
             long id;
