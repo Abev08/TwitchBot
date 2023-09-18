@@ -11,11 +11,13 @@ namespace AbevBot
 {
   public static class Chat
   {
+    private const int MESSAGESENTMAXLEN = 460; // 500 characters Twitch limit, -40 characters as a buffer
+
     /// <summary> Chat bot started. </summary>
     public static bool Started { get; private set; }
     private static Socket ChatSocket = null;
     private static readonly TimeSpan CooldownBetweenTheSameMessage = new(0, 0, 10);
-    private static readonly Dictionary<string, (string, DateTime)> ResponseMessages = new();
+    public static readonly Dictionary<string, (string, DateTime)> ResponseMessages = new();
     private static Thread ChatReceiveThread;
     private static Thread ChatSendThread;
     public static List<string> PeriodicMessages { get; set; } = new();
@@ -250,10 +252,38 @@ namespace AbevBot
                       // Check if the same message was send not long ago
                       if (DateTime.Now - dictionaryResponse.Item2 >= CooldownBetweenTheSameMessage)
                       {
-                        AddMessageToQueue($"@{userName} {dictionaryResponse.Item1}");
+                        if (dictionaryResponse.Item1.Length <= MESSAGESENTMAXLEN) { AddMessageToQueue($"@{userName} {dictionaryResponse.Item1}"); }
+                        else
+                        {
+                          // Split the message into smaller messages
+                          List<string> msg = new() { dictionaryResponse.Item1 };
+                          int index = 0;
+                          while (msg[0].Length > MESSAGESENTMAXLEN)
+                          {
+                            // Find a good breaking point of the message - a space
+                            index = msg[0].LastIndexOf(" ", int.Min(MESSAGESENTMAXLEN, msg[0].Length));
+                            if (index <= 0)
+                            {
+                              MainWindow.ConsoleWarning($">> Something went wrong when splitting response message.");
+                              msg.Clear(); // Clear the messages - don't send anything
+                              break;
+                            }
+                            msg.Add(msg[0][..index].Trim());
+                            msg[0] = msg[0].Remove(0, index);
+                          }
+                          if (msg.Count > 0)
+                          {
+                            msg.Add(msg[0].Trim());
+                            msg[0] = string.Empty;
+                            foreach (string s in msg)
+                            {
+                              if (s.Length > 0) AddMessageToQueue($"@{userName} {s}");
+                            }
+                          }
+                        }
                         ResponseMessages[temp] = (ResponseMessages[temp].Item1, DateTime.Now);
                       }
-                      else MainWindow.ConsoleWarning($">> Not sending response for \"{temp}\" key. Cooldown active.");
+                      else { MainWindow.ConsoleWarning($">> Not sending response for \"{temp}\" key. Cooldown active."); }
                     }
                   }
                 }

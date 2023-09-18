@@ -190,6 +190,23 @@ namespace AbevBot
                 MainWindow.ConsoleWriteLine(message);
               }
             }
+            else if (messageDeserialized?.Metadata?.MessageType?.Equals("notification") == true)
+            {
+              // Reconnect message
+              MainWindow.ConsoleWarning(">> Event bot got session reconnect message. Should close the connection and use provided url as WEBSOCKETURL but not doing that because it's not mandatory.");
+              // TODO: Think about it :)
+              // The message is rare and is sent only when edge server that the client is connected to needs to be swapped.
+              // Well if we would use it the events subscriptions are left untouched on the new url.
+              // So a check would have to be implemented to not subscribe again on a reconnection from this message.
+              // Also the previous connection should be left connected until new connection is established (received welcome message).
+              // That would require a temporary websocket (would need to be implemented).
+              // If it's not used some events may get missed during the reconnection? It's not good.
+              // If it's used and two connections would be present at a certain time an event could be received two times?
+              // An event ID check would have to be implemented not to parse the same events multiple times.
+              // Well an event ID check should be implemented even without doing this because twtich may send the same event multiple times if he this that I might missed it
+              // Also there is time limit for doint it - 30 sec. After that time Twitch force closes the first connection.
+              // MainWindow.ConsoleWriteLine(message);
+            }
             else
             {
               // Some other message, print it

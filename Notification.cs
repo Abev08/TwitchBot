@@ -32,7 +32,7 @@ namespace AbevBot
       MainWindow.ConsoleWarning(">> Starting notifications thread.");
 
       GetStreamElementsVoices();
-      // CreateVoicesPaste(); // FIXME: first !voices response should use it if VoicesLink variable is empty
+      CreateVoicesResponse();
 
       NotificationsThread = new Thread(Update)
       {
@@ -302,6 +302,20 @@ namespace AbevBot
         {
           VoicesLink = response.Url.Replace("api/", ""); // Remove "api/" part
         }
+      }
+    }
+
+    private static void CreateVoicesResponse()
+    {
+      // This may hit words limit when new voice apis will get implemented
+      if (!Chat.ResponseMessages.ContainsKey("!voices"))
+      {
+        Chat.ResponseMessages.Add("!voices", (string.Join(", ", VoicesStreamElements), new DateTime()));
+        MainWindow.ConsoleWarning($">> Added respoonse to \"!voices\" key.");
+      }
+      else
+      {
+        MainWindow.ConsoleWarning($">> Couldn't add respoonse to \"!voices\" key - the key is already present in response messages.");
       }
     }
   }
