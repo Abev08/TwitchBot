@@ -77,14 +77,14 @@ namespace AbevBot
 
     public static void AddNotification(Notification notification)
     {
-      new Task(() =>
+      Task.Run(() =>
       {
         lock (NotificationQueue)
         {
           NotificationQueue.Add(notification);
           MainWindow.SetNotificationQueueCount(NotificationQueue.Count);
         }
-      }).Start();
+      });
     }
 
     public static void CreateFollowNotification(string userName)

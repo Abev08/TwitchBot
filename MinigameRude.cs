@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace AbevBot
 {
@@ -8,6 +9,11 @@ namespace AbevBot
     private const int MAXLADDERENTRIES = 10;
 
     public static void AddRudePoint(string userName, int point = 1)
+    {
+      Task.Run(() => StartAddRudePoint(userName, point));
+    }
+
+    private static void StartAddRudePoint(string userName, int point)
     {
       if (string.IsNullOrWhiteSpace(userName)) { GetRudeLadder(); }
       else
@@ -25,7 +31,7 @@ namespace AbevBot
       }
     }
 
-    public static void GetRudeLadder()
+    private static void GetRudeLadder()
     {
       SortedList<int, string> ladder = new(MinigameGamba.GambaLadderComparer);
 

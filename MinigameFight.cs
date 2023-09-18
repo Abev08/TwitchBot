@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Text.Json.Serialization;
+using System.Threading.Tasks;
 
 namespace AbevBot
 {
@@ -9,12 +10,18 @@ namespace AbevBot
   {
     private const int MAXLADDERENTRIES = 10;
     private static readonly TimeSpan FIGHTINGTIMEOUT = new(0, 10, 0);
+
     public static bool Enabled { get; set; }
 
     public static void NewFight(long userID, string userName, string message)
     {
       if (!Enabled) return;
 
+      Task.Run(() => StartNewFight(userID, userName, message));
+    }
+
+    private static void StartNewFight(long userID, string userName, string message)
+    {
       Chatter fighter1 = Chatter.GetChatterByID(userID, userName);
 
       if (string.IsNullOrEmpty(message)) { GetStats(fighter1); return; }
@@ -107,6 +114,7 @@ namespace AbevBot
         );
       }
 
+      Task.Delay(1000).Wait(); // Add some time to keep them waiting
       Chat.AddMessageToQueue(msg);
     }
 

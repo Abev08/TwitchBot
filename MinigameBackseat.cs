@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace AbevBot
 {
@@ -8,6 +9,11 @@ namespace AbevBot
     private const int MAXLADDERENTRIES = 10;
 
     public static void AddBackseatPoint(string userName, int point)
+    {
+      Task.Run(() => StartAddBackseatPoint(userName, point));
+    }
+
+    private static void StartAddBackseatPoint(string userName, int point)
     {
       if (string.IsNullOrWhiteSpace(userName)) { GetBackseatLadder(); }
       else
@@ -26,7 +32,7 @@ namespace AbevBot
       }
     }
 
-    public static void GetBackseatLadder()
+    private static void GetBackseatLadder()
     {
       SortedList<int, string> ladder = new(MinigameGamba.GambaLadderComparer);
 

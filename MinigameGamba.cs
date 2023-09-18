@@ -1,20 +1,26 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace AbevBot
 {
   public static class MinigameGamba
   {
     private const int MAXLADDERENTRIES = 10;
+    public static readonly GambaLadderComparer GambaLadderComparer = new();
 
     public static bool Enabled { get; set; }
-    public static readonly GambaLadderComparer GambaLadderComparer = new();
 
     public static void NewGamba(long userID, string userName, string message)
     {
       if (!Enabled) return;
 
+      Task.Run(() => StartNewGamba(userID, userName, message));
+    }
+
+    private static void StartNewGamba(long userID, string userName, string message)
+    {
       Chatter chatter = Chatter.GetChatterByID(userID, userName);
 
       string msg = message.Trim().ToLower();
@@ -28,6 +34,9 @@ namespace AbevBot
       {
         // Gambling a life - if lost the chatter will get banned, if won nothing?
         Chat.AddMessageToQueue(string.Concat("@", chatter.Name, " GAMBA is putting a life at risk peepoShake"));
+
+        Task.Delay(1000).Wait();
+
         if (Random.Shared.Next(0, 2) == 1)
         {
           // won
@@ -57,6 +66,8 @@ namespace AbevBot
           "@", chatter.Name, " GAMBA is putting ",
           pointsToRoll, " points at risk peepoShake"
         ));
+
+      Task.Delay(1000).Wait();
 
       if (Random.Shared.Next(0, 2) == 1)
       {

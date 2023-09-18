@@ -69,6 +69,7 @@ namespace AbevBot
         Fight.CurrentExp -= Fight.RequiredExp;
         Fight.CheckStats(true);
       }
+      else { Fight.CheckStats(); }
 
       UpdateRequired = true;
     }
