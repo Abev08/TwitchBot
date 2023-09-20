@@ -35,7 +35,7 @@ namespace AbevBot
         // Gambling a life - if lost the chatter will get banned, if won nothing?
         Chat.AddMessageToQueue(string.Concat("@", chatter.Name, " GAMBA is putting a life at risk peepoShake"));
 
-        Task.Delay(1000).Wait();
+        Task.Delay(2000).Wait();
 
         if (Random.Shared.Next(0, 2) == 1)
         {
@@ -67,7 +67,7 @@ namespace AbevBot
           pointsToRoll, " points at risk peepoShake"
         ));
 
-      Task.Delay(1000).Wait();
+      Task.Delay(2000).Wait();
 
       if (Random.Shared.Next(0, 2) == 1)
       {

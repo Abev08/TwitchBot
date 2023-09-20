@@ -21,8 +21,6 @@ namespace AbevBot
     static List<Notification> NotificationQueue = new();
     private static Thread NotificationsThread;
     private static HttpClient Client = new();
-    private static readonly string[] VOICEBLACKLIST = new string[] { }; // Add blaclisted voices here
-    private static List<string> VoicesStreamElements = new();
     public static string VoicesLink { get; private set; }
 
     public static void Start()
@@ -31,7 +29,6 @@ namespace AbevBot
       Started = true;
       MainWindow.ConsoleWarning(">> Starting notifications thread.");
 
-      GetStreamElementsVoices();
       CreateVoicesResponse();
 
       NotificationsThread = new Thread(Update)
@@ -196,49 +193,42 @@ namespace AbevBot
     {
       if (!ChatTTSEnabled) return;
 
-      string message = text;
-      // Check for voice, for now only single voice at beginning of the message
-      string voice = null;
-      int firstSpace = message.IndexOf(" ");
-      if (firstSpace > 0)
-      {
-        voice = message[..firstSpace];
-        if (voice.EndsWith(':'))
-        {
-          voice = voice[..^1];
-          bool voiceFound = false;
-          // Find voice index in voices arrays
-          for (int i = 0; i < VoicesStreamElements.Count; i++)
-          {
-            if (VoicesStreamElements[i].ToLower().Equals(voice.ToLower()))
-            {
-              voiceFound = true;
-              voice = VoicesStreamElements[i];
-              break;
-            }
-          }
-
-          if (voiceFound) message = message[firstSpace..]; // Remove voice part from the message
-        }
-        else { voice = null; }
-      }
-
       AddNotification(new Notification()
       {
-        TextToRead = message,
-        TTSVoice = voice,
+        TextToRead = text,
+        TryToGetVoiceFromMessage = true,
         SoundVolume = 0.6f
       });
     }
 
-    public static NAudio.Wave.WaveOut GetTTS(string text, string voice = "Brian", float soundVolume = 1f)
+    public static NAudio.Wave.WaveOut GetTTS(string _text, string _voice = "Brian", float soundVolume = 1f, bool getVoiceFromMessage = false)
     {
-      int voiceIndex;
-      voiceIndex = VoicesStreamElements.IndexOf(voice);
-      if (voiceIndex >= 0) return GetStreamElementsTTS(text, VoicesStreamElements[voiceIndex], soundVolume);
-      // TODO: Implement other voice services here, maybe TikTok?
+      string voiceName;
+      string text = _text;
+      string voice = _voice;
+      if (getVoiceFromMessage)
+      {
+        int voiceEndSymbolIndex = text.IndexOf(':');
+        int lastSpace = 0;
+        if (voiceEndSymbolIndex > 0)
+        {
+          lastSpace = text.LastIndexOf(" ", voiceEndSymbolIndex);
+          if (lastSpace < 0) lastSpace = 0;
+          voice = text.Substring(lastSpace, voiceEndSymbolIndex - lastSpace);
+        }
 
-      return GetStreamElementsTTS(text, soundVolume: soundVolume); // Voice not found, return default StreamElements voice
+        text = text.Substring(lastSpace + voice.Length + 1).Trim();
+      }
+
+      // StreamElements
+      voiceName = StreamElements.GetVoice(voice);
+      if (voiceName?.Length > 0) { return GetStreamElementsTTS(text, voiceName, soundVolume); }
+
+      // TikTok
+      voiceName = TikTok.GetVoice(voice);
+      if (voiceName?.Length > 0) { return GetTikTokTTS(text, voiceName, soundVolume); }
+
+      return GetStreamElementsTTS(_text, soundVolume: soundVolume); // Voice not found, return default StreamElements voice
     }
 
     private static NAudio.Wave.WaveOut GetStreamElementsTTS(string text, string voice = "Brian", float soundVolume = 1f)
@@ -251,8 +241,11 @@ namespace AbevBot
       return Audio.PlayMp3Sound(stream, soundVolume);
     }
 
+    /// <summary> Can be used to get available StreamElements voices. The voices are printed to the console. </summary>
     private static void GetStreamElementsVoices()
     {
+      string[] voices = Array.Empty<string>();
+
       // Ask for speech without specifying the voice, error message will contain all available voices
       using (HttpRequestMessage request = new(new HttpMethod("GET"), "https://api.streamelements.com/kappa/v2/speech?voice="))
       {
@@ -266,28 +259,60 @@ namespace AbevBot
             int endIndex = response.Message.IndexOf(']', startIndex);
             if (endIndex > startIndex)
             {
-              string[] voices = response.Message.Substring(startIndex, endIndex - startIndex).Split(",", System.StringSplitOptions.RemoveEmptyEntries | System.StringSplitOptions.TrimEntries);
-              foreach (string voice in voices)
-              {
-                if (!voice.Contains('-') && !VOICEBLACKLIST.Contains(voice))
-                {
-                  // Don't add voices with '-' symbols inside - they are probably not working
-                  VoicesStreamElements.Add(voice);
-                }
-              }
+              voices = response.Message.Substring(startIndex, endIndex - startIndex).Split(",", System.StringSplitOptions.RemoveEmptyEntries | System.StringSplitOptions.TrimEntries);
             }
           }
         }
       }
 
-      MainWindow.ConsoleWarning(string.Concat(">> StreamElements voices: ", string.Join(", ", VoicesStreamElements)));
+      MainWindow.ConsoleWarning(string.Concat(">> StreamElements voices: ", string.Join(", ", voices)));
+    }
+
+    private static NAudio.Wave.WaveOut GetTikTokTTS(string _text, string voice, float soundVolume = 1f)
+    {
+      if (Config.Data[Config.Keys.TikTokSessionID].Length == 0) return null;
+
+      string text = _text;
+      text = text.Replace("+", "plus");
+      text = text.Replace(" ", "+");
+      text = text.Replace("&", "and");
+
+      string url = $"https://api16-normal-v6.tiktokv.com/media/api/text/speech/invoke/?text_speaker={voice}&req_text={text}&speaker_map_type=0&aid=1233";
+
+      TikTokTTSResponse result;
+      using (HttpRequestMessage request = new(new HttpMethod("POST"), url))
+      {
+        request.Headers.Add("User-Agent", "com.zhiliaoapp.musically/2022600030 (Linux; U; Android 7.1.2; es_ES; SM-G988N; Build/NRD90M;tt-ok/3.12.13.1)");
+        request.Headers.Add("Cookie", $"sessionid={Config.Data[Config.Keys.TikTokSessionID]}");
+        result = TikTokTTSResponse.Deserialize(Client.Send(request).Content.ReadAsStringAsync().Result);
+      }
+      if (result?.StatusCode != 0)
+      {
+        MainWindow.ConsoleWarning($">> TikTok TTS request status: {result?.StatusCode}, error: {result?.StatusMessage}");
+        return null;
+      }
+      else if (result?.Data?.Duration?.Length is null || string.IsNullOrEmpty(result?.Data?.VStr))
+      {
+        MainWindow.ConsoleWarning($">> TikTok TTS request returned sound with length 0.");
+        return null;
+      }
+
+      return Audio.PlayMp3Sound(new MemoryStream(Convert.FromBase64String(result.Data.VStr)), soundVolume);
     }
 
     private static void CreateVoicesPaste()
     {
+      if (Chat.ResponseMessages.ContainsKey("!voices"))
+      {
+        MainWindow.ConsoleWarning($">> Couldn't add respoonse to \"!voices\" key - the key is already present in response messages.");
+        return;
+      }
+
       StringBuilder sb = new();
       sb.AppendLine("StreamElements voices:");
-      sb.AppendJoin(", ", VoicesStreamElements);
+      sb.Append(StreamElements.GetVoices());
+      sb.AppendLine();
+      sb.Append(TikTok.GetVoices());
       sb.AppendLine();
 
       GlotPaste paste = new() { Language = "plaintext", Title = "TTS Voices" };
@@ -303,14 +328,24 @@ namespace AbevBot
           VoicesLink = response.Url.Replace("api/", ""); // Remove "api/" part
         }
       }
+
+      Chat.ResponseMessages.Add("!voices", ($"TTS Voices: {VoicesLink}", new DateTime()));
+      MainWindow.ConsoleWarning($">> Added respoonse to \"!voices\" key.");
     }
 
     private static void CreateVoicesResponse()
     {
-      // This may hit words limit when new voice apis will get implemented
+      // Printing all available voices is too much for IRC chat (it would be few messages with word limit)
+      // For now we can response with links to StreamElements and TikTok classes on GitHub.
+      // Instead of links to GitHub CreateVoicesPaste() method can be used to generate paste link
+
       if (!Chat.ResponseMessages.ContainsKey("!voices"))
       {
-        Chat.ResponseMessages.Add("!voices", (string.Join(", ", VoicesStreamElements), new DateTime()));
+        Chat.ResponseMessages.Add("!voices", (string.Concat(
+          "TTS Voices: ",
+          "StreamElements: ", "https://github.com/Abev08/TwitchBot/blob/main/StreamElements.cs ",
+          "TikTok: ", "https://github.com/Abev08/TwitchBot/blob/main/TikTok.cs"
+        ), new DateTime()));
         MainWindow.ConsoleWarning($">> Added respoonse to \"!voices\" key.");
       }
       else
@@ -329,6 +364,7 @@ namespace AbevBot
     public string TextToDisplay { get; init; }
     public string TextToRead { get; init; }
     public string TTSVoice { get; init; }
+    public bool TryToGetVoiceFromMessage { get; init; }
     public float TTSVolume { get; init; } = 1f;
     public string SoundPath { get; init; }
     public float SoundVolume { get; init; } = 1f;
@@ -421,7 +457,7 @@ namespace AbevBot
       }
       else if (TextToRead?.Length > 0)
       {
-        AudioPlayer = Notifications.GetTTS(TextToRead, TTSVoice, TTSVolume);
+        AudioPlayer = Notifications.GetTTS(TextToRead, TTSVoice, TTSVolume, TryToGetVoiceFromMessage);
         VoicePlayed = true;
       }
     }

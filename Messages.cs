@@ -514,5 +514,45 @@ namespace AbevBot
     }
   }
 
+  public class TikTokTTSResponse
+  {
+    [JsonPropertyName(name: "data")]
+    public TikTokTTSResponseData? Data { get; set; }
+    [JsonPropertyName(name: "extra")]
+    public TikTokTTSResponseExtra? Extra { get; set; }
+    [JsonPropertyName(name: "message")]
+    public string? Message { get; set; }
+    [JsonPropertyName("status_code")]
+    public int? StatusCode { get; set; }
+    [JsonPropertyName("status_msg")]
+    public string? StatusMessage { get; set; }
+
+    public static TikTokTTSResponse Deserialize(string message)
+    {
+      TikTokTTSResponse? ret = JsonSerializer.Deserialize<TikTokTTSResponse>(message);
+      if (ret is null) throw new JsonException("Couldn't parse TikTok TTS response.");
+
+      return ret;
+    }
+  }
+
+  public class TikTokTTSResponseExtra
+  {
+    [JsonPropertyName("log_id")]
+    public string? LogID { get; set; }
+  }
+
+  public class TikTokTTSResponseData
+  {
+    [JsonPropertyName("s_key")]
+    public string? SKey { get; set; }
+    [JsonPropertyName("v_str")]
+    public string? VStr { get; set; }
+    [JsonPropertyName("duration")]
+    public string? Duration { get; set; }
+    [JsonPropertyName("speaker")]
+    public string? Speaker { get; set; }
+  }
+
 #nullable restore
 }

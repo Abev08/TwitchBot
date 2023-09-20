@@ -10,4 +10,9 @@
     <PackageReference Include="NAudio" Version="2.2.1" />
   </ItemGroup>
 
+  <!-- Copy resource files to output directory -->
+  <ItemGroup>
+    <None Include="Resources\**" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

@@ -114,7 +114,7 @@ namespace AbevBot
         );
       }
 
-      Task.Delay(1000).Wait(); // Add some time to keep them waiting
+      Task.Delay(2000).Wait(); // Add some time to keep them waiting
       Chat.AddMessageToQueue(msg);
     }
 

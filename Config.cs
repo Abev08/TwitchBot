@@ -12,6 +12,7 @@ namespace AbevBot
       ChannelName, ChannelID,
       BotNick, BotClientID, BotPass,
       BotOAuthToken, BotOAuthRefreshToken,
+      TikTokSessionID,
       ConsoleVisible, PeriodicMessageTimeInterval,
       msg
     };
@@ -134,6 +135,7 @@ namespace AbevBot
 
         writer.WriteLine();
         writer.WriteLine("; Additional things, can be left empty");
+        writer.WriteLine(string.Concat(Keys.TikTokSessionID.ToString(), " = "));
         writer.WriteLine("ConsoleVisible = false ; Debug console visibility");
         writer.WriteLine("PeriodicMessageTimeInterval = ; default 10 minutes, HH:MM:SS format");
 
