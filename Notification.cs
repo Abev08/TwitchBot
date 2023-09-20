@@ -458,6 +458,7 @@ namespace AbevBot
       else if (TextToRead?.Length > 0)
       {
         AudioPlayer = Notifications.GetTTS(TextToRead, TTSVoice, TTSVolume, TryToGetVoiceFromMessage);
+        MainWindow.ConsoleWarning(">> Returned AudioPlayer is null!");
         VoicePlayed = true;
       }
     }
