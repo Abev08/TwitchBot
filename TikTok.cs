@@ -148,6 +148,7 @@ namespace AbevBot
       {
         if (!first) sb.Append(", ");
         sb.Append(voice.Current.Value);
+        first = false;
       }
 
       return sb.ToString();
