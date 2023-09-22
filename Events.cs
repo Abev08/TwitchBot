@@ -1,6 +1,5 @@
 using System;
 using System.Net.Http;
-using System.Net.Http.Headers;
 using System.Net.WebSockets;
 using System.Text;
 using System.Threading;
@@ -22,7 +21,7 @@ namespace AbevBot
     public static bool Started { get; private set; }
     private static Thread EventsThread;
     private static ClientWebSocket WebSocketClient;
-    private static HttpClient HttpClient = new();
+    private static readonly HttpClient HttpClient = new();
 
     public static void Start()
     {
@@ -244,19 +243,16 @@ namespace AbevBot
     {
       // https://dev.twitch.tv/docs/eventsub/eventsub-subscription-types/
       MainWindow.ConsoleWarning($">> Events bot subscribing to {type} event.");
-      using (HttpRequestMessage request = new(new HttpMethod("POST"), SUBSCRIPTIONRUL))
+      using HttpRequestMessage request = new(HttpMethod.Post, SUBSCRIPTIONRUL);
+      request.Content = new StringContent(new SubscriptionMessage(type, version, Config.Data[Config.Keys.ChannelID], sessionID).ToJsonString(), Encoding.UTF8, "application/json");
+      request.Headers.Add("Client-Id", Config.Data[Config.Keys.BotClientID]);
+      request.Headers.Add("Authorization", $"Bearer {Config.Data[Config.Keys.BotOAuthToken]}");
+      ResponseMessage response = ResponseMessage.Deserialize(HttpClient.Send(request).Content.ReadAsStringAsync().Result);
+      if (response.Error != null) { MainWindow.ConsoleWarning(string.Concat(">> Events bot subscription error: ", response.Message)); }
+      else
       {
-        request.Headers.Add("Client-Id", Config.Data[Config.Keys.BotClientID]);
-        request.Headers.Add("Authorization", $"Bearer {Config.Data[Config.Keys.BotOAuthToken]}");
-        request.Content = new StringContent(new SubscriptionMessage(type, version, Config.Data[Config.Keys.ChannelID], sessionID).ToJsonString());
-        request.Content.Headers.ContentType = MediaTypeHeaderValue.Parse("application/json");
-        ResponseMessage response = ResponseMessage.Deserialize(HttpClient.Send(request).Content.ReadAsStringAsync().Result);
-        if (response.Error != null) { MainWindow.ConsoleWarning(string.Concat(">> Events bot subscription error: ", response.Message)); }
-        else
-        {
-          MainWindow.ConsoleWarning(string.Concat(">> Events bot subscription response: ", response.Data?[0].Type, " ", response.Data?[0].Status, "."));
-          return true;
-        }
+        MainWindow.ConsoleWarning(string.Concat(">> Events bot subscription response: ", response.Data?[0].Type, " ", response.Data?[0].Status, "."));
+        return true;
       }
       return false;
     }

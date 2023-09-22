@@ -16,6 +16,7 @@ namespace AbevBot
     // Time before OAuth token expiries to try to refresh it
     public static TimeSpan OAuthTokenExpirationSomething { get; } = new TimeSpan(0, 10, 0);
     private static Timer RefreshTimer;
+    private static readonly HttpClient Client = new();
 
     public static void GetAccessTokens()
     {
@@ -128,28 +129,22 @@ namespace AbevBot
       {
         // Next step - request user token with received authorization code
         string code = requestUrl.Substring(6, requestUrl.IndexOf('&', 6) - 6);
-        using (HttpRequestMessage request = new(new HttpMethod("POST"), "https://id.twitch.tv/oauth2/token"))
-        {
-          request.Content = new StringContent(string.Concat(
-              "client_id=", Config.Data[Config.Keys.BotClientID],
-              "&client_secret=", Config.Data[Config.Keys.BotPass],
-              "&code=", code,
-              "&grant_type=authorization_code",
-              "&redirect_uri=http://localhost:3000"
-            ));
-          request.Content.Headers.ContentType = MediaTypeHeaderValue.Parse("application/x-www-form-urlencoded");
-
-          using (HttpClient client = new())
-          {
-            AccessTokenResponse response = AccessTokenResponse.Deserialize(client.Send(request).Content.ReadAsStringAsync().Result);
-            if (response is null || response.Token is null || response.RefreshToken is null) throw new Exception("Response was empty or didn't received access token!");
-            MainWindow.ConsoleWarning(response.ToString());
-            // Read information from received data
-            Config.Data[Config.Keys.BotOAuthToken] = response.Token;
-            Config.Data[Config.Keys.BotOAuthRefreshToken] = response.RefreshToken;
-            BotOAuthTokenExpiration = DateTime.Now + new TimeSpan(0, 0, response.ExpiresIn.Value) - OAuthTokenExpirationSomething;
-          }
-        }
+        using HttpRequestMessage request = new(HttpMethod.Post, "https://id.twitch.tv/oauth2/token");
+        request.Content = new StringContent(string.Concat(
+            "client_id=", Config.Data[Config.Keys.BotClientID],
+            "&client_secret=", Config.Data[Config.Keys.BotPass],
+            "&code=", code,
+            "&grant_type=authorization_code",
+            "&redirect_uri=http://localhost:3000"
+          ));
+        request.Content.Headers.ContentType = MediaTypeHeaderValue.Parse("application/x-www-form-urlencoded");
+        AccessTokenResponse response = AccessTokenResponse.Deserialize(Client.Send(request).Content.ReadAsStringAsync().Result);
+        if (response is null || response.Token is null || response.RefreshToken is null) throw new Exception("Response was empty or didn't received access token!");
+        MainWindow.ConsoleWarning(response.ToString());
+        // Read information from received data
+        Config.Data[Config.Keys.BotOAuthToken] = response.Token;
+        Config.Data[Config.Keys.BotOAuthRefreshToken] = response.RefreshToken;
+        BotOAuthTokenExpiration = DateTime.Now + new TimeSpan(0, 0, response.ExpiresIn.Value) - OAuthTokenExpirationSomething;
       }
       else
       {
@@ -160,24 +155,19 @@ namespace AbevBot
 
     private static bool ValidateOAuthToken()
     {
-      using (HttpRequestMessage request = new(new HttpMethod("GET"), "https://id.twitch.tv/oauth2/validate"))
-      {
-        request.Headers.Add("Authorization", $"OAuth {Config.Data[Config.Keys.BotOAuthToken]}");
+      using HttpRequestMessage request = new(HttpMethod.Get, "https://id.twitch.tv/oauth2/validate");
+      request.Headers.Add("Authorization", $"OAuth {Config.Data[Config.Keys.BotOAuthToken]}");
 
-        using (HttpClient client = new())
-        {
-          AccessTokenValidationResponse response = AccessTokenValidationResponse.Deserialize(client.Send(request).Content.ReadAsStringAsync().Result);
-          if (response?.ClientID?.Equals(Config.Data[Config.Keys.BotClientID]) == true && response?.ExpiresIn > 0)
-          {
-            BotOAuthTokenExpiration = DateTime.Now + new TimeSpan(0, 0, response.ExpiresIn.Value) - OAuthTokenExpirationSomething;
-            MainWindow.ConsoleWarning($">> Access token validation succeeded. Token expiries in {response.ExpiresIn.Value / 3600f} hours.");
-            return true;
-          }
-          else
-          {
-            MainWindow.ConsoleWarning(">> Access token validation failed.");
-          }
-        }
+      AccessTokenValidationResponse response = AccessTokenValidationResponse.Deserialize(Client.Send(request).Content.ReadAsStringAsync().Result);
+      if (response?.ClientID?.Equals(Config.Data[Config.Keys.BotClientID]) == true && response?.ExpiresIn > 0)
+      {
+        BotOAuthTokenExpiration = DateTime.Now + new TimeSpan(0, 0, response.ExpiresIn.Value) - OAuthTokenExpirationSomething;
+        MainWindow.ConsoleWarning($">> Access token validation succeeded. Token expiries in {response.ExpiresIn.Value / 3600f} hours.");
+        return true;
+      }
+      else
+      {
+        MainWindow.ConsoleWarning(">> Access token validation failed.");
       }
 
       return false;
@@ -188,28 +178,23 @@ namespace AbevBot
       if (DateTime.Now < BotOAuthTokenExpiration) return;
 
       MainWindow.ConsoleWarning(">> Refreshing access token.");
-      using (HttpRequestMessage request = new(new HttpMethod("POST"), "https://id.twitch.tv/oauth2/token"))
-      {
-        request.Content = new StringContent(string.Concat(
-            "client_id=", Config.Data[Config.Keys.BotClientID],
-            "&client_secret=", Config.Data[Config.Keys.BotPass],
-            "&grant_type=refresh_token",
-            "&refresh_token=", Config.Data[Config.Keys.BotOAuthRefreshToken].Replace(":", "%3A") // Change to url encoded
-        ));
-        request.Content.Headers.ContentType = MediaTypeHeaderValue.Parse("application/x-www-form-urlencoded");
+      using HttpRequestMessage request = new(HttpMethod.Post, "https://id.twitch.tv/oauth2/token");
+      request.Content = new StringContent(string.Concat(
+          "client_id=", Config.Data[Config.Keys.BotClientID],
+          "&client_secret=", Config.Data[Config.Keys.BotPass],
+          "&grant_type=refresh_token",
+          "&refresh_token=", Config.Data[Config.Keys.BotOAuthRefreshToken].Replace(":", "%3A") // Change to url encoded
+      ));
+      request.Content.Headers.ContentType = MediaTypeHeaderValue.Parse("application/x-www-form-urlencoded");
 
-        using (HttpClient client = new())
-        {
-          AccessTokenResponse response = AccessTokenResponse.Deserialize(client.Send(request).Content.ReadAsStringAsync().Result);
-          if (response is null || response.Token is null || response.RefreshToken is null) throw new Exception("Response was empty or didn't received access token!");
-          MainWindow.ConsoleWarning(response.ToString());
-          // Read information from received data
-          Config.Data[Config.Keys.BotOAuthToken] = response.Token;
-          Config.Data[Config.Keys.BotOAuthRefreshToken] = response.RefreshToken;
-          BotOAuthTokenExpiration = DateTime.Now + new TimeSpan(0, 0, response.ExpiresIn.Value) - OAuthTokenExpirationSomething;
-          UpdateTokensFile();
-        }
-      }
+      AccessTokenResponse response = AccessTokenResponse.Deserialize(Client.Send(request).Content.ReadAsStringAsync().Result);
+      if (response is null || response.Token is null || response.RefreshToken is null) throw new Exception("Response was empty or didn't received access token!");
+      MainWindow.ConsoleWarning(response.ToString());
+      // Read information from received data
+      Config.Data[Config.Keys.BotOAuthToken] = response.Token;
+      Config.Data[Config.Keys.BotOAuthRefreshToken] = response.RefreshToken;
+      BotOAuthTokenExpiration = DateTime.Now + new TimeSpan(0, 0, response.ExpiresIn.Value) - OAuthTokenExpirationSomething;
+      UpdateTokensFile();
     }
   }
 }

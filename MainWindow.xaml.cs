@@ -10,10 +10,10 @@ namespace AbevBot
   public partial class MainWindow : Window
   {
     [DllImport("Kernel32")]
-    public static extern void AllocConsole();
+    private static extern void AllocConsole();
 
     [DllImport("Kernel32")]
-    public static extern void FreeConsole();
+    private static extern void FreeConsole();
     public static bool ConsoleFreed { get; private set; }
 
     private static MainWindow WindowRef;
@@ -42,11 +42,9 @@ namespace AbevBot
       // Catch all unhandled exceptions and print them into a file
       AppDomain.CurrentDomain.UnhandledException += (sender, ex) =>
       {
-        using (StreamWriter writer = new("error.txt"))
-        {
-          writer.WriteLine(DateTime.Now);
-          writer.WriteLine(ex.ExceptionObject);
-        }
+        using StreamWriter writer = new("error.txt");
+        writer.WriteLine(DateTime.Now);
+        writer.WriteLine(ex.ExceptionObject);
       };
 
       ConsoleWarning(">> Hi. I'm AbevBot.");
@@ -99,8 +97,8 @@ namespace AbevBot
         VideoEnded = true;
       };
       // Take control over video player
-      VideoPlayerRef.LoadedBehavior = System.Windows.Controls.MediaState.Manual;
-      VideoPlayerRef.UnloadedBehavior = System.Windows.Controls.MediaState.Manual;
+      VideoPlayerRef.LoadedBehavior = MediaState.Manual;
+      VideoPlayerRef.UnloadedBehavior = MediaState.Manual;
 
       // Wait for window to be loaded (visible) to start a demo video
       this.Loaded += (sender, e) =>

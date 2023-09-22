@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Net.Http;
-using System.Net.Http.Headers;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
@@ -24,7 +23,8 @@ namespace AbevBot
     private static int PeriodicMessageIndex = 0;
     private static DateTime LastPeriodicMessage = DateTime.Now;
     public static TimeSpan PeriodicMessageInterval = new(0, 10, 0);
-    private static List<string> MessageQueue = new();
+    private static readonly List<string> MessageQueue = new();
+    private static readonly HttpClient Client = new();
 
     public static void Start()
     {
@@ -142,22 +142,25 @@ namespace AbevBot
                   {
                     currentIndex += 17; // "custom-reward-id=".Length
                     customRewardID = message[0].Substring(currentIndex, message[0].IndexOf(';', currentIndex) - currentIndex);
-                    currentIndex = message[0].IndexOf("display-name=") + 13; // 13 == "display-name=".Length
-                    if (currentIndex >= 0)
+                    if (customRewardID.Length > 0) // For some reason sometimes the message contains empty "custom-reward-id"
                     {
-                      nextIndex = message[0].IndexOf(';', currentIndex);
-                      userName = message[0].Substring(currentIndex, nextIndex - currentIndex);
+                      currentIndex = message[0].IndexOf("display-name=") + 13; // 13 == "display-name=".Length
+                      if (currentIndex >= 0)
+                      {
+                        nextIndex = message[0].IndexOf(';', currentIndex);
+                        userName = message[0].Substring(currentIndex, nextIndex - currentIndex);
+                      }
+                      else { userName = "?"; }
+                      MainWindow.ConsoleWriteLine(string.Concat(
+                        "> ",
+                        userName,
+                        " redeemed custom reward with ID: ",
+                        customRewardID,
+                        ". ",
+                        message[1][1..]
+                      ));
+                      continue;
                     }
-                    else { userName = "?"; }
-                    MainWindow.ConsoleWriteLine(string.Concat(
-                      "> ",
-                      userName,
-                      " redeemed custom reward with ID: ",
-                      customRewardID,
-                      ". ",
-                      message[1][1..]
-                    ));
-                    continue;
                   }
 
                   // Check if message had some bits cheered
@@ -579,34 +582,28 @@ namespace AbevBot
       List<(long, string)> chatters = new();
 
       string uri = $"https://api.twitch.tv/helix/chat/chatters?broadcaster_id={Config.Data[Config.Keys.ChannelID]}&moderator_id={Config.Data[Config.Keys.ChannelID]}&first=1000";
-      using (HttpRequestMessage request = new(new HttpMethod("GET"), uri))
-      {
-        request.Headers.Add("Authorization", $"Bearer {Config.Data[Config.Keys.BotOAuthToken]}");
-        request.Headers.Add("Client-Id", Config.Data[Config.Keys.BotClientID]);
+      using HttpRequestMessage request = new(HttpMethod.Get, uri);
+      request.Headers.Add("Authorization", $"Bearer {Config.Data[Config.Keys.BotOAuthToken]}");
+      request.Headers.Add("Client-Id", Config.Data[Config.Keys.BotClientID]);
 
-        using (HttpClient client = new())
+      GetChattersResponse response = GetChattersResponse.Deserialize(Client.Send(request).Content.ReadAsStringAsync().Result);
+      if (response?.Data?.Length > 0)
+      {
+        for (int i = 0; i < response.Data.Length; i++)
         {
-          GetChattersResponse response = GetChattersResponse.Deserialize(client.Send(request).Content.ReadAsStringAsync().Result);
-          if (response?.Data?.Length > 0)
+          if (long.TryParse(response.Data[i].UserID, out long id))
           {
-            long id;
-            for (int i = 0; i < response.Data.Length; i++)
-            {
-              if (long.TryParse(response.Data[i].UserID, out id))
-              {
-                chatters.Add((id, response.Data[i].UserName));
-              }
-            }
-            if (response.Data.Length > response.Total)
-            {
-              MainWindow.ConsoleWarning(">> There were too many chatters to acquire in one request. A loop needs to be implemented here.");
-            }
-          }
-          else
-          {
-            MainWindow.ConsoleWarning(">> Couldn't acquire chatters.");
+            chatters.Add((id, response.Data[i].UserName));
           }
         }
+        if (response.Data.Length > response.Total)
+        {
+          MainWindow.ConsoleWarning(">> There were too many chatters to acquire in one request. A loop needs to be implemented here.");
+        }
+      }
+      else
+      {
+        MainWindow.ConsoleWarning(">> Couldn't acquire chatters.");
       }
 
       return chatters;
@@ -626,18 +623,12 @@ namespace AbevBot
       MainWindow.ConsoleWarning($"> Banning {c.Name} from chat for {durSeconds} seconds. {message}");
 
       string uri = $"https://api.twitch.tv/helix/moderation/bans?broadcaster_id={Config.Data[Config.Keys.ChannelID]}&moderator_id={Config.Data[Config.Keys.ChannelID]}";
-      using (HttpRequestMessage request = new(new HttpMethod("POST"), uri))
-      {
-        request.Content = new StringContent(new BanMessageRequest(c.ID, durSeconds, message).ToJsonString());
-        request.Headers.Add("Authorization", $"Bearer {Config.Data[Config.Keys.BotOAuthToken]}");
-        request.Headers.Add("Client-Id", Config.Data[Config.Keys.BotClientID]);
-        request.Content.Headers.ContentType = MediaTypeHeaderValue.Parse("application/json");
+      using HttpRequestMessage request = new(HttpMethod.Post, uri);
+      request.Content = new StringContent(new BanMessageRequest(c.ID, durSeconds, message).ToJsonString(), Encoding.UTF8, "application/json");
+      request.Headers.Add("Authorization", $"Bearer {Config.Data[Config.Keys.BotOAuthToken]}");
+      request.Headers.Add("Client-Id", Config.Data[Config.Keys.BotClientID]);
 
-        using (HttpClient client = new())
-        {
-          client.Send(request); // We don't really need the result, just assume that it worked
-        }
-      }
+      Client.Send(request); // We don't really need the result, just assume that it worked
     }
   }
 }

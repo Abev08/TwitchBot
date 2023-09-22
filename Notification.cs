@@ -1,9 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Net.Http;
-using System.Net.Http.Headers;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -18,9 +16,9 @@ namespace AbevBot
     public static bool NotificationsPaused { get; set; }
     public static bool SkipNotification { get; set; }
     public static bool ChatTTSEnabled { get; set; }
-    static List<Notification> NotificationQueue = new();
+    static readonly List<Notification> NotificationQueue = new();
     private static Thread NotificationsThread;
-    private static HttpClient Client = new();
+    private static readonly HttpClient Client = new();
     public static string VoicesLink { get; private set; }
 
     public static void Start()
@@ -201,7 +199,7 @@ namespace AbevBot
       });
     }
 
-    public static NAudio.Wave.WaveOut GetTTS(string _text, string _voice = "Brian", float soundVolume = 1f, bool getVoiceFromMessage = false)
+    public static WaveOut GetTTS(string _text, string _voice = "Brian", float soundVolume = 1f, bool getVoiceFromMessage = false)
     {
       string voiceName;
       string text = _text;
@@ -231,13 +229,12 @@ namespace AbevBot
       return GetStreamElementsTTS(_text, soundVolume: soundVolume); // Voice not found, return default StreamElements voice
     }
 
-    private static NAudio.Wave.WaveOut GetStreamElementsTTS(string text, string voice = "Brian", float soundVolume = 1f)
+    private static WaveOut GetStreamElementsTTS(string text, string voice = "Brian", float soundVolume = 1f)
     {
       Stream stream;
-      using (HttpRequestMessage request = new(new HttpMethod("GET"), $"https://api.streamelements.com/kappa/v2/speech?voice={voice}&text={text}"))
-      {
-        stream = Client.Send(request).Content.ReadAsStream();
-      }
+      using HttpRequestMessage request = new(HttpMethod.Get, $"https://api.streamelements.com/kappa/v2/speech?voice={voice}&text={text}");
+      stream = Client.Send(request).Content.ReadAsStream();
+
       return Audio.PlayMp3Sound(stream, soundVolume);
     }
 
@@ -247,20 +244,18 @@ namespace AbevBot
       string[] voices = Array.Empty<string>();
 
       // Ask for speech without specifying the voice, error message will contain all available voices
-      using (HttpRequestMessage request = new(new HttpMethod("GET"), "https://api.streamelements.com/kappa/v2/speech?voice="))
+      using HttpRequestMessage request = new(HttpMethod.Get, "https://api.streamelements.com/kappa/v2/speech?voice=");
+      StreamElementsResponse response = StreamElementsResponse.Deserialize(Client.Send(request).Content.ReadAsStringAsync().Result);
+      if (response?.Message?.Length > 0)
       {
-        StreamElementsResponse response = StreamElementsResponse.Deserialize(Client.Send(request).Content.ReadAsStringAsync().Result);
-        if (response?.Message?.Length > 0)
+        int startIndex = response.Message.IndexOf("must be one of");
+        if (startIndex > 0)
         {
-          int startIndex = response.Message.IndexOf("must be one of");
-          if (startIndex > 0)
+          startIndex = response.Message.IndexOf('[', startIndex) + 1;
+          int endIndex = response.Message.IndexOf(']', startIndex);
+          if (endIndex > startIndex)
           {
-            startIndex = response.Message.IndexOf('[', startIndex) + 1;
-            int endIndex = response.Message.IndexOf(']', startIndex);
-            if (endIndex > startIndex)
-            {
-              voices = response.Message.Substring(startIndex, endIndex - startIndex).Split(",", System.StringSplitOptions.RemoveEmptyEntries | System.StringSplitOptions.TrimEntries);
-            }
+            voices = response.Message.Substring(startIndex, endIndex - startIndex).Split(",", StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
           }
         }
       }
@@ -268,7 +263,7 @@ namespace AbevBot
       MainWindow.ConsoleWarning(string.Concat(">> StreamElements voices: ", string.Join(", ", voices)));
     }
 
-    private static NAudio.Wave.WaveOut GetTikTokTTS(string _text, string voice, float soundVolume = 1f)
+    private static WaveOut GetTikTokTTS(string _text, string voice, float soundVolume = 1f)
     {
       if (Config.Data[Config.Keys.TikTokSessionID].Length == 0) return null;
 
@@ -280,12 +275,11 @@ namespace AbevBot
       string url = $"https://api16-normal-v6.tiktokv.com/media/api/text/speech/invoke/?text_speaker={voice}&req_text={text}&speaker_map_type=0&aid=1233";
 
       TikTokTTSResponse result;
-      using (HttpRequestMessage request = new(new HttpMethod("POST"), url))
-      {
-        request.Headers.Add("User-Agent", "com.zhiliaoapp.musically/2022600030 (Linux; U; Android 7.1.2; es_ES; SM-G988N; Build/NRD90M;tt-ok/3.12.13.1)");
-        request.Headers.Add("Cookie", $"sessionid={Config.Data[Config.Keys.TikTokSessionID]}");
-        result = TikTokTTSResponse.Deserialize(Client.Send(request).Content.ReadAsStringAsync().Result);
-      }
+      using HttpRequestMessage request = new(HttpMethod.Post, url);
+      request.Headers.Add("User-Agent", "com.zhiliaoapp.musically/2022600030 (Linux; U; Android 7.1.2; es_ES; SM-G988N; Build/NRD90M;tt-ok/3.12.13.1)");
+      request.Headers.Add("Cookie", $"sessionid={Config.Data[Config.Keys.TikTokSessionID]}");
+
+      result = TikTokTTSResponse.Deserialize(Client.Send(request).Content.ReadAsStringAsync().Result);
       if (result?.StatusCode != 0)
       {
         MainWindow.ConsoleWarning($">> TikTok TTS request status: {result?.StatusCode}, error: {result?.StatusMessage}");
@@ -318,15 +312,12 @@ namespace AbevBot
       GlotPaste paste = new() { Language = "plaintext", Title = "TTS Voices" };
       paste.Files.Add(new GlotFile() { Name = "TTS Voices", Content = sb.ToString() });
 
-      using (HttpRequestMessage request = new(new HttpMethod("POST"), "https://glot.io/api/snippets"))
+      using HttpRequestMessage request = new(HttpMethod.Post, "https://glot.io/api/snippets");
+      request.Content = new StringContent(paste.ToJsonString(), Encoding.UTF8, "application/json");
+      GlotResponse response = GlotResponse.Deserialize(Client.Send(request).Content.ReadAsStringAsync().Result);
+      if (response?.Url?.Length > 0)
       {
-        request.Content = new StringContent(paste.ToJsonString());
-        request.Content.Headers.ContentType = MediaTypeHeaderValue.Parse("application/json");
-        GlotResponse response = GlotResponse.Deserialize(Client.Send(request).Content.ReadAsStringAsync().Result);
-        if (response?.Url?.Length > 0)
-        {
-          VoicesLink = response.Url.Replace("api/", ""); // Remove "api/" part
-        }
+        VoicesLink = response.Url.Replace("api/", ""); // Remove "api/" part
       }
 
       Chat.ResponseMessages.Add("!voices", ($"TTS Voices: {VoicesLink}", new DateTime()));

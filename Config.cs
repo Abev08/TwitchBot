@@ -157,23 +157,19 @@ namespace AbevBot
     {
       MainWindow.ConsoleWarning(">> Getting broadcaster ID.");
       string uri = $"https://api.twitch.tv/helix/users?login={Data[Keys.ChannelName]}";
-      using (HttpRequestMessage request = new(new HttpMethod("GET"), uri))
-      {
-        request.Headers.Add("Authorization", $"Bearer {Data[Keys.BotOAuthToken]}");
-        request.Headers.Add("Client-Id", Data[Keys.BotClientID]);
+      using HttpRequestMessage request = new(HttpMethod.Get, uri);
+      request.Headers.Add("Authorization", $"Bearer {Data[Keys.BotOAuthToken]}");
+      request.Headers.Add("Client-Id", Data[Keys.BotClientID]);
 
-        using (HttpClient client = new())
-        {
-          ChannelIDResponse response = ChannelIDResponse.Deserialize(client.Send(request).Content.ReadAsStringAsync().Result);
-          if (response != null && response?.Data?.Length == 1)
-          {
-            Data[Keys.ChannelID] = response.Data[0].ID;
-          }
-          else
-          {
-            MainWindow.ConsoleWarning(">> Couldn't acquire broadcaster ID. Probably defined channel name doesn't exist.");
-          }
-        }
+      using HttpClient client = new();
+      ChannelIDResponse response = ChannelIDResponse.Deserialize(client.Send(request).Content.ReadAsStringAsync().Result);
+      if (response != null && response?.Data?.Length == 1)
+      {
+        Data[Keys.ChannelID] = response.Data[0].ID;
+      }
+      else
+      {
+        MainWindow.ConsoleWarning(">> Couldn't acquire broadcaster ID. Probably defined channel name doesn't exist.");
       }
     }
   }

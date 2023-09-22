@@ -22,12 +22,14 @@ Uses Windows Presentation Foundation (WPF, an UI framework) to open bot configur
   - Detects changes in chat emote-only mode,
   - Sends periodic messages configured in Config.ini file,
   - Can be run without broadcaster permissions.
+
 - Subscribes to EventSub (Twitch events):
   - Subscribes to follow notification event,
   - Subscribes to subscriptions notifications events (there are multiple subscription types),
   - Subscribes to bits cheer event,
   - Subscribes to channel points custom rewards redemptions events,
   - Uses StreamElements api for TTS generation.
+
 - Implements chat interactions / commands:
   - Text To Speech (`!tts`),
   - Gambling (`!gamba`), <p align="center"><img src="ReadmeImages/MinigameGamba.png" width=200 alt="Gamba minigame"></p>
@@ -35,6 +37,7 @@ Uses Windows Presentation Foundation (WPF, an UI framework) to open bot configur
   - Backseat points (`!point`) - the streamer can reward the chatter for helping, <p align="center"><img src="ReadmeImages/MinigamePoint.png" width=200 alt="Gamba minigame"></p>
   - Rude points (`!rude`) - chatters can point a chatter for being rude, <p align="center"><img src="ReadmeImages/MinigameRude.png" width=200 alt="Gamba minigame"></p>
   - Vanish (`!vanish`) - self timeout for the chatter, also deletes chatter messages.
+
 - Bot configuration is carried out in:
   - Config.ini (channel name, passwords, etc.),
   - ResponseMessages.csv (automated response messages).
