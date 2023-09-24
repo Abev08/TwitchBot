@@ -5,8 +5,8 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
         Title="AbevBot"
-        Height="720" Width="1280">
-
+        Height="720" Width="1280"
+        MinHeight="600" MinWidth="500">
   <Grid>
     <Grid.ColumnDefinitions>
       <ColumnDefinition Width="170px"/>
@@ -15,26 +15,76 @@
 
     <!-- Control elements -->
     <StackPanel Grid.Column="0" Orientation="Vertical">
-      <Button x:Name="btnPause" Width="150" Height="25" Content="Toggle notifications pause" Margin="0,30,0,0"/>
-      <Button x:Name="btnSkip" Width="150" Height="25" Content="Skip notification" Margin="0,10,0,0"/>
-      <TextBlock x:Name="tbNotificationsQueue" Text="Notifications in queue: 0" Margin="5,10,5,0"/>
-      <CheckBox x:Name="chkTTS" Width="150" Height="25" Content="!tts enabled (chat)" IsChecked="True" Margin="0,30,0,0" Checked="ChkTTS_CheckChanged" Unchecked="ChkTTS_CheckChanged"/>
-      <CheckBox x:Name="chkGamba" Width="150" Height="25" Content="!gamba enabled" IsChecked="True" Margin="0,0,0,0" Checked="ChkGamba_CheckChanged" Unchecked="ChkGamba_CheckChanged"/>
-      <CheckBox x:Name="chkFight" Width="150" Height="25" Content="!fight enabled" IsChecked="True" Margin="0,0,0,0" Checked="ChkFight_CheckChanged" Unchecked="ChkFight_CheckChanged"/>
-    </StackPanel>
+      <!-- Pause and skip buttons -->
+      <Border Padding="0,10,0,10" Margin="2,20,4,0" BorderThickness="1" BorderBrush="Black" CornerRadius="10">
+        <StackPanel>
+          <Button x:Name="btnPause" Width="150" Height="25" Content="Toggle notifications pause" Margin="0,0,0,0" Click="PauseNotifications"/>
+          <Button x:Name="btnSkip" Width="150" Height="25" Content="Skip notification" Margin="0,10,0,0" Click="SkipNotification"/>
+          <TextBlock x:Name="tbNotificationsQueue" Text="Notifications in queue: 0" Margin="6,10,6,0"/>
+        </StackPanel>
+      </Border>
 
-    <!-- Test elements -->
-    <StackPanel Grid.Column="0" Orientation="Vertical" VerticalAlignment="Bottom">
-      <TextBox x:Name="tbTTSVoice" Width="150" Height="25" Text="Brian" VerticalContentAlignment="Center"/>
-      <TextBox x:Name="tbTTSText" Width="150" Height="25" Text="Test message" Margin="0,10,0,0" VerticalContentAlignment="Center"/>
-      <Button x:Name="btnTestTTS" Width="150" Height="25" Content="Test TTS" Margin="0,10,0,0"/>
-      <Button x:Name="btnTestVideo" Width="150" Height="25" Content="Test Video" Margin="0,20,0,30"/>
+      <!-- Enable checkboxes -->
+      <Border Padding="0,10,0,10" Margin="2,20,4,0" BorderThickness="1" BorderBrush="Black" CornerRadius="10">
+        <StackPanel>
+          <CheckBox x:Name="chkTTS" Width="150" Height="25" Content="!tts enabled (chat)" VerticalContentAlignment="Center" IsChecked="True" Checked="ChkTTS_CheckChanged" Unchecked="ChkTTS_CheckChanged"/>
+          <CheckBox x:Name="chkGamba" Width="150" Height="25" Content="!gamba enabled" VerticalContentAlignment="Center" IsChecked="True" Checked="ChkGamba_CheckChanged" Unchecked="ChkGamba_CheckChanged"/>
+          <CheckBox x:Name="chkFight" Width="150" Height="25" Content="!fight enabled" VerticalContentAlignment="Center" IsChecked="True" Checked="ChkFight_CheckChanged" Unchecked="ChkFight_CheckChanged"/>
+        </StackPanel>
+      </Border>
     </StackPanel>
 
     <!-- Video player, text display, etc -->
-    <Grid Grid.Column="1" Background="#FF00FF00">
-      <MediaElement x:Name="VideoPlayer"/>
-      <TextBlock x:Name="tbTextOutput" FontSize="32" Foreground="White" TextWrapping="Wrap" TextAlignment="Center" VerticalAlignment="Center" HorizontalAlignment="Stretch" />
+    <Grid Grid.Column="1" Background="#FF00FF00"> <!-- ARGB -->
+      <!-- Main video player and main text output -->
+      <MediaElement x:Name="VideoPlayer" MediaEnded="MainVideoEnded" LoadedBehavior="Manual" UnloadedBehavior="Manual"/>
+      <TextBlock x:Name="tbTextOutput" Text="" FontSize="48" FontFamily="{DynamicResource OpenSans}" Foreground="White" TextWrapping="Wrap" TextAlignment="Center" VerticalAlignment="Center" HorizontalAlignment="Stretch" FontWeight="Bold" >        <TextBlock.Effect>
+          <DropShadowEffect ShadowDepth="2" BlurRadius="1"/>
+        </TextBlock.Effect>
+      </TextBlock>
+
+      <!-- Gamba animations -->
+      <StackPanel Orientation="Vertical" VerticalAlignment="Bottom" HorizontalAlignment="Center">
+        <StackPanel>
+          <TextBlock x:Name="tbGambaName" HorizontalAlignment="Center" FontSize="32" TextAlignment="Center" Foreground="Gold">
+            <TextBlock.Effect>
+              <DropShadowEffect ShadowDepth="2" BlurRadius="1"/>
+            </TextBlock.Effect>
+          </TextBlock>
+          <MediaElement x:Name="videoGamba" Height="200" MediaEnded="GambaVideoEnded" LoadedBehavior="Manual" UnloadedBehavior="Manual"/>
+        </StackPanel>
+        <TextBlock x:Name="tbGambaPoints" Text="" Margin="0,-210,0,0" VerticalAlignment="Top" HorizontalAlignment="Center" FontSize="32" Foreground="Gold" FontWeight="Bold" TextAlignment="Center">
+          <TextBlock.Effect>
+            <DropShadowEffect ShadowDepth="2" BlurRadius="1"/>
+          </TextBlock.Effect>
+        </TextBlock>
+      </StackPanel>
     </Grid>
+
+    <!-- Test elements -->
+    <StackPanel Grid.Column="0" Orientation="Vertical" VerticalAlignment="Bottom">
+      <Border Padding="0,10,0,10" Margin="2,0,4,20" BorderThickness="1" BorderBrush="Black" CornerRadius="10">
+        <StackPanel>
+          <TextBox x:Name="tbTTSVoice" Width="150" Height="25" Text="Brian" VerticalContentAlignment="Center"/>
+          <TextBox x:Name="tbTTSText" Width="150" Height="25" Text="Test message" Margin="0,10,0,0" VerticalContentAlignment="Center"/>
+          <Button x:Name="btnTestTTS" Width="150" Height="25" Content="Test TTS" Margin="0,10,0,0" Click="TTSTest"/>
+          <Button x:Name="btnTestVideo" Width="150" Height="25" Content="Test Video" Margin="0,10,0,0" Click="VideoTest"/>
+          <Button x:Name="btnTestGamba" Width="150" Height="25" Content="Test Gamba" Margin="0,10,0,0" Click="GambaTest"/>
+        </StackPanel>
+      </Border>
+
+      <!-- Notifications test -->
+      <Border Padding="0,10,0,10" Margin="2,0,4,20" BorderThickness="1" BorderBrush="Black" CornerRadius="10">
+        <StackPanel>
+          <ComboBox x:Name="cbNotificationType" Width="150" Height="25" SelectedIndex="0" Margin="0,0,0,10">
+            <ComboBoxItem Content="Follow"/>
+            <ComboBoxItem Content="Subscription"/>
+            <ComboBoxItem Content="Gifted Subscription"/>
+            <ComboBoxItem Content="Cheer"/>
+          </ComboBox>
+          <Button x:Name="btnTestNotification" Width="150" Height="25" Content="Test Notification" Click="NotificationTest"/>
+        </StackPanel>
+      </Border>
+    </StackPanel>
   </Grid>
 </Window>

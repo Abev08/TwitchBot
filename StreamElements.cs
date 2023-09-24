@@ -204,6 +204,8 @@ namespace AbevBot
 
     public static string GetVoice(string name)
     {
+      if (name is null || name.Length == 0) return string.Empty;
+
       string voiceName = name.ToLower();
       var voice = Voices.GetEnumerator();
       while (voice.MoveNext())

@@ -124,6 +124,8 @@ namespace AbevBot
 
     public static string GetVoice(string name)
     {
+      if (name is null || name.Length == 0) return string.Empty;
+
       if (Config.Data[Config.Keys.TikTokSessionID].Length == 0) return string.Empty;
 
       string voiceName = name.ToLower();

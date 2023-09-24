@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Runtime.InteropServices;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -32,7 +33,7 @@ namespace AbevBot
 
       AllocConsole();
       // Free console window on program close
-      this.Closing += (sender, e) =>
+      Closing += (sender, e) =>
       {
         Chatter.UpdateChattersFile();
         ConsoleFreed = true;
@@ -68,46 +69,8 @@ namespace AbevBot
       Events.Start(); // Start events bot
       Notifications.Start(); // Start notifications on MainWindow
 
-      // For testing purposes some bot functions are assigned to buttons.
-      // In real bot appliaction these things should be fired from received events in Event class or chat commands from Chat class or even keyboard buttons bindings
-      btnTestTTS.Click += (sender, e) =>
-      {
-        string text = tbTTSText.Text;
-        string voice = tbTTSVoice.Text;
-        if (string.IsNullOrEmpty(text)) return;
-        Notifications.AddNotification(new Notification()
-        {
-          TextToDisplay = text,
-          TextToRead = text,
-          TTSVoice = voice
-        });
-      };
-      btnPause.Click += (sender, e) =>
-      {
-        Notifications.NotificationsPaused ^= true;
-        if (Notifications.NotificationsPaused) ((Button)sender).Background = Brushes.Red;
-        else ((Button)sender).Background = btnSkip.Background;
-      };
-      btnSkip.Click += (sender, e) => Notifications.SkipNotification = true;
-
-      // Automatically set source to null after video ended
-      VideoPlayerRef.MediaEnded += (sender, e) =>
-      {
-        VideoPlayerRef.Source = null;
-        VideoEnded = true;
-      };
-      // Take control over video player
-      VideoPlayerRef.LoadedBehavior = MediaState.Manual;
-      VideoPlayerRef.UnloadedBehavior = MediaState.Manual;
-
       // Wait for window to be loaded (visible) to start a demo video
-      this.Loaded += (sender, e) =>
-      {
-        VideoPlayerRef.Source = new Uri(new FileInfo("Resources/peepoHey.mp4").FullName);
-        VideoPlayerRef.Play();
-      };
-
-      btnTestVideo.Click += (sender, e) =>
+      Loaded += (sender, e) =>
       {
         VideoPlayerRef.Source = new Uri(new FileInfo("Resources/peepoHey.mp4").FullName);
         VideoPlayerRef.Play();
@@ -128,6 +91,18 @@ namespace AbevBot
       if (ConsoleFreed) return;
 
       Console.WriteLine(text);
+    }
+
+    private void PauseNotifications(object sender, RoutedEventArgs e)
+    {
+      Notifications.NotificationsPaused ^= true;
+      if (Notifications.NotificationsPaused) ((Button)sender).Background = Brushes.Red;
+      else ((Button)sender).Background = btnSkip.Background;
+    }
+
+    private void SkipNotification(object sender, RoutedEventArgs e)
+    {
+      Notifications.SkipNotification = true;
     }
 
     public static void SetTextDisplayed(string text)
@@ -182,5 +157,102 @@ namespace AbevBot
     {
       MinigameFight.Enabled = ((CheckBox)sender).IsChecked == true;
     }
+
+    private void MainVideoEnded(object sender, RoutedEventArgs e)
+    {
+      VideoPlayerRef.Source = null;
+      VideoEnded = true;
+    }
+
+    private void VideoTest(object sender, RoutedEventArgs e)
+    {
+      VideoPlayerRef.Source = new Uri(new FileInfo("Resources/peepoHey.mp4").FullName);
+      VideoPlayerRef.Play();
+    }
+
+    private void TTSTest(object sender, RoutedEventArgs e)
+    {
+      string text = tbTTSText.Text;
+      string voice = tbTTSVoice.Text;
+      if (string.IsNullOrEmpty(text)) return;
+      Notifications.CreateTTSNotification($"{voice}: {text}");
+    }
+
+    private void NotificationTest(object sender, RoutedEventArgs e)
+    {
+      switch (cbNotificationType.Text)
+      {
+        case "Follow":
+          Notifications.CreateFollowNotification("Chatter");
+          break;
+
+        case "Subscription":
+          Notifications.CreateSubscriptionNotification("Chatter", "1", "This is a test");
+          break;
+
+        case "Gifted Subscription":
+          Notifications.CreateGiftSubscriptionNotification("Chatter", "1", 7, "This is a test");
+          break;
+
+        case "Cheer":
+          Notifications.CreateCheerNotification("Chatter", 100, "This is a test");
+          break;
+      }
+    }
+
+
+
+
+
+
+
+
+    #region GAMBA TESTING, DO NOT LOOK :D
+    public void GambaVideoStart(string videoPath, string userName, string points)
+    {
+      WindowRef.Dispatcher.Invoke(new Action(() =>
+      {
+        tbGambaName.Text = userName;
+        FileInfo file = new(videoPath);
+        if (file.Exists)
+        {
+          videoGamba.Source = new Uri(file.FullName);
+          videoGamba.Play();
+        }
+
+        tbGambaPoints.Margin = new Thickness(0, -210, 0, 0);
+        tbGambaPoints.Text = points;
+
+        // Animate points
+        Task.Run(() =>
+        {
+          for (int i = 0; i <= 60; i++)
+          {
+            WindowRef.Dispatcher.Invoke(new Action(() =>
+            {
+              tbGambaPoints.Margin = new Thickness(0, tbGambaPoints.Margin.Top + 1, 0, 0);
+              if (i == 60)
+              {
+                tbGambaPoints.Text = string.Empty;
+                if (!videoGamba.HasVideo) tbGambaName.Text = string.Empty; // If the video doesn't play "finish" the animation
+              }
+            }));
+            Task.Delay(10).Wait();
+          }
+        });
+      }));
+    }
+
+    private void GambaVideoEnded(object sender, RoutedEventArgs e)
+    {
+      ((MediaElement)sender).Source = null;
+      tbGambaName.Text = string.Empty;
+    }
+
+    private void GambaTest(object sender, RoutedEventArgs e)
+    {
+      GambaVideoStart("Resources/Gamba/GambaLoose1.mp4", "chatter", "1000");
+    }
+    #endregion
   }
 }

@@ -46,7 +46,11 @@ namespace AbevBot
         {
           lock (NotificationQueue)
           {
-            if (NotificationQueue[0].Started == false) NotificationQueue[0].Start();
+            if (NotificationQueue[0].Started == false)
+            {
+              SkipNotification = false;
+              NotificationQueue[0].Start();
+            }
             if (NotificationQueue[0].Update())
             {
               // Update returned true == notificaion has ended, remove it from queue
@@ -61,7 +65,7 @@ namespace AbevBot
             if (NotificationQueue.Count > 0) Thread.Sleep(500); // 500 ms delay between notifications
             notificationEnded = false;
           }
-          else Thread.Sleep(100); // Slow down the loop while notification is playing, 100 ms shouldn't be a problem?
+          else { Thread.Sleep(10); } // Slow down the loop while notification is playing
         }
         else
         {
@@ -99,6 +103,7 @@ namespace AbevBot
       {
         TextToDisplay = $"Thank you {userName}!\n{message}",
         TextToRead = $"Thank you {userName} for tier {tier} sub! {message}",
+        TTSVolume = 0.4f,
         VideoPath = "Resources/peepoHey.mp4",
         SoundVolume = 0.8f
       });
@@ -120,6 +125,7 @@ namespace AbevBot
       {
         TextToDisplay = $"Thank you {userName} for {count} subs!\n{message}",
         TextToRead = $"Thank you {userName} for gifting {count} tier {tier} subs! {message}",
+        TTSVolume = 0.4f,
         VideoPath = "Resources/peepoHey.mp4",
         SoundVolume = 0.8f
       });
@@ -139,6 +145,7 @@ namespace AbevBot
           streak > 1 ? $" It's your {streak} month in a row!" : "",
           " ", message.Text
           ),
+        TTSVolume = 0.4f,
         VideoPath = "Resources/peepoHey.mp4",
         SoundVolume = 0.8f
       });
@@ -150,7 +157,7 @@ namespace AbevBot
       {
         TextToDisplay = $"Thank you {userName} for {count} bits!\n{message}",
         TextToRead = $"Thank you {userName} for {count} bits! {message}",
-        TTSVolume = 0.8f,
+        TTSVolume = 0.4f,
         SoundPath = "Resources/tone1.wav",
         SoundVolume = 0.3f
       });
@@ -194,13 +201,15 @@ namespace AbevBot
       AddNotification(new Notification()
       {
         TextToRead = text,
-        TryToGetVoiceFromMessage = true,
-        SoundVolume = 0.6f
+        TTSVolume = 0.4f,
+        TryToGetVoiceFromMessage = true
       });
     }
 
     public static WaveOut GetTTS(string _text, string _voice = "Brian", float soundVolume = 1f, bool getVoiceFromMessage = false)
     {
+      if (_text is null || _text.Length == 0) return null;
+
       string voiceName;
       string text = _text;
       string voice = _voice;
@@ -215,7 +224,12 @@ namespace AbevBot
           voice = text.Substring(lastSpace, voiceEndSymbolIndex - lastSpace);
         }
 
-        text = text.Substring(lastSpace + voice.Length + 1).Trim();
+        if (voice?.Length > 0)
+        {
+          text = text.Substring(lastSpace + voice.Length + 1).Trim();
+          if (text.Length == 0) return null;
+        }
+        else { voice = string.Empty; }
       }
 
       // StreamElements
@@ -231,6 +245,8 @@ namespace AbevBot
 
     private static WaveOut GetStreamElementsTTS(string text, string voice = "Brian", float soundVolume = 1f)
     {
+      if (text is null || text.Length == 0) return null;
+
       Stream stream;
       using HttpRequestMessage request = new(HttpMethod.Get, $"https://api.streamelements.com/kappa/v2/speech?voice={voice}&text={text}");
       stream = Client.Send(request).Content.ReadAsStream();
@@ -266,6 +282,7 @@ namespace AbevBot
     private static WaveOut GetTikTokTTS(string _text, string voice, float soundVolume = 1f)
     {
       if (Config.Data[Config.Keys.TikTokSessionID].Length == 0) return null;
+      if (_text is null || _text.Length == 0) return null;
 
       string text = _text;
       text = text.Replace("+", "plus");
@@ -349,6 +366,7 @@ namespace AbevBot
   public class Notification
   {
     private static readonly TimeSpan MinimumNotificationTime = new(0, 0, 2);
+    private static readonly TimeSpan MaximumNotificationTime = new(0, 1, 0);
 
     public bool Started { get; private set; }
     public DateTime StartTime { get; private set; }
@@ -386,9 +404,18 @@ namespace AbevBot
     {
       if (!Started) return false;
 
+      if (DateTime.Now - StartTime > MaximumNotificationTime)
+      {
+        MainWindow.ConsoleWarning(">> Maximum notification time reached, something went wrong, to not block other notificaitons force closing this one!");
+        MainWindow.SetTextDisplayed(string.Empty);
+        MainWindow.StopVideoPlayer();
+        AudioPlayer?.Stop();
+        return true;
+      }
+
       if (!VideoEnded)
       {
-        if (!VideoStarted)
+        if (!VideoStarted && !Notifications.SkipNotification)
         {
           // Start the video
           VideoStarted = true;
@@ -411,7 +438,7 @@ namespace AbevBot
       }
 
       // Create audio player and play
-      if (!SoundPlayed || !VoicePlayed)
+      if (!SoundPlayed || !VoicePlayed || (AudioPlayer != null && AudioPlayer?.PlaybackState != PlaybackState.Stopped))
       {
         if (Notifications.SkipNotification) { AudioPlayer?.Stop(); }
         else if (AudioPlayer is null && (TextToRead?.Length > 0 || SoundPath?.Length > 0)) { CreateAudioPlayer(); }
@@ -426,15 +453,12 @@ namespace AbevBot
           AudioPlayer?.Dispose(); // Probably it's better to dispose the player after it finished
           AudioPlayer = null;
         }
-        return false;
       }
       if (AudioPlayer != null && AudioPlayer.PlaybackState != PlaybackState.Stopped) return false;
 
       // The notification is over, clear after it
-      if (DateTime.Now - StartTime < MinimumNotificationTime) return false;
+      if (!Notifications.SkipNotification && (DateTime.Now - StartTime < MinimumNotificationTime)) return false;
       MainWindow.SetTextDisplayed(string.Empty); // Clear displayed text
-
-      if (Notifications.SkipNotification) Notifications.SkipNotification = false;
 
       return true; // return true when notification has ended
     }
@@ -449,7 +473,7 @@ namespace AbevBot
       else if (TextToRead?.Length > 0)
       {
         AudioPlayer = Notifications.GetTTS(TextToRead, TTSVoice, TTSVolume, TryToGetVoiceFromMessage);
-        if (AudioPlayer is null) MainWindow.ConsoleWarning(">> Returned AudioPlayer is null!");
+        if (AudioPlayer is null) MainWindow.ConsoleWarning(">> Returned AudioPlayer is null! I'm not playing the sound!");
         VoicePlayed = true;
       }
     }

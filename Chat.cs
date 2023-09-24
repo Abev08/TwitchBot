@@ -346,7 +346,7 @@ namespace AbevBot
                       MainWindow.ConsoleWriteLine(string.Concat(
                         "> ",
                         userName,
-                        " gifted a sub for",
+                        " gifted a sub for ",
                         message[0].Substring(currentIndex, message[0].IndexOf(';', currentIndex) - currentIndex),
                         ". ",
                         message[1].Length > 2 ? message[1][1..] : ""

@@ -1,9 +1,9 @@
-﻿<Application x:Class="AbevBot.App"
+<Application x:Class="AbevBot.App"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:local="clr-namespace:AbevBot"
              Startup="ApplicationStartup">
-    <Application.Resources>
-
-    </Application.Resources>
+  <Application.Resources>
+    <FontFamily x:Key="OpenSans">pack://application:,,,/Fonts/#Open Sans</FontFamily>
+  </Application.Resources>
 </Application>
