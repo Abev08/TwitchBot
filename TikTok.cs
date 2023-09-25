@@ -1,5 +1,9 @@
+using System;
 using System.Collections.Generic;
+using System.IO;
+using System.Net.Http;
 using System.Text;
+using NAudio.Wave;
 
 namespace AbevBot
 {
@@ -154,6 +158,38 @@ namespace AbevBot
       }
 
       return sb.ToString();
+    }
+
+    public static WaveOut GetTTS(string _text, string voice, float soundVolume = 1f)
+    {
+      if (Config.Data[Config.Keys.TikTokSessionID].Length == 0) return null;
+      if (_text is null || _text.Length == 0) return null;
+
+      string text = _text;
+      text = text.Replace("+", "plus");
+      text = text.Replace(" ", "+");
+      text = text.Replace("&", "and");
+
+      string url = $"https://api16-normal-v6.tiktokv.com/media/api/text/speech/invoke/?text_speaker={voice}&req_text={text}&speaker_map_type=0&aid=1233";
+
+      TikTokTTSResponse result;
+      using HttpRequestMessage request = new(HttpMethod.Post, url);
+      request.Headers.Add("User-Agent", "com.zhiliaoapp.musically/2022600030 (Linux; U; Android 7.1.2; es_ES; SM-G988N; Build/NRD90M;tt-ok/3.12.13.1)");
+      request.Headers.Add("Cookie", $"sessionid={Config.Data[Config.Keys.TikTokSessionID]}");
+
+      result = TikTokTTSResponse.Deserialize(Notifications.Client.Send(request).Content.ReadAsStringAsync().Result);
+      if (result?.StatusCode != 0)
+      {
+        MainWindow.ConsoleWarning($">> TikTok TTS request status: {result?.StatusCode}, error: {result?.StatusMessage}");
+        return null;
+      }
+      else if (result?.Data?.Duration?.Length is null || string.IsNullOrEmpty(result?.Data?.VStr))
+      {
+        MainWindow.ConsoleWarning(">> TikTok TTS request returned sound with length 0.");
+        return null;
+      }
+
+      return Audio.GetMp3Sound(new MemoryStream(Convert.FromBase64String(result.Data.VStr)), soundVolume);
     }
   }
 }

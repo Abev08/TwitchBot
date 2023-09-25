@@ -130,7 +130,7 @@ namespace AbevBot
       string data = JsonSerializer.Serialize(Chatters, new JsonSerializerOptions() { WriteIndented = true });
 
       try { File.WriteAllText(CHATTERSFILE, data); }
-      catch (Exception ex) { MainWindow.ConsoleWarning($">> {ex.Message}"); }
+      catch (Exception ex) { MainWindow.ConsoleWarning($">> {ex}"); }
     }
 
     public static void LoadChattersFile()

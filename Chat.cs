@@ -206,7 +206,8 @@ namespace AbevBot
 
                   if (message[1][1..].StartsWith("!tts")) // Check if the message starts with !tts key
                   {
-                    if (Notifications.ChatTTSEnabled) { Notifications.CreateTTSNotification(message[1][6..]); } // 6.. - without ":!tts "
+                    if (message[1].Length <= 5) { MainWindow.ConsoleWarning(">> !tts command without a message Susge"); } // No message to read, do nothing
+                    else if (Notifications.ChatTTSEnabled) { Notifications.CreateTTSNotification(message[1][6..]); } // 6.. - without ":!tts "
                     else { AddMessageToQueue($"@{userName} TTS disabled peepoSad"); }
                   }
                   else if (message[1][1..].StartsWith("!gamba")) // Check if the message starts with !gamba key
@@ -267,7 +268,7 @@ namespace AbevBot
                             index = msg[0].LastIndexOf(" ", int.Min(MESSAGESENTMAXLEN, msg[0].Length));
                             if (index <= 0)
                             {
-                              MainWindow.ConsoleWarning($">> Something went wrong when splitting response message.");
+                              MainWindow.ConsoleWarning(">> Something went wrong when splitting response message.");
                               msg.Clear(); // Clear the messages - don't send anything
                               break;
                             }
@@ -468,7 +469,7 @@ namespace AbevBot
         try { ChatSocket.Connect("irc.chat.twitch.tv", 6667); }
         catch (Exception ex)
         {
-          MainWindow.ConsoleWarning($"Chat bot connection error: {ex.Message}");
+          MainWindow.ConsoleWarning($">> Chat bot connection error: {ex.Message}");
           ChatSocket = null;
         }
         if (ChatSocket?.Connected == true)

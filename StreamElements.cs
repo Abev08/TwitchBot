@@ -1,5 +1,9 @@
+using System;
 using System.Collections.Generic;
+using System.IO;
+using System.Net.Http;
 using System.Text;
+using NAudio.Wave;
 
 namespace AbevBot
 {
@@ -232,6 +236,42 @@ namespace AbevBot
       }
 
       return sb.ToString();
+    }
+
+    public static WaveOut GetTTS(string text, string voice = "Brian", float soundVolume = 1f)
+    {
+      if (text is null || text.Length == 0) return null;
+
+      Stream stream;
+      using HttpRequestMessage request = new(HttpMethod.Get, $"https://api.streamelements.com/kappa/v2/speech?voice={voice}&text={text}");
+      stream = Notifications.Client.Send(request).Content.ReadAsStream();
+
+      return Audio.GetMp3Sound(stream, soundVolume);
+    }
+
+    /// <summary> Can be used to get available StreamElements voices. The voices are printed to the console. </summary>
+    public static void RequestVoices()
+    {
+      string[] voices = Array.Empty<string>();
+
+      // Ask for speech without specifying the voice, error message will contain all available voices
+      using HttpRequestMessage request = new(HttpMethod.Get, "https://api.streamelements.com/kappa/v2/speech?voice=");
+      StreamElementsResponse response = StreamElementsResponse.Deserialize(Notifications.Client.Send(request).Content.ReadAsStringAsync().Result);
+      if (response?.Message?.Length > 0)
+      {
+        int startIndex = response.Message.IndexOf("must be one of");
+        if (startIndex > 0)
+        {
+          startIndex = response.Message.IndexOf('[', startIndex) + 1;
+          int endIndex = response.Message.IndexOf(']', startIndex);
+          if (endIndex > startIndex)
+          {
+            voices = response.Message.Substring(startIndex, endIndex - startIndex).Split(",", StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+          }
+        }
+      }
+
+      MainWindow.ConsoleWarning(string.Concat(">> StreamElements voices: ", string.Join(", ", voices)));
     }
   }
 }
