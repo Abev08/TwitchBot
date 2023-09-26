@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Net.Http;
 using System.Text;
-using NAudio.Wave;
 
 namespace AbevBot
 {
@@ -238,7 +237,7 @@ namespace AbevBot
       return sb.ToString();
     }
 
-    public static WaveOut GetTTS(string text, string voice = "Brian", float soundVolume = 1f)
+    public static Stream GetTTS(string text, string voice = "Brian")
     {
       if (text is null || text.Length == 0) return null;
 
@@ -246,7 +245,7 @@ namespace AbevBot
       using HttpRequestMessage request = new(HttpMethod.Get, $"https://api.streamelements.com/kappa/v2/speech?voice={voice}&text={text}");
       stream = Notifications.Client.Send(request).Content.ReadAsStream();
 
-      return Audio.GetMp3Sound(stream, soundVolume);
+      return stream;
     }
 
     /// <summary> Can be used to get available StreamElements voices. The voices are printed to the console. </summary>

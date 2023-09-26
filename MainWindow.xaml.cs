@@ -31,6 +31,14 @@ namespace AbevBot
       NotificationsQueueCountRef = tbNotificationsQueue;
       VideoPlayerRef = VideoPlayer;
 
+      // Catch all unhandled exceptions and print them into a file
+      AppDomain.CurrentDomain.UnhandledException += (sender, ex) =>
+      {
+        using StreamWriter writer = new("error.txt");
+        writer.WriteLine(DateTime.Now);
+        writer.WriteLine(ex.ExceptionObject);
+      };
+
       AllocConsole();
       // Free console window on program close
       Closing += (sender, e) =>
@@ -38,14 +46,6 @@ namespace AbevBot
         Chatter.UpdateChattersFile();
         ConsoleFreed = true;
         FreeConsole();
-      };
-
-      // Catch all unhandled exceptions and print them into a file
-      AppDomain.CurrentDomain.UnhandledException += (sender, ex) =>
-      {
-        using StreamWriter writer = new("error.txt");
-        writer.WriteLine(DateTime.Now);
-        writer.WriteLine(ex.ExceptionObject);
       };
 
       ConsoleWarning(">> Hi. I'm AbevBot.");

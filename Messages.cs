@@ -194,7 +194,8 @@ namespace AbevBot
 
     public static Payload Deserialize(object o)
     {
-      Payload? ret = JsonSerializer.Deserialize<Payload>(o.ToString());
+      string? str = o.ToString();
+      Payload? ret = JsonSerializer.Deserialize<Payload>(str?.Length > 0 ? str : "");
       if (ret is null) throw new JsonException("Couldn't parse access token validation response.");
 
       return ret;
@@ -212,7 +213,8 @@ namespace AbevBot
 
     public static PayloadCheer Deserialize(object o)
     {
-      PayloadCheer? ret = JsonSerializer.Deserialize<PayloadCheer>(o.ToString());
+      string? str = o.ToString();
+      PayloadCheer? ret = JsonSerializer.Deserialize<PayloadCheer>(str?.Length > 0 ? str : "");
       if (ret is null) throw new JsonException("Couldn't parse access token validation response.");
 
       return ret;

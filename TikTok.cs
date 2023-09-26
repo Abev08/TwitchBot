@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Net.Http;
 using System.Text;
-using NAudio.Wave;
 
 namespace AbevBot
 {
@@ -160,7 +159,7 @@ namespace AbevBot
       return sb.ToString();
     }
 
-    public static WaveOut GetTTS(string _text, string voice, float soundVolume = 1f)
+    public static Stream GetTTS(string _text, string voice, float soundVolume = 1f)
     {
       if (Config.Data[Config.Keys.TikTokSessionID].Length == 0) return null;
       if (_text is null || _text.Length == 0) return null;
@@ -189,7 +188,7 @@ namespace AbevBot
         return null;
       }
 
-      return Audio.GetMp3Sound(new MemoryStream(Convert.FromBase64String(result.Data.VStr)), soundVolume);
+      return new MemoryStream(Convert.FromBase64String(result.Data.VStr));
     }
   }
 }

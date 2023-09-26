@@ -39,11 +39,12 @@ namespace AbevBot
       if (!TTSPlayed)
       {
         // There is TTS to play, find all of the voices in the message and split the message to be read by different voices
+        List<ISampleProvider> sounds = new();
         List<string> text = new();
         text.AddRange(TextToRead.Split(':'));
 
         if (text.Count == 0) { MainWindow.ConsoleWarning($">> Nothing to read: {TextToRead}"); } // Nothing to read? Do nothing
-        else if (text.Count == 1) { AudioToPlay.Add(StreamElements.GetTTS(TextToRead, soundVolume: TTSVolume)); } // Just text, read with default voice
+        else if (text.Count == 1) { Audio.AddToSampleProviderList(StreamElements.GetTTS(text[^1].Trim()), ref sounds, 0); } // Just text, read with default voice
         else
         {
           // There is at least one attempt to change the voice
@@ -53,92 +54,51 @@ namespace AbevBot
           {
             // Find a space before voice name
             index = text[^2].LastIndexOf(" ");
-            if (index <= 0)
-            {
-              // Whole text[^2] is voice name, try to get it
-              maybeVoice = text[^2].Trim();
-              voice = StreamElements.GetVoice(maybeVoice);
-              if (voice?.Length > 0)
-              {
-                // Voice found use text[^2] voice with text[^1] message
-                if (text[^1].Trim().Length > 0) // Skip empty messages
-                {
-                  AudioToPlay.Insert(0, StreamElements.GetTTS(text[^1].Trim(), voice, TTSVolume));
-                  if (AudioToPlay[0] is null)
-                  {
-                    MainWindow.ConsoleWarning($">> StreamElements TTS request for voice: {voice} returned null. Adding the text to read with default voice.");
-                    AudioToPlay[0] = StreamElements.GetTTS(text[^1].Trim(), soundVolume: TTSVolume);
-                  }
-                }
-                text.RemoveAt(text.Count - 1);
-                text.RemoveAt(text.Count - 1);
-                continue;
-              }
-              voice = TikTok.GetVoice(maybeVoice);
-              if (voice?.Length > 0)
-              {
-                // Voice found use text[^2] voice with text[^1] message
-                if (text[^1].Trim().Length > 0) // Skip empty messages
-                {
-                  AudioToPlay.Insert(0, TikTok.GetTTS(text[^1].Trim(), voice, TTSVolume));
-                  if (AudioToPlay[0] is null)
-                  {
-                    MainWindow.ConsoleWarning($">> TikTok TTS request for voice: {voice} returned null. Adding the text to read with default voice.");
-                    AudioToPlay[0] = StreamElements.GetTTS(text[^1].Trim(), soundVolume: TTSVolume);
-                  }
-                }
-                text.RemoveAt(text.Count - 1);
-                text.RemoveAt(text.Count - 1);
-                continue;
-              }
+            if (index <= 0) { maybeVoice = text[^2].Trim(); } // Whole text[^2] is voice name, try to get it
+            else { maybeVoice = text[^2].Substring(index).Trim(); } // Part of text[^2] is voice name - extract it
 
-              // The voice is not found, join [^2] with [^1] and ':' symbol, and remove last text that was merged
-              text[^2] = string.Join(':', text[^2], text[^1]);
-              text.RemoveAt(text.Count - 1);
-            }
-            else
+            voice = StreamElements.GetVoice(maybeVoice);
+            if (voice?.Length > 0)
             {
-              // Part of text[^2] is voice name - extract it
-              maybeVoice = text[^2].Substring(index).Trim();
-              voice = StreamElements.GetVoice(maybeVoice);
-              if (voice?.Length > 0)
+              // Voice found use text[^2] voice with text[^1] message
+              if (text[^1].Trim().Length > 0) // Skip empty messages
               {
-                // Voice found, remvoe whole text[^1] message, remove from text[^2] the voice part
-                if (text[^1].Trim().Length > 0) // Skip empty messages
+                Audio.AddToSampleProviderList(StreamElements.GetTTS(text[^1].Trim(), voice), ref sounds, 0);
+                if (sounds[0] is null)
                 {
-                  AudioToPlay.Insert(0, StreamElements.GetTTS(text[^1].Trim(), voice, TTSVolume));
-                  if (AudioToPlay[0] is null)
-                  {
-                    MainWindow.ConsoleWarning($">> StreamElements TTS request for voice: {voice} returned null. Adding the text to read with default voice.");
-                    AudioToPlay[0] = StreamElements.GetTTS(text[^1].Trim(), soundVolume: TTSVolume);
-                  }
+                  MainWindow.ConsoleWarning($">> StreamElements TTS request for voice: {voice} returned null. Adding the text to read with default voice.");
+                  sounds.RemoveAt(0);
+                  Audio.AddToSampleProviderList(StreamElements.GetTTS(text[^1].Trim()), ref sounds, 0);
                 }
-                text.RemoveAt(text.Count - 1);
-                text[^1] = text[^1].Substring(0, index);
-                continue;
               }
-              voice = TikTok.GetVoice(maybeVoice);
-              if (voice?.Length > 0)
-              {
-                // Voice found, remvoe whole text[^1] message, remove from text[^2] the voice part
-                if (text[^1].Trim().Length > 0) // Skip empty messages
-                {
-                  AudioToPlay.Insert(0, TikTok.GetTTS(text[^1].Trim(), voice, TTSVolume));
-                  if (AudioToPlay[0] is null)
-                  {
-                    MainWindow.ConsoleWarning($">> TikTok TTS request for voice: {voice} returned null. Adding the text to read with default voice.");
-                    AudioToPlay[0] = StreamElements.GetTTS(text[^1].Trim(), soundVolume: TTSVolume);
-                  }
-                }
-                text.RemoveAt(text.Count - 1);
-                text[^1] = text[^1].Substring(0, index);
-                continue;
-              }
-
-              // The voice is not found, join [^2] with [^1] and ':' symbol, and remove last text that was merged
-              text[^2] = string.Join(':', text[^2], text[^1]);
               text.RemoveAt(text.Count - 1);
+              if (index <= 0) { text.RemoveAt(text.Count - 1); }
+              else { text[^1] = text[^1].Substring(0, index); }
+              continue;
             }
+            voice = TikTok.GetVoice(maybeVoice);
+            if (voice?.Length > 0)
+            {
+              // Voice found use text[^2] voice with text[^1] message
+              if (text[^1].Trim().Length > 0) // Skip empty messages
+              {
+                Audio.AddToSampleProviderList(TikTok.GetTTS(text[^1].Trim(), voice), ref sounds, 0);
+                if (sounds[0] is null)
+                {
+                  MainWindow.ConsoleWarning($">> TikTok TTS request for voice: {voice} returned null. Adding the text to read with default voice.");
+                  sounds.RemoveAt(0);
+                  Audio.AddToSampleProviderList(StreamElements.GetTTS(text[^1].Trim()), ref sounds, 0);
+                }
+              }
+              text.RemoveAt(text.Count - 1);
+              if (index <= 0) { text.RemoveAt(text.Count - 1); }
+              else { text[^1] = text[^1].Substring(0, index); }
+              continue;
+            }
+
+            // The voice is not found, join [^2] with [^1] and ':' symbol, and remove last text that was merged
+            text[^2] = string.Join(':', text[^2], text[^1]);
+            text.RemoveAt(text.Count - 1);
           }
 
           if (text.Count == 1)
@@ -149,9 +109,9 @@ namespace AbevBot
             {
               maybeVoice = text[0].Trim();
               voice = StreamElements.GetVoice(maybeVoice);
-              if (voice?.Length == 0) voice = TikTok.GetVoice(maybeVoice);
-              if (voice is null || voice?.Length == 0) AudioToPlay.Insert(0, StreamElements.GetTTS(text[0], soundVolume: TTSVolume));
-              else { } // The remaining part was also a voice change so, do nothing? May add null to AudioToPlay but what's the point of it?
+              if (voice?.Length == 0) { voice = TikTok.GetVoice(maybeVoice); }
+              if (voice is null || voice?.Length == 0) { Audio.AddToSampleProviderList(StreamElements.GetTTS(text[0].Trim()), ref sounds, 0); }
+              else { } // The remaining part was also a voice change so, do nothing? May add null to sounds but what's the point of it?
             }
           }
           else if (text.Count != 0)
@@ -160,6 +120,8 @@ namespace AbevBot
             MainWindow.ConsoleWarning(">> Something bad happened with TTS generation");
           }
         }
+
+        AudioToPlay.Insert(0, Audio.GetWavSound(sounds, TTSVolume));
       }
       if (!SoundPlayed)
       {

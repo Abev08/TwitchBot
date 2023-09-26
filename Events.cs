@@ -46,7 +46,6 @@ namespace AbevBot
       string message;
       EventMessage messageDeserialized;
       int zeroBytesReceivedCounter = 0;
-      ManualResetEvent resetEvent = new(false);
 
       while (true)
       {

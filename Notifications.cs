@@ -172,7 +172,7 @@ namespace AbevBot
       else if (id.Equals(""))
       {
         // Random video
-        DirectoryInfo dir = new("Resources/videos");
+        DirectoryInfo dir = new("Resources/Videos");
         if (dir.Exists)
         {
           List<string> videos = new();
