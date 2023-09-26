@@ -10,6 +10,8 @@ ResponseMessages.csv
 twitch-cli*/
 error.txt
 .chatters
+Resources/Sounds/
+Resources/Videos/
 
 # User-specific files
 *.rsuser
