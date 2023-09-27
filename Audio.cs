@@ -51,6 +51,11 @@ namespace AbevBot
         else { return; }
       }
       else if (sound is Stream) { sample = new Mp3FileReader((Stream)sound).ToSampleProvider(); }
+      else if (sound is FileInfo file)
+      {
+        if (file.Exists) { sample = new Mp3FileReader(file.FullName).ToSampleProvider(); }
+        else { return; }
+      }
       else
       {
         MainWindow.ConsoleWarning($">> Sound type {sound.GetType()} not supported!");

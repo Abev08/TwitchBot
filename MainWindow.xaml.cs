@@ -172,10 +172,9 @@ namespace AbevBot
 
     private void TTSTest(object sender, RoutedEventArgs e)
     {
-      string text = tbTTSText.Text;
-      string voice = tbTTSVoice.Text;
+      string text = tbTTSText.Text.Trim();
       if (string.IsNullOrEmpty(text)) return;
-      Notifications.CreateTTSNotification($"{voice}: {text}");
+      Notifications.CreateTTSNotification(text);
     }
 
     private void NotificationTest(object sender, RoutedEventArgs e)

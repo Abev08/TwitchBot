@@ -19,6 +19,7 @@ namespace AbevBot
     private static Thread NotificationsThread;
     public static readonly HttpClient Client = new();
     public static string VoicesLink { get; private set; }
+    private static readonly Dictionary<string, FileInfo> SampleSounds = new();
 
     public static void Start()
     {
@@ -253,6 +254,23 @@ namespace AbevBot
       {
         MainWindow.ConsoleWarning(">> Couldn't add respoonse to \"!voices\" key - the key is already present in response messages.");
       }
+    }
+
+    public static Dictionary<string, FileInfo> GetSampleSounds()
+    {
+      // Load sounds
+      if (SampleSounds.Count == 0)
+      {
+        foreach (FileInfo file in new DirectoryInfo("Resources/Sounds").GetFiles())
+        {
+          if (file.Extension.Equals(".mp3") || file.Extension.Equals(".wav"))
+          {
+            SampleSounds.Add(file.Name.Replace(file.Extension, "").ToLower(), file);
+          }
+        }
+      }
+
+      return SampleSounds;
     }
   }
 }

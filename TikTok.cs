@@ -159,7 +159,7 @@ namespace AbevBot
       return sb.ToString();
     }
 
-    public static Stream GetTTS(string _text, string voice, float soundVolume = 1f)
+    public static Stream GetTTS(string _text, string voice)
     {
       if (Config.Data[Config.Keys.TikTokSessionID].Length == 0) return null;
       if (_text is null || _text.Length == 0) return null;

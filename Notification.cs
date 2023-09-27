@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using NAudio.Wave;
 
 namespace AbevBot
@@ -39,16 +40,17 @@ namespace AbevBot
       if (!TTSPlayed)
       {
         // There is TTS to play, find all of the voices in the message and split the message to be read by different voices
+        var sampleSounds = Notifications.GetSampleSounds();
         List<ISampleProvider> sounds = new();
         List<string> text = new();
+        int index;
         text.AddRange(TextToRead.Split(':'));
 
         if (text.Count == 0) { MainWindow.ConsoleWarning($">> Nothing to read: {TextToRead}"); } // Nothing to read? Do nothing
-        else if (text.Count == 1) { Audio.AddToSampleProviderList(StreamElements.GetTTS(text[^1].Trim()), ref sounds, 0); } // Just text, read with default voice
+        else if (text.Count == 1) { NoIdeaForTheName(text[^1], ref sampleSounds, ref sounds, "StreamElements", "Brian"); } // Just text, read with default voice
         else
         {
           // There is at least one attempt to change the voice
-          int index;
           string voice, maybeVoice;
           while (text.Count > 1)
           {
@@ -60,17 +62,7 @@ namespace AbevBot
             voice = StreamElements.GetVoice(maybeVoice);
             if (voice?.Length > 0)
             {
-              // Voice found use text[^2] voice with text[^1] message
-              if (text[^1].Trim().Length > 0) // Skip empty messages
-              {
-                Audio.AddToSampleProviderList(StreamElements.GetTTS(text[^1].Trim(), voice), ref sounds, 0);
-                if (sounds[0] is null)
-                {
-                  MainWindow.ConsoleWarning($">> StreamElements TTS request for voice: {voice} returned null. Adding the text to read with default voice.");
-                  sounds.RemoveAt(0);
-                  Audio.AddToSampleProviderList(StreamElements.GetTTS(text[^1].Trim()), ref sounds, 0);
-                }
-              }
+              NoIdeaForTheName(text[^1].Trim(), ref sampleSounds, ref sounds, "StreamElements", voice);
               text.RemoveAt(text.Count - 1);
               if (index <= 0) { text.RemoveAt(text.Count - 1); }
               else { text[^1] = text[^1].Substring(0, index); }
@@ -79,17 +71,7 @@ namespace AbevBot
             voice = TikTok.GetVoice(maybeVoice);
             if (voice?.Length > 0)
             {
-              // Voice found use text[^2] voice with text[^1] message
-              if (text[^1].Trim().Length > 0) // Skip empty messages
-              {
-                Audio.AddToSampleProviderList(TikTok.GetTTS(text[^1].Trim(), voice), ref sounds, 0);
-                if (sounds[0] is null)
-                {
-                  MainWindow.ConsoleWarning($">> TikTok TTS request for voice: {voice} returned null. Adding the text to read with default voice.");
-                  sounds.RemoveAt(0);
-                  Audio.AddToSampleProviderList(StreamElements.GetTTS(text[^1].Trim()), ref sounds, 0);
-                }
-              }
+              NoIdeaForTheName(text[^1].Trim(), ref sampleSounds, ref sounds, "TikTok", voice);
               text.RemoveAt(text.Count - 1);
               if (index <= 0) { text.RemoveAt(text.Count - 1); }
               else { text[^1] = text[^1].Substring(0, index); }
@@ -110,7 +92,7 @@ namespace AbevBot
               maybeVoice = text[0].Trim();
               voice = StreamElements.GetVoice(maybeVoice);
               if (voice?.Length == 0) { voice = TikTok.GetVoice(maybeVoice); }
-              if (voice is null || voice?.Length == 0) { Audio.AddToSampleProviderList(StreamElements.GetTTS(text[0].Trim()), ref sounds, 0); }
+              if (voice is null || voice?.Length == 0) { NoIdeaForTheName(text[0].Trim(), ref sampleSounds, ref sounds, "StreamElements", "Brian"); }
               else { } // The remaining part was also a voice change so, do nothing? May add null to sounds but what's the point of it?
             }
           }
@@ -219,6 +201,63 @@ namespace AbevBot
       MainWindow.SetTextDisplayed(string.Empty); // Clear displayed text
 
       return true; // return true when notification has ended
+    }
+
+    // FIXME: Figure out good method name :D
+    // It searches for sound samples in provided text,
+    // splits the text to parts that have to be read, and parts that should play sound sample
+    // It also inserts new sounds at the beginning of provided sounds array
+    // GettoTTSoAndoInsertoSamplesoAndoMergoWithoProvidedoSoundeso??
+    private void NoIdeaForTheName(string _text, ref Dictionary<string, FileInfo> sampleSounds, ref List<ISampleProvider> sounds, string supplier, string voice)
+    {
+      string text = _text;
+      string maybeSample;
+      int index, nextIndex;
+      List<ISampleProvider> newAudio = new();
+
+      while (text.Length > 0)
+      {
+        index = text.IndexOf('-');
+        if (index >= 0)
+        {
+          nextIndex = text.IndexOf(" ", index); // Space index (end of word after '-' symbol)
+          if (nextIndex > index || nextIndex == -1)
+          {
+            // We got indexes between a word that starts with '-' symbol is placed (-1 means to the end of the text)
+            maybeSample = text.Substring(index + 1, nextIndex > 0 ? (nextIndex - index - 1) : (text.Length - index - 1));
+            // Check if the sample exist in samples list
+            if (sampleSounds.ContainsKey(maybeSample.Trim().ToLower()))
+            {
+              // Add text before the sample to be read
+              if (supplier.Equals("StreamElements")) { Audio.AddToSampleProviderList(StreamElements.GetTTS(text[..index].Trim(), voice), ref newAudio); }
+              else if (supplier.Equals("TikTok")) { Audio.AddToSampleProviderList(TikTok.GetTTS(text[..index].Trim(), voice), ref newAudio); }
+              else { MainWindow.ConsoleWarning($">> TTS supplier {supplier} not recognized!"); }
+
+              // Add sample sound
+              Audio.AddToSampleProviderList(sampleSounds[maybeSample], ref newAudio);
+
+              // Remove already parsed text
+              if (nextIndex == -1) { text = string.Empty; } // Already reached the end
+              else { text = text[nextIndex..]; }
+            }
+          }
+        }
+        else
+        {
+          // No sample found, add text to be read, clear the remainder of the text
+          if (supplier.Equals("StreamElements")) { Audio.AddToSampleProviderList(StreamElements.GetTTS(text.Trim(), voice), ref newAudio); }
+          else if (supplier.Equals("TikTok")) { Audio.AddToSampleProviderList(TikTok.GetTTS(text.Trim(), voice), ref newAudio); }
+          else { MainWindow.ConsoleWarning($">> TTS supplier {supplier} not recognized!"); }
+          text = string.Empty;
+        }
+      }
+
+      // Insert new audio to sounds list
+      for (int i = newAudio.Count - 1; i >= 0; i--)
+      {
+        if (newAudio[i] is null) { MainWindow.ConsoleWarning(">> Some TTS request returned null audio player!"); }
+        else { sounds.Insert(0, newAudio[i]); }
+      }
     }
   }
 }
