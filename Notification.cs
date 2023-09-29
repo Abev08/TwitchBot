@@ -7,12 +7,13 @@ namespace AbevBot
 {
   public class Notification
   {
-    private static readonly TimeSpan MinimumNotificationTime = TimeSpan.FromMilliseconds(500);
-    private static readonly TimeSpan MaximumNotificationTime = new(0, 1, 0);
+    private static readonly TimeSpan MinimumNotificationTime = TimeSpan.FromSeconds(2);
+    private static readonly TimeSpan MaximumNotificationTime = TimeSpan.FromSeconds(30);
 
     public bool Started { get; private set; }
     private DateTime StartTime { get; set; }
     public string TextToDisplay { get; init; }
+    public Notifications.TextPosition TextToDisplayPosition { get; init; } = Notifications.TextPosition.MIDDLE;
     public string TextToRead { get; init; }
     public float TTSVolume { get; init; } = 1f;
     public string SoundPath { get; init; }
@@ -22,6 +23,7 @@ namespace AbevBot
     private bool VideoEnded;
     private bool VideoStarted;
     private bool TextDisplayed;
+    private bool TextCleared;
     private bool SoundPlayed;
     private bool TTSPlayed;
     private readonly List<WaveOut> AudioToPlay = new();
@@ -122,11 +124,18 @@ namespace AbevBot
       if (DateTime.Now - StartTime > MaximumNotificationTime)
       {
         MainWindow.ConsoleWarning(">> Maximum notification time reached, something went wrong, to not block other notificaitons force closing this one!");
-        MainWindow.SetTextDisplayed(string.Empty);
+        MainWindow.ClearTextDisplayed();
         MainWindow.StopVideoPlayer();
         AudioToPlay[0]?.Stop();
         AudioToPlay.Clear();
         return true;
+      }
+
+      // Display text
+      if (!TextDisplayed && !Notifications.NotificationsPaused && !Notifications.SkipNotification && TextToDisplay?.Length > 0)
+      {
+        TextDisplayed = true;
+        MainWindow.SetTextDisplayed(TextToDisplay, TextToDisplayPosition);
       }
 
       if (!VideoEnded)
@@ -146,11 +155,11 @@ namespace AbevBot
         if (!VideoEnded) return false;
       }
 
-      // Display text
-      if (!TextDisplayed && !Notifications.NotificationsPaused && !Notifications.SkipNotification && TextToDisplay?.Length > 0)
+      // Clear displayed text
+      if (!TextCleared && (DateTime.Now - StartTime >= MinimumNotificationTime))
       {
-        TextDisplayed = true;
-        MainWindow.SetTextDisplayed(TextToDisplay);
+        TextCleared = true;
+        MainWindow.ClearTextDisplayed();
       }
 
       // Play the audio
@@ -198,7 +207,7 @@ namespace AbevBot
 
       // The notification is over, clear after it
       if (!Notifications.SkipNotification && (DateTime.Now - StartTime < MinimumNotificationTime)) return false;
-      MainWindow.SetTextDisplayed(string.Empty); // Clear displayed text
+      MainWindow.ClearTextDisplayed(); // Clear displayed text, again just to be sure
 
       return true; // return true when notification has ended
     }
@@ -212,12 +221,12 @@ namespace AbevBot
     {
       string text = _text;
       string maybeSample;
-      int index, nextIndex;
+      int index = -1, nextIndex;
       List<ISampleProvider> newAudio = new();
 
       while (text.Length > 0)
       {
-        index = text.IndexOf('-');
+        index = text.IndexOf('-', index + 1);
         if (index >= 0)
         {
           nextIndex = text.IndexOf(" ", index); // Space index (end of word after '-' symbol)
@@ -239,6 +248,8 @@ namespace AbevBot
               // Remove already parsed text
               if (nextIndex == -1) { text = string.Empty; } // Already reached the end
               else { text = text[nextIndex..]; }
+
+              index = -1;
             }
           }
         }

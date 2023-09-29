@@ -9,7 +9,7 @@ namespace AbevBot
   public static class MinigameFight
   {
     private const int MAXLADDERENTRIES = 10;
-    private static readonly TimeSpan FIGHTINGTIMEOUT = new(0, 10, 0);
+    private static readonly TimeSpan FIGHTINGTIMEOUT = new(0, 5, 0);
 
     public static bool Enabled { get; set; }
 
@@ -127,15 +127,15 @@ namespace AbevBot
       }
       else
       {
-        if (DateTime.Now - fighter.Fight.LastFight < FIGHTINGTIMEOUT) return true;
         fighter.Fight.CheckStats();
+        if (DateTime.Now - fighter.Fight.LastFight < FIGHTINGTIMEOUT) return true;
       }
       return false;
     }
 
     private static void GetStats(Chatter fighter)
     {
-      fighter.Fight.CheckStats();
+      InitFighter(fighter);
       Chat.AddMessageToQueue(string.Concat(
         "@", fighter.Name,
         " LVL: ", fighter.Fight.Level,
@@ -164,7 +164,11 @@ namespace AbevBot
         }
       }
 
-      if (ladder.Count == 0) return;
+      if (ladder.Count == 0)
+      {
+        Chat.AddMessageToQueue("peepoBox the ladder is empty Sadge");
+        return;
+      }
 
       // Sort the ladder
       ladder.Sort((a, b) => { return b.level - a.level; });

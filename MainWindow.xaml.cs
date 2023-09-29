@@ -18,7 +18,7 @@ namespace AbevBot
     public static bool ConsoleFreed { get; private set; }
 
     private static MainWindow WindowRef;
-    private static TextBlock TextOutputRef;
+    private static TextBlock TBMiddleRef, TBTopRef, TBBottomRef;
     private static TextBlock NotificationsQueueCountRef;
     private static MediaElement VideoPlayerRef;
     public static bool VideoEnded { get; private set; }
@@ -27,7 +27,9 @@ namespace AbevBot
     {
       InitializeComponent();
       WindowRef = this;
-      TextOutputRef = tbTextOutput;
+      TBTopRef = tbTop;
+      TBMiddleRef = tbMid;
+      TBBottomRef = tbBottom;
       NotificationsQueueCountRef = tbNotificationsQueue;
       VideoPlayerRef = VideoPlayer;
 
@@ -105,11 +107,34 @@ namespace AbevBot
       Notifications.SkipNotification = true;
     }
 
-    public static void SetTextDisplayed(string text)
+    public static void SetTextDisplayed(string text, Notifications.TextPosition position)
     {
       WindowRef.Dispatcher.Invoke(new Action(() =>
       {
-        TextOutputRef.Text = text;
+        switch (position)
+        {
+          case Notifications.TextPosition.TOP:
+            TBTopRef.Text = text;
+            break;
+
+          case Notifications.TextPosition.MIDDLE:
+            TBMiddleRef.Text = text;
+            break;
+
+          case Notifications.TextPosition.BOTTOM:
+            TBBottomRef.Text = text;
+            break;
+        }
+      }));
+    }
+
+    public static void ClearTextDisplayed()
+    {
+      WindowRef.Dispatcher.Invoke(new Action(() =>
+      {
+        TBTopRef.Text = string.Empty;
+        TBMiddleRef.Text = string.Empty;
+        TBBottomRef.Text = string.Empty;
       }));
     }
 
@@ -151,6 +176,11 @@ namespace AbevBot
     private void ChkGamba_CheckChanged(object sender, RoutedEventArgs e)
     {
       MinigameGamba.Enabled = ((CheckBox)sender).IsChecked == true;
+    }
+
+    private void ChkGambaLife_CheckChanged(object sender, RoutedEventArgs e)
+    {
+      MinigameGamba.GambaLifeEnabled = ((CheckBox)sender).IsChecked == true;
     }
 
     private void ChkFight_CheckChanged(object sender, RoutedEventArgs e)

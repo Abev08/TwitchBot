@@ -8,9 +8,11 @@ namespace AbevBot
   public static class MinigameGamba
   {
     private const int MAXLADDERENTRIES = 10;
+    private const int GAMBALIFELOSTTIMEOUTSECONDS = 30;
     public static readonly GambaLadderComparer GambaLadderComparer = new();
 
     public static bool Enabled { get; set; }
+    public static bool GambaLifeEnabled { get; set; }
 
     public static void NewGamba(long userID, string userName, string message)
     {
@@ -32,6 +34,8 @@ namespace AbevBot
       else if (msg.Equals("quarter")) { pointsToRoll = chatter.Gamba.Points / 4; }
       else if (msg.Equals("life"))
       {
+        if (!GambaLifeEnabled) return;
+
         // Gambling a life - if lost the chatter will get banned, if won nothing?
         Chat.AddMessageToQueue(string.Concat("@", chatter.Name, " GAMBA is putting a life at risk peepoShake"));
 
@@ -46,7 +50,7 @@ namespace AbevBot
         {
           // lost
           Chat.AddMessageToQueue(string.Concat("@", chatter.Name, " has left the chat Deadge"));
-          Chat.BanChatter("Lost in !gamba life", chatter.ID, durSeconds: 5 * 60); // 5 min ban
+          Chat.BanChatter("Lost in !gamba life", chatter.ID, durSeconds: GAMBALIFELOSTTIMEOUTSECONDS);
         }
         return;
       }

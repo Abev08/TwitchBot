@@ -21,6 +21,8 @@ namespace AbevBot
     public static string VoicesLink { get; private set; }
     private static readonly Dictionary<string, FileInfo> SampleSounds = new();
 
+    public enum TextPosition { TOP, MIDDLE, BOTTOM }
+
     public static void Start()
     {
       if (Started) return;
@@ -92,6 +94,7 @@ namespace AbevBot
       AddNotification(new Notification()
       {
         TextToDisplay = $"New follower {userName}!",
+        TextToDisplayPosition = TextPosition.TOP,
         SoundPath = "Resources/tone1.wav",
         SoundVolume = 0.3f
       });
@@ -102,6 +105,7 @@ namespace AbevBot
       AddNotification(new Notification()
       {
         TextToDisplay = $"Thank you {userName}!\n{message}",
+        TextToDisplayPosition = TextPosition.BOTTOM,
         TextToRead = $"Thank you {userName} for tier {tier} sub! {message}",
         TTSVolume = 0.4f,
         VideoPath = "Resources/peepoHey.mp4",
@@ -124,6 +128,7 @@ namespace AbevBot
       AddNotification(new Notification()
       {
         TextToDisplay = $"Thank you {userName} for {count} subs!\n{message}",
+        TextToDisplayPosition = TextPosition.BOTTOM,
         TextToRead = $"Thank you {userName} for gifting {count} tier {tier} subs! {message}",
         TTSVolume = 0.4f,
         VideoPath = "Resources/peepoHey.mp4",
@@ -138,6 +143,7 @@ namespace AbevBot
       AddNotification(new Notification()
       {
         TextToDisplay = $"Thank you {userName}!\n{message.Text}",
+        TextToDisplayPosition = TextPosition.BOTTOM,
         TextToRead = string.Concat(
           "Thank you ", userName, " for ",
           duration > 1 ? $"{duration} months in advance" : "",
@@ -156,6 +162,7 @@ namespace AbevBot
       AddNotification(new Notification()
       {
         TextToDisplay = $"Thank you {userName} for {count} bits!\n{message}",
+        TextToDisplayPosition = TextPosition.TOP,
         TextToRead = $"Thank you {userName} for {count} bits! {message}",
         TTSVolume = 0.4f,
         SoundPath = "Resources/tone1.wav",
@@ -261,12 +268,21 @@ namespace AbevBot
       // Load sounds
       if (SampleSounds.Count == 0)
       {
-        foreach (FileInfo file in new DirectoryInfo("Resources/Sounds").GetFiles())
+        DirectoryInfo dir = new("Resources/Sounds");
+        if (dir.Exists)
         {
-          if (file.Extension.Equals(".mp3") || file.Extension.Equals(".wav"))
+          foreach (FileInfo file in dir.GetFiles())
           {
-            SampleSounds.Add(file.Name.Replace(file.Extension, "").ToLower(), file);
+            if (file.Extension.Equals(".mp3") || file.Extension.Equals(".wav"))
+            {
+              SampleSounds.Add(file.Name.Replace(file.Extension, "").ToLower(), file);
+            }
           }
+        }
+        else
+        {
+          dir.Create();
+          SampleSounds.Add("___", null); // Add dummy sound for the top if not to be checked every time
         }
       }
 
