@@ -76,6 +76,7 @@ namespace AbevBot
       }
     }
 
+    /// <summary> Adds notification to the queue. </summary>
     public static void AddNotification(Notification notification)
     {
       Task.Run(() =>
@@ -88,6 +89,7 @@ namespace AbevBot
       });
     }
 
+    /// <summary> Creates and adds to queue Follow notification. </summary>
     public static void CreateFollowNotification(string userName)
     {
       Chat.AddMessageToQueue($"@{userName} thank you for the follow!");
@@ -100,19 +102,21 @@ namespace AbevBot
       });
     }
 
+    /// <summary> Creates and adds to queue Subscription notification. </summary>
     public static void CreateSubscriptionNotification(string userName, string tier, string message)
     {
       AddNotification(new Notification()
       {
         TextToDisplay = $"Thank you {userName}!\n{message}",
         TextToDisplayPosition = TextPosition.BOTTOM,
-        TextToRead = $"Thank you {userName} for tier {tier} sub! {message}",
+        TextToRead = $"Thank you {userName} for tier {tier[..1]} sub! {message}",
         TTSVolume = 0.4f,
         VideoPath = "Resources/peepoHey.mp4",
         SoundVolume = 0.8f
       });
     }
 
+    /// <summary> Creates and adds to queue Gifted Subscription notification. </summary>
     public static void CreateReceiveGiftSubscriptionNotification(string userName)
     {
       AddNotification(new Notification()
@@ -123,19 +127,21 @@ namespace AbevBot
       });
     }
 
+    /// <summary> Creates and adds to queue Received Gifted Subscription notification. </summary>
     public static void CreateGiftSubscriptionNotification(string userName, string tier, int count, string message)
     {
       AddNotification(new Notification()
       {
         TextToDisplay = $"Thank you {userName} for {count} subs!\n{message}",
         TextToDisplayPosition = TextPosition.BOTTOM,
-        TextToRead = $"Thank you {userName} for gifting {count} tier {tier} subs! {message}",
+        TextToRead = $"Thank you {userName} for gifting {count} tier {tier[..1]} subs! {message}",
         TTSVolume = 0.4f,
         VideoPath = "Resources/peepoHey.mp4",
         SoundVolume = 0.8f
       });
     }
 
+    /// <summary> This is more advanced CreateSubscriptionNotification version - more info in message variable. </summary>
     public static void CreateSubscriptionNotification(string userName, string tier, int duration, int streak, EventPayloadMessage message)
     {
       // TODO: Create message to read - remove emotes from the message using message.Emotes[], don't read them
@@ -147,7 +153,7 @@ namespace AbevBot
         TextToRead = string.Concat(
           "Thank you ", userName, " for ",
           duration > 1 ? $"{duration} months in advance" : "",
-          " tier ", tier, " sub!",
+          " tier ", tier[..1], " sub!",
           streak > 1 ? $" It's your {streak} month in a row!" : "",
           " ", message.Text
           ),
@@ -157,6 +163,7 @@ namespace AbevBot
       });
     }
 
+    /// <summary> Creates and adds to queue Cheer notification. </summary>
     public static void CreateCheerNotification(string userName, int count, string message)
     {
       AddNotification(new Notification()
@@ -170,6 +177,7 @@ namespace AbevBot
       });
     }
 
+    /// <summary> Creates and adds to queue Channel Points Redemption notification. </summary>
     public static void CreateRedemptionNotificaiton(string userName, string id, string message)
     {
       // TODO: check id and do something
@@ -201,6 +209,7 @@ namespace AbevBot
       }
     }
 
+    /// <summary> Creates and adds to queue TTS notification (mainly for chat messages). </summary>
     public static void CreateTTSNotification(string text)
     {
       if (!ChatTTSEnabled) return;

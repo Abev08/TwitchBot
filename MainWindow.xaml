@@ -6,7 +6,7 @@
         mc:Ignorable="d"
         Title="AbevBot"
         Height="720" Width="1280"
-        MinHeight="600" MinWidth="500">
+        MinHeight="660" MinWidth="500">
   <Grid>
     <Grid.ColumnDefinitions>
       <ColumnDefinition Width="170px"/>
@@ -44,7 +44,7 @@
           <RowDefinition Height="*"/>
           <RowDefinition Height="Auto" MinHeight="140"/>
         </Grid.RowDefinitions>
-        
+
         <MediaElement x:Name="VideoPlayer" Grid.Row="1" MediaEnded="MainVideoEnded" LoadedBehavior="Manual" UnloadedBehavior="Manual"/>
 
         <TextBlock x:Name="tbTop" Grid.Row="0" Text="" FontSize="48" FontFamily="{DynamicResource OpenSans}" Foreground="White" TextWrapping="Wrap" TextAlignment="Center" VerticalAlignment="Center" HorizontalAlignment="Stretch" FontWeight="Bold">

@@ -4,6 +4,7 @@ using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Interop;
 using System.Windows.Media;
 
 namespace AbevBot
@@ -12,10 +13,18 @@ namespace AbevBot
   {
     [DllImport("Kernel32")]
     private static extern void AllocConsole();
-
     [DllImport("Kernel32")]
     private static extern void FreeConsole();
     public static bool ConsoleFreed { get; private set; }
+
+    [DllImport("user32.dll")]
+    private static extern int GetWindowLong(IntPtr hwnd, int index);
+    [DllImport("user32.dll")]
+    private static extern int SetWindowLong(IntPtr hwnd, int index, int value);
+    // from winuser.h
+    private const int GWL_STYLE = -16;
+    private const int WS_MAXIMIZEBOX = 0x10000;
+    private const int WS_MINIMIZEBOX = 0x20000;
 
     private static MainWindow WindowRef;
     private static TextBlock TBMiddleRef, TBTopRef, TBBottomRef;
@@ -74,8 +83,27 @@ namespace AbevBot
       // Wait for window to be loaded (visible) to start a demo video
       Loaded += (sender, e) =>
       {
+        // Try to switch to software renderer - it fixes MediaElement (video player) playing on other monitors
+        try
+        {
+          var hwndSource = PresentationSource.FromVisual(this) as HwndSource;
+          var hwndTarget = hwndSource.CompositionTarget;
+          hwndTarget.RenderMode = RenderMode.SoftwareOnly;
+
+          // Hide minimize button
+          var currentStyle = GetWindowLong(hwndSource.Handle, GWL_STYLE);
+          SetWindowLong(hwndSource.Handle, GWL_STYLE, currentStyle & ~WS_MINIMIZEBOX);
+        }
+        catch (Exception ex) { ConsoleWarning($">> {ex.Message}"); }
+
         VideoPlayerRef.Source = new Uri(new FileInfo("Resources/peepoHey.mp4").FullName);
         VideoPlayerRef.Play();
+      };
+
+      // Don't allow minimizing the window
+      StateChanged += (sender, e) =>
+      {
+        if (WindowRef.WindowState == WindowState.Minimized) WindowRef.WindowState = WindowState.Normal;
       };
     }
 
