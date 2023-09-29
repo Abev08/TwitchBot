@@ -170,9 +170,21 @@ namespace AbevBot
     {
       WindowRef.Dispatcher.Invoke(new Action(() =>
       {
-        if (VideoPlayerRef.Source != null) return;
+        if (VideoPlayerRef.Source != null)
+        {
+          VideoEnded = true;
+          return;
+        }
+
+        FileInfo file = new(path);
+        if (!file.Exists)
+        {
+          VideoEnded = true;
+          return;
+        }
+
         VideoEnded = false;
-        VideoPlayerRef.Source = new Uri(new FileInfo(path).FullName);
+        VideoPlayerRef.Source = new Uri(file.FullName);
         VideoPlayerRef.Volume = volume;
         VideoPlayerRef.Play();
       }));

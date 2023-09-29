@@ -20,6 +20,7 @@ namespace AbevBot
     public static readonly HttpClient Client = new();
     public static string VoicesLink { get; private set; }
     private static readonly Dictionary<string, FileInfo> SampleSounds = new();
+    private static readonly List<FileInfo> RandomVideos = new();
 
     public enum TextPosition { TOP, MIDDLE, BOTTOM }
 
@@ -105,13 +106,16 @@ namespace AbevBot
     /// <summary> Creates and adds to queue Subscription notification. </summary>
     public static void CreateSubscriptionNotification(string userName, string tier, string message)
     {
+      string videoPath = Config.Data[Config.Keys.PathToSubscriptionVideo];
+      if (videoPath is null || videoPath.Length == 0) videoPath = "Resources/peepoHey.mp4";
+
       AddNotification(new Notification()
       {
         TextToDisplay = $"Thank you {userName}!\n{message}",
         TextToDisplayPosition = TextPosition.BOTTOM,
         TextToRead = $"Thank you {userName} for tier {tier[..1]} sub! {message}",
         TTSVolume = 0.4f,
-        VideoPath = "Resources/peepoHey.mp4",
+        VideoPath = videoPath,
         SoundVolume = 0.8f
       });
     }
@@ -130,13 +134,16 @@ namespace AbevBot
     /// <summary> Creates and adds to queue Received Gifted Subscription notification. </summary>
     public static void CreateGiftSubscriptionNotification(string userName, string tier, int count, string message)
     {
+      string videoPath = Config.Data[Config.Keys.PathToGiftSubscriptionVideo];
+      if (videoPath is null || videoPath.Length == 0) videoPath = "Resources/peepoHey.mp4";
+
       AddNotification(new Notification()
       {
         TextToDisplay = $"Thank you {userName} for {count} subs!\n{message}",
         TextToDisplayPosition = TextPosition.BOTTOM,
         TextToRead = $"Thank you {userName} for gifting {count} tier {tier[..1]} subs! {message}",
         TTSVolume = 0.4f,
-        VideoPath = "Resources/peepoHey.mp4",
+        VideoPath = videoPath,
         SoundVolume = 0.8f
       });
     }
@@ -145,6 +152,9 @@ namespace AbevBot
     public static void CreateSubscriptionNotification(string userName, string tier, int duration, int streak, EventPayloadMessage message)
     {
       // TODO: Create message to read - remove emotes from the message using message.Emotes[], don't read them
+
+      string videoPath = Config.Data[Config.Keys.PathToSubscriptionVideo];
+      if (videoPath is null || videoPath.Length == 0) videoPath = "Resources/peepoHey.mp4";
 
       AddNotification(new Notification()
       {
@@ -158,7 +168,7 @@ namespace AbevBot
           " ", message.Text
           ),
         TTSVolume = 0.4f,
-        VideoPath = "Resources/peepoHey.mp4",
+        VideoPath = videoPath,
         SoundVolume = 0.8f
       });
     }
@@ -180,32 +190,15 @@ namespace AbevBot
     /// <summary> Creates and adds to queue Channel Points Redemption notification. </summary>
     public static void CreateRedemptionNotificaiton(string userName, string id, string message)
     {
+      id = "6773293e-b813-7b40-ea10-f219ffa00ef6";
       // TODO: check id and do something
       if (id.Equals(""))
       {
 
       }
-      else if (id.Equals(""))
+      else if (Config.Data[Config.Keys.ChannelPointRandomVideo].Equals(id))
       {
-        // Random video
-        DirectoryInfo dir = new("Resources/Videos");
-        if (dir.Exists)
-        {
-          List<string> videos = new();
-          foreach (FileInfo file in dir.GetFiles())
-          {
-            if (file.Exists && file.Extension == ".mp4")
-            {
-              videos.Add(file.FullName);
-            }
-          }
-
-          AddNotification(new Notification()
-          {
-            VideoPath = videos[Random.Shared.Next(0, videos.Count)],
-            VideoVolume = 0.8f
-          });
-        }
+        CreateRandomVideoNotification();
       }
     }
 
@@ -218,6 +211,19 @@ namespace AbevBot
       {
         TextToRead = text,
         TTSVolume = 0.4f
+      });
+    }
+
+    /// <summary> Creates and adds to queue Random Video notification. </summary>
+    public static void CreateRandomVideoNotification()
+    {
+      var videos = GetRandomVideos();
+      if (videos is null || videos.Count == 0) return;
+
+      AddNotification(new Notification()
+      {
+        VideoPath = videos[Random.Shared.Next(0, videos.Count)].FullName,
+        VideoVolume = 0.8f
       });
     }
 
@@ -288,14 +294,34 @@ namespace AbevBot
             }
           }
         }
-        else
-        {
-          dir.Create();
-          SampleSounds.Add("___", null); // Add dummy sound for the top if not to be checked every time
-        }
+
+        if (SampleSounds.Count == 0) SampleSounds.Add("___", null); // Add dummy sound for the top if not to be checked every time
       }
 
       return SampleSounds;
+    }
+
+    public static List<FileInfo> GetRandomVideos()
+    {
+      // Load random videos
+      if (RandomVideos.Count == 0)
+      {
+        DirectoryInfo dir = new("Resources/Videos");
+        if (dir.Exists)
+        {
+          foreach (FileInfo file in dir.GetFiles())
+          {
+            if (file.Extension.Equals(".mp4"))
+            {
+              RandomVideos.Add(file);
+            }
+          }
+        }
+
+        if (RandomVideos.Count == 0) RandomVideos.Add(new FileInfo(Guid.NewGuid().ToString())); // Add dummy random video for the top if not to be checked every time
+      }
+
+      return RandomVideos;
     }
   }
 }

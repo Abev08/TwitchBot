@@ -14,6 +14,8 @@ namespace AbevBot
       BotOAuthToken, BotOAuthRefreshToken,
       TikTokSessionID,
       ConsoleVisible, PeriodicMessageTimeInterval,
+      PathToSubscriptionVideo, PathToGiftSubscriptionVideo,
+      ChannelPointRandomVideo,
       msg
     };
 
@@ -38,6 +40,12 @@ namespace AbevBot
     public static bool ParseConfigFile()
     {
       MainWindow.ConsoleWarning(">> Reading Config.ini file.");
+
+      // Create resources folders just for user convenience
+      DirectoryInfo dir = new("Resources/Sounds");
+      if (!dir.Exists) dir.Create();
+      dir = new DirectoryInfo("Resources/Videos");
+      if (!dir.Exists) dir.Create();
 
       FileInfo configFile = new(@"./Config.ini");
       if (configFile.Exists == false)
@@ -89,6 +97,18 @@ namespace AbevBot
                   }
                   break;
 
+                case Keys.PathToSubscriptionVideo:
+                case Keys.PathToGiftSubscriptionVideo:
+                  Data[(Keys)key] = new FileInfo(string.Concat(
+                      "Resources/",
+                      text[1].Trim().Replace('\\', '/').Replace("\"", "") // Replace "\" with "/" and remove '"'
+                    )).FullName;
+                  break;
+
+                case Keys.ChannelPointRandomVideo:
+                  Data[(Keys)key] = text[1].Trim().Replace("\"", ""); // remove '"'
+                  break;
+
                 default:
                   if (Data.ContainsKey((Keys)key)) { Data[(Keys)key] = text[1].Trim(); }
                   else MainWindow.ConsoleWarning($">> Not recognized key '{text[0]}' on line {lineIndex} in Config.ini file.");
@@ -134,11 +154,27 @@ namespace AbevBot
         writer.WriteLine(string.Concat(Keys.BotPass.ToString(), " = "));
 
         writer.WriteLine();
+        writer.WriteLine();
         writer.WriteLine("; Additional things, can be left empty");
         writer.WriteLine(string.Concat(Keys.TikTokSessionID.ToString(), " = "));
+        writer.WriteLine(string.Concat(Keys.PathToSubscriptionVideo.ToString(), " = ; Path to video file for subscription notification (relative to Resources folder)"));
+        writer.WriteLine(string.Concat(Keys.PathToGiftSubscriptionVideo.ToString(), " = ; Path to video file for gifted subscription notification (relative to Resources folder)"));
         writer.WriteLine("ConsoleVisible = false ; Debug console visibility");
         writer.WriteLine("PeriodicMessageTimeInterval = ; default 10 minutes, HH:MM:SS format");
 
+        writer.WriteLine();
+        writer.WriteLine();
+        writer.WriteLine("; Sound samples such as farts, laughs, applauses, etc. should be placed in the \"Resources/Sounds\" folder");
+        writer.WriteLine("; to be used in TTS messages like this \"!tts -laugh\", etc. - calling the file name with \"-\" symbol in front of it.");
+        writer.WriteLine(";");
+        writer.WriteLine("; Videos that can be played via random video channel point redemption should be placed in the \"Resources/Videos\" folder");
+
+        writer.WriteLine();
+        writer.WriteLine();
+        writer.WriteLine("; Channel points redemptions IDs assignments");
+        writer.WriteLine(string.Concat(Keys.ChannelPointRandomVideo.ToString(), " = "));
+
+        writer.WriteLine();
         writer.WriteLine();
         writer.WriteLine("; Periodic messages (one message per line, each starting with \"msg = \"), can be left empty");
         writer.WriteLine("; msg = Commented out periodic message (deactivated) peepoSad");
