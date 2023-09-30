@@ -21,6 +21,9 @@ insert_final_newline = false
 [*.json]
 insert_final_newline = false
 
+[*.bat]
+insert_final_newline = false
+
 [*.cs]
 # CS8618: Non nullable field _name is not initialized. Consider declare the field as nullable type
 #dotnet_diagnostic.CS8618.severity = none

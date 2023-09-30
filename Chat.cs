@@ -220,7 +220,7 @@ namespace AbevBot
                   }
                   else if (message[1][1..].StartsWith("!rude")) // Check if the message starts with !rude key
                   {
-                    MinigameRude.AddRudePoint(message[1][6..]); // 6.. - without ":!rude"
+                    MinigameRude.AddRudePoint(userName, message[1][6..]); // 6.. - without ":!rude"
                   }
                   else if (message[1][1..].StartsWith("!point")) // Check if the message starts with !point key
                   {
@@ -245,6 +245,10 @@ namespace AbevBot
                         BanChatter("!vanish command", -1, message[1][8..]); // 8.. - without ":!vanish"
                       }
                     }
+                  }
+                  else if (message[1][1..].StartsWith("!hug")) // Check if the message starts with !hug key
+                  {
+                    Hug(userName, message[1][5..]); // 5.. - without ":!hug"
                   }
                   else if (ResponseMessages.Count > 0) // Check if message starts with key to get automatic response
                   {
@@ -523,6 +527,7 @@ namespace AbevBot
         using (StreamWriter writer = new(messagesFile.FullName))
         {
           writer.WriteLine("key; message");
+          writer.WriteLine("!bot; The bot is open source. Check it out at https://github.com/Abev08/TwitchBot");
           writer.WriteLine("!example; This is example response.");
           writer.WriteLine("//!example2; This is example response that is commented out - not active.");
         }
@@ -630,6 +635,11 @@ namespace AbevBot
       request.Headers.Add("Client-Id", Config.Data[Config.Keys.BotClientID]);
 
       Client.Send(request); // We don't really need the result, just assume that it worked
+    }
+
+    private static void Hug(string userName, string message)
+    {
+      AddMessageToQueue($"{userName} peepoHug {message.Trim()} HUGGIES");
     }
   }
 }

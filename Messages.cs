@@ -380,6 +380,16 @@ namespace AbevBot
     public int? MonthsStreak { get; set; }
     [JsonPropertyName("message")]
     public EventPayloadMessage? Message { get; set; }
+
+    // channel points redemption
+    [JsonPropertyName("id")]
+    public string? ID { get; set; }
+    [JsonPropertyName("redeemed_at")]
+    public string? RedeemedAt { get; set; }
+    [JsonPropertyName("reward")]
+    public Reward? Reward { get; set; }
+    [JsonPropertyName("status")]
+    public string? Status { get; set; }
   }
 
   // Twitch used the same json name for different type variable between sub and cheer event message...
@@ -455,6 +465,18 @@ namespace AbevBot
     public int? Duration { get; set; }
     [JsonPropertyName("reason")]
     public string? Reason { get; set; }
+  }
+
+  public class Reward
+  {
+    [JsonPropertyName("cost")]
+    public int? Cost { get; set; }
+    [JsonPropertyName("id")]
+    public string? ID { get; set; }
+    [JsonPropertyName("prompt")]
+    public string? Prompt { get; set; }
+    [JsonPropertyName("title")]
+    public string? Title { get; set; }
   }
 
   public class StreamElementsResponse

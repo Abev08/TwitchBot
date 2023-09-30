@@ -8,27 +8,40 @@ namespace AbevBot
   {
     private const int MAXLADDERENTRIES = 10;
 
-    public static void AddRudePoint(string userName, int point = 1)
+    public static void AddRudePoint(string userName, string message, int point = 1)
     {
-      Task.Run(() => StartAddRudePoint(userName, point));
+      Task.Run(() => StartAddRudePoint(userName, message, point));
     }
 
-    private static void StartAddRudePoint(string userName, int point)
+    private static void StartAddRudePoint(string userName, string message, int point)
     {
-      if (string.IsNullOrWhiteSpace(userName)) { GetRudeLadder(); }
-      else
-      {
-        Chatter c = Chatter.GetChatterByName(userName);
-        if (c != null)
-        {
-          c.AddRudePoint(point);
+      string rudeChatter = message.Trim();
+      if (rudeChatter.StartsWith('@')) { rudeChatter = rudeChatter[1..]; }
 
-          Chat.AddMessageToQueue(string.Concat(
-            c.Name, " stop being rude Madge you have been rude ",
-            c.RudePoints, " times Madge"
-          ));
-        }
+      if (string.IsNullOrWhiteSpace(rudeChatter))
+      {
+        GetRudeLadder();
+        return;
       }
+
+      Chatter c = Chatter.GetChatterByName(rudeChatter);
+      if (c is null)
+      {
+        Chat.AddMessageToQueue($"@{userName}, couldn't find {rudeChatter} in the chat");
+        return;
+      }
+      else if (userName.ToLower().Equals(c.Name.ToLower()))
+      {
+        Chat.AddMessageToQueue($"@{userName} you can't be rude to yourself WeirdDude");
+        return;
+      }
+
+      c.AddRudePoint(point);
+
+      Chat.AddMessageToQueue(string.Concat(
+        c.Name, " stop being rude Madge you have been rude ",
+        c.RudePoints, " times Madge"
+      ));
     }
 
     private static void GetRudeLadder()

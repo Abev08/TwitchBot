@@ -163,8 +163,8 @@ namespace AbevBot
               {
                 // Received channel points redemption event
                 Payload payload = Payload.Deserialize(messageDeserialized?.Payload);
-                MainWindow.ConsoleWarning($">> {payload?.Event?.UserName} redeemed ID: {payload?.Subscription?.ID} with channel points.");
-                Notifications.CreateRedemptionNotificaiton(payload?.Event?.UserName, payload?.Subscription?.ID, null);
+                MainWindow.ConsoleWarning($">> {payload?.Event?.UserName} redeemed ID: {payload?.Event?.Reward?.ID} with channel points.");
+                Notifications.CreateRedemptionNotificaiton(payload?.Event?.UserName, payload?.Event?.Reward?.ID, null);
                 // MainWindow.ConsoleWriteLine(message);
               }
               else if (messageDeserialized?.Metadata?.SubscriptionType?.Equals("channel.ban") == true)

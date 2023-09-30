@@ -12,6 +12,8 @@ error.txt
 .chatters
 Resources/Sounds/
 Resources/Videos/
+Doc/*
+!Doxyfile
 
 # User-specific files
 *.rsuser

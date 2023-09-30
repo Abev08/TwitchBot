@@ -7,7 +7,7 @@ namespace AbevBot
 {
   public class Notification
   {
-    private static readonly TimeSpan MinimumNotificationTime = TimeSpan.FromSeconds(2);
+    private static readonly TimeSpan MinimumNotificationTime = TimeSpan.FromSeconds(3);
     private static readonly TimeSpan MaximumNotificationTime = TimeSpan.FromSeconds(30);
 
     public bool Started { get; private set; }
@@ -105,11 +105,11 @@ namespace AbevBot
           }
         }
 
-        AudioToPlay.Insert(0, Audio.GetWavSound(sounds, TTSVolume));
+        AudioToPlay.Insert(0, Audio.GetSound(sounds, TTSVolume));
       }
       if (!SoundPlayed)
       {
-        AudioToPlay.Insert(0, Audio.GetWavSound(SoundPath, SoundVolume));
+        AudioToPlay.Insert(0, Audio.GetSound(SoundPath, SoundVolume));
       }
 
       StartTime = DateTime.Now;
@@ -126,7 +126,11 @@ namespace AbevBot
         MainWindow.ConsoleWarning(">> Maximum notification time reached, something went wrong, to not block other notificaitons force closing this one!");
         MainWindow.ClearTextDisplayed();
         MainWindow.StopVideoPlayer();
-        AudioToPlay[0]?.Stop();
+        foreach (var audio in AudioToPlay)
+        {
+          audio?.Stop();
+          audio?.Dispose();
+        }
         AudioToPlay.Clear();
         return true;
       }
@@ -168,7 +172,11 @@ namespace AbevBot
         if (Notifications.SkipNotification)
         {
           // Skip notification active - stop current audio and clear the queue
-          AudioToPlay[0]?.Stop();
+          foreach (var audio in AudioToPlay)
+          {
+            audio?.Stop();
+            audio?.Dispose();
+          }
           AudioToPlay.Clear();
         }
         else if (AudioToPlay[0] is null)
@@ -197,6 +205,7 @@ namespace AbevBot
           }
           else
           {
+            AudioToPlay[0].Dispose();
             AudioToPlay.RemoveAt(0);
             AudioStarted = false;
           }

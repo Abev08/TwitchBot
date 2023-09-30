@@ -11,7 +11,7 @@ namespace AbevBot
     private const int STARTINGGAMBAPOINTS = 100;
 
     private static bool UpdateRequired;
-    private static Dictionary<long, Chatter> Chatters;
+    private static readonly Dictionary<long, Chatter> Chatters = new();
 
     public long ID { get; set; }
     public string Name { get; set; }
@@ -76,22 +76,27 @@ namespace AbevBot
 
     public static Dictionary<long, Chatter> GetChatters()
     {
-      if (Chatters is null) LoadChattersFile();
+      if (Chatters is null || Chatters.Count == 0) LoadChattersFile();
       return Chatters;
     }
 
     /// <summary> Returns a chatter or creates new one. </summary>
     public static Chatter GetChatterByID(long userID, string userName)
     {
-      if (Chatters is null) LoadChattersFile();
+      if (Chatters is null || Chatters.Count == 0) LoadChattersFile();
 
-      if (!Chatters.TryGetValue(userID, out Chatter c))
+      Chatter c;
+
+      lock (Chatters)
       {
-        c = new();
-        c.InitChatter(userID);
-        Chatters.Add(userID, c);
+        if (!Chatters.TryGetValue(userID, out c))
+        {
+          c = new();
+          c.InitChatter(userID);
+          Chatters.Add(userID, c);
+        }
+        if (userName?.Length > 0) c.Name = userName.Trim(); // Update chatter name if provided
       }
-      if (userName?.Length > 0) c.Name = userName.Trim(); // Update chatter name if provided
 
       return c;
     }
@@ -99,7 +104,7 @@ namespace AbevBot
     /// <summary> Returns a chatter or tries to create new one by acquiring all chatters and finding him. </summary>
     public static Chatter GetChatterByName(string userName)
     {
-      if (Chatters is null) LoadChattersFile();
+      if (Chatters is null || Chatters.Count == 0) LoadChattersFile();
 
       string name = userName.Trim().ToLower();
       var chatter = Chatters.GetEnumerator();
@@ -125,30 +130,36 @@ namespace AbevBot
     {
       if (!UpdateRequired) return;
       UpdateRequired = false;
-      if (Chatters is null) return;
+      if (Chatters is null || Chatters.Count == 0) return;
 
-      string data = JsonSerializer.Serialize(Chatters, new JsonSerializerOptions() { WriteIndented = true });
+      string data;
+      lock (Chatters)
+      {
+        data = JsonSerializer.Serialize(Chatters, new JsonSerializerOptions() { WriteIndented = true });
+      }
 
       try { File.WriteAllText(CHATTERSFILE, data); }
-      catch (Exception ex) { MainWindow.ConsoleWarning($">> {ex}"); }
+      catch (Exception ex) { MainWindow.ConsoleWarning($">> {ex.Message}"); }
     }
 
     public static void LoadChattersFile()
     {
-      if (Chatters != null) return;
+      if (Chatters?.Count > 0) return;
 
       FileInfo chattersFile = new(CHATTERSFILE);
       if (chattersFile.Exists)
       {
         string data = File.ReadAllText(chattersFile.FullName);
-        if (data is null || data.Length == 0)
+        if (data is null || data.Length == 0) { return; }
+        lock (Chatters)
         {
-          Chatters = new();
-          return;
+          var chat = JsonSerializer.Deserialize<Dictionary<long, Chatter>>(data);
+          foreach (var chatter in chat)
+          {
+            Chatters.Add(chatter.Key, chatter.Value);
+          }
         }
-        Chatters = JsonSerializer.Deserialize<Dictionary<long, Chatter>>(data);
       }
-      else { Chatters = new(); }
     }
   }
 }

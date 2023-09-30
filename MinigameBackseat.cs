@@ -15,20 +15,25 @@ namespace AbevBot
 
     private static void StartAddBackseatPoint(string userName, int point)
     {
-      if (string.IsNullOrWhiteSpace(userName)) { GetBackseatLadder(); }
-      else
-      {
-        Chatter c = Chatter.GetChatterByName(userName);
-        if (c != null)
-        {
-          c.AddBackseatPoint(point);
+      string chatter = userName.Trim();
+      if (chatter.StartsWith('@')) { chatter = chatter[1..]; }
 
-          Chat.AddMessageToQueue(string.Concat(
-            "1 point ",
-            point > 0 ? "awarded to " : "taken from ",
-            c.Name, ". Now has ", c.BackseatPoints, " points"
-          ));
-        }
+      if (string.IsNullOrWhiteSpace(chatter))
+      {
+        GetBackseatLadder();
+        return;
+      }
+
+      Chatter c = Chatter.GetChatterByName(chatter);
+      if (c != null)
+      {
+        c.AddBackseatPoint(point);
+
+        Chat.AddMessageToQueue(string.Concat(
+          "1 point ",
+          point > 0 ? "awarded to " : "taken from ",
+          c.Name, ". Now has ", c.BackseatPoints, " points"
+        ));
       }
     }
 

@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace AbevBot
 {
-  public class Notifications
+  public static class Notifications
   {
     /// <summary> Notifications thread started. </summary>
     public static bool Started { get; private set; }
@@ -93,10 +93,13 @@ namespace AbevBot
     /// <summary> Creates and adds to queue Follow notification. </summary>
     public static void CreateFollowNotification(string userName)
     {
-      Chat.AddMessageToQueue($"@{userName} thank you for the follow!");
+      string chatter = userName.Trim();
+      if (string.IsNullOrWhiteSpace(chatter)) chatter = "Anonymous";
+
+      Chat.AddMessageToQueue($"@{chatter} thank you for following!");
       AddNotification(new Notification()
       {
-        TextToDisplay = $"New follower {userName}!",
+        TextToDisplay = $"{chatter} hacked in!",
         TextToDisplayPosition = TextPosition.TOP,
         SoundPath = "Resources/tone1.wav",
         SoundVolume = 0.3f
@@ -106,42 +109,17 @@ namespace AbevBot
     /// <summary> Creates and adds to queue Subscription notification. </summary>
     public static void CreateSubscriptionNotification(string userName, string tier, string message)
     {
+      string chatter = userName.Trim();
+      if (string.IsNullOrWhiteSpace(chatter)) chatter = "Anonymous";
+
       string videoPath = Config.Data[Config.Keys.PathToSubscriptionVideo];
       if (videoPath is null || videoPath.Length == 0) videoPath = "Resources/peepoHey.mp4";
 
       AddNotification(new Notification()
       {
-        TextToDisplay = $"Thank you {userName}!\n{message}",
+        TextToDisplay = $"{chatter} just subscribed!\n{message}",
         TextToDisplayPosition = TextPosition.BOTTOM,
-        TextToRead = $"Thank you {userName} for tier {tier[..1]} sub! {message}",
-        TTSVolume = 0.4f,
-        VideoPath = videoPath,
-        SoundVolume = 0.8f
-      });
-    }
-
-    /// <summary> Creates and adds to queue Gifted Subscription notification. </summary>
-    public static void CreateReceiveGiftSubscriptionNotification(string userName)
-    {
-      AddNotification(new Notification()
-      {
-        TextToDisplay = $"New subscriber {userName}!",
-        SoundPath = "Resources/tone1.wav",
-        SoundVolume = 0.3f
-      });
-    }
-
-    /// <summary> Creates and adds to queue Received Gifted Subscription notification. </summary>
-    public static void CreateGiftSubscriptionNotification(string userName, string tier, int count, string message)
-    {
-      string videoPath = Config.Data[Config.Keys.PathToGiftSubscriptionVideo];
-      if (videoPath is null || videoPath.Length == 0) videoPath = "Resources/peepoHey.mp4";
-
-      AddNotification(new Notification()
-      {
-        TextToDisplay = $"Thank you {userName} for {count} subs!\n{message}",
-        TextToDisplayPosition = TextPosition.BOTTOM,
-        TextToRead = $"Thank you {userName} for gifting {count} tier {tier[..1]} subs! {message}",
+        TextToRead = $"Thank you {chatter} for subscription! {message}",
         TTSVolume = 0.4f,
         VideoPath = videoPath,
         SoundVolume = 0.8f
@@ -151,17 +129,23 @@ namespace AbevBot
     /// <summary> This is more advanced CreateSubscriptionNotification version - more info in message variable. </summary>
     public static void CreateSubscriptionNotification(string userName, string tier, int duration, int streak, EventPayloadMessage message)
     {
+      // For now just create simpler version of it
+      CreateSubscriptionNotification(userName, tier, message.Text);
+      return;
+
       // TODO: Create message to read - remove emotes from the message using message.Emotes[], don't read them
+      string chatter = userName.Trim();
+      if (string.IsNullOrWhiteSpace(chatter)) chatter = "Anonymous";
 
       string videoPath = Config.Data[Config.Keys.PathToSubscriptionVideo];
       if (videoPath is null || videoPath.Length == 0) videoPath = "Resources/peepoHey.mp4";
 
       AddNotification(new Notification()
       {
-        TextToDisplay = $"Thank you {userName}!\n{message.Text}",
+        TextToDisplay = $"Thank you {chatter}!\n{message.Text}",
         TextToDisplayPosition = TextPosition.BOTTOM,
         TextToRead = string.Concat(
-          "Thank you ", userName, " for ",
+          "Thank you ", chatter, " for ",
           duration > 1 ? $"{duration} months in advance" : "",
           " tier ", tier[..1], " sub!",
           streak > 1 ? $" It's your {streak} month in a row!" : "",
@@ -173,14 +157,53 @@ namespace AbevBot
       });
     }
 
+    /// <summary> Creates and adds to queue Gifted Subscription notification. </summary>
+    public static void CreateReceiveGiftSubscriptionNotification(string userName)
+    {
+      return; // Disable for now
+
+      string chatter = userName.Trim();
+      if (string.IsNullOrWhiteSpace(chatter)) chatter = "Anonymous";
+
+      AddNotification(new Notification()
+      {
+        TextToDisplay = $"New subscriber {chatter}!",
+        SoundPath = "Resources/tone1.wav",
+        SoundVolume = 0.3f
+      });
+    }
+
+    /// <summary> Creates and adds to queue Received Gifted Subscription notification. </summary>
+    public static void CreateGiftSubscriptionNotification(string userName, string tier, int count, string message)
+    {
+      string chatter = userName.Trim();
+      if (string.IsNullOrWhiteSpace(chatter)) chatter = "Anonymous";
+
+      string videoPath = Config.Data[Config.Keys.PathToGiftSubscriptionVideo];
+      if (videoPath is null || videoPath.Length == 0) videoPath = "Resources/peepoHey.mp4";
+
+      AddNotification(new Notification()
+      {
+        TextToDisplay = $"Thank you {chatter} for {count} subs!\n{message}",
+        TextToDisplayPosition = TextPosition.BOTTOM,
+        TextToRead = $"Thank you {chatter} for gifting {count} tier {tier[..1]} subs! {message}",
+        TTSVolume = 0.4f,
+        VideoPath = videoPath,
+        SoundVolume = 0.8f
+      });
+    }
+
     /// <summary> Creates and adds to queue Cheer notification. </summary>
     public static void CreateCheerNotification(string userName, int count, string message)
     {
+      string chatter = userName.Trim();
+      if (string.IsNullOrWhiteSpace(chatter)) chatter = "Anonymous";
+
       AddNotification(new Notification()
       {
-        TextToDisplay = $"Thank you {userName} for {count} bits!\n{message}",
+        TextToDisplay = $"Thank you {chatter} for {count} bits!\n{message}",
         TextToDisplayPosition = TextPosition.TOP,
-        TextToRead = $"Thank you {userName} for {count} bits! {message}",
+        TextToRead = $"Thank you {chatter} for {count} bits! {message}",
         TTSVolume = 0.4f,
         SoundPath = "Resources/tone1.wav",
         SoundVolume = 0.3f
@@ -190,7 +213,6 @@ namespace AbevBot
     /// <summary> Creates and adds to queue Channel Points Redemption notification. </summary>
     public static void CreateRedemptionNotificaiton(string userName, string id, string message)
     {
-      id = "6773293e-b813-7b40-ea10-f219ffa00ef6";
       // TODO: check id and do something
       if (id.Equals(""))
       {

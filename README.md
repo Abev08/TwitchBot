@@ -46,6 +46,7 @@ Uses Windows Presentation Foundation (WPF, an UI framework) to open bot configur
 <br><br>
 
 ## **Required information in Config.ini**
+The file will be generated automatically the first time the bot is run.
  - Channel name (`ChannelName`) - Name of the channel to connect to.
  - Bot's name (`BotNick`) - Name of the registered application on https://dev.twitch.tv/console/apps.
  - Bot's client ID (`BotClientID`) - Customer ID of the registered application on https://dev.twitch.tv/console/apps.

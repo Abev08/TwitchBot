@@ -24,13 +24,32 @@ namespace AbevBot
     {
       Chatter fighter1 = Chatter.GetChatterByID(userID, userName);
 
-      if (string.IsNullOrEmpty(message)) { GetStats(fighter1); return; }
-      else if (message.Trim().ToLower().Equals("ladder")) { GetLadder(); return; }
+      string chatter = message.Trim();
+      if (chatter.StartsWith('@')) { chatter = chatter[1..]; }
 
-      Chatter fighter2 = Chatter.GetChatterByName(message);
+      if (string.IsNullOrEmpty(chatter))
+      {
+        GetStats(fighter1);
+        return;
+      }
+      else if (chatter.ToLower().Equals("ladder"))
+      {
+        GetLadder();
+        return;
+      }
 
-      if (fighter1 is null || fighter2 is null) return;
-      if (fighter1.ID == fighter2.ID) return;
+      Chatter fighter2 = Chatter.GetChatterByName(chatter);
+
+      if (fighter1 is null || fighter2 is null)
+      {
+        Chat.AddMessageToQueue($"@{fighter1.Name}, couldn't find {chatter} in the chat");
+        return;
+      }
+      if (fighter1.ID == fighter2.ID)
+      {
+        Chat.AddMessageToQueue($"{fighter1.Name} you can't fight yourself WeirdDude");
+        return;
+      }
       if (InitFighter(fighter1))
       {
         Chat.AddMessageToQueue(string.Concat(

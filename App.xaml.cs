@@ -2,6 +2,7 @@
 
 namespace AbevBot
 {
+  /// <summary> The best Twitch bot :) </summary>
   public partial class App : Application
   {
     private void ApplicationStartup(object sender, StartupEventArgs e)

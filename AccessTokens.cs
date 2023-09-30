@@ -8,16 +8,22 @@ using System.Threading;
 
 namespace AbevBot
 {
+  /// <summary> Everything related to access tokens. </summary>
   public static class AccessTokens
   {
+    /// <summary> Name of the file where access token should be stored. </summary>
     private const string TOKENSFILE = ".tokens";
 
+    /// <summary> Date and time when access token expiries. </summary>
     public static DateTime BotOAuthTokenExpiration { get; private set; }
-    // Time before OAuth token expiries to try to refresh it
+    /// <summary> Time before OAuth token expiries to try to refresh it. </summary>
     public static TimeSpan OAuthTokenExpirationSomething { get; } = new TimeSpan(0, 10, 0);
+    /// <summary> Periodic timer calling for example refresh access token method. </summary>
     private static Timer RefreshTimer;
+    /// <summary> Http client for GET and POST requests. </summary>
     private static readonly HttpClient Client = new();
 
+    /// <summary> Tries to get access token by: validating existing one or refreshing existing one or requesting new one. </summary>
     public static void GetAccessTokens()
     {
       FileInfo oauthFile = new(TOKENSFILE);
@@ -65,6 +71,7 @@ namespace AbevBot
       }
     }
 
+    /// <summary> Updates tokens file saving current access tokens. </summary>
     private static void UpdateTokensFile()
     {
       File.WriteAllLines(TOKENSFILE,
@@ -74,6 +81,7 @@ namespace AbevBot
         });
     }
 
+    /// <summary> Request new access token. </summary>
     private static void GetNewOAuthToken()
     {
       MainWindow.ConsoleWarning(">> Requesting new access token.");
@@ -139,7 +147,10 @@ namespace AbevBot
           ));
         request.Content.Headers.ContentType = MediaTypeHeaderValue.Parse("application/x-www-form-urlencoded");
         AccessTokenResponse response = AccessTokenResponse.Deserialize(Client.Send(request).Content.ReadAsStringAsync().Result);
-        if (response is null || response.Token is null || response.RefreshToken is null) throw new Exception("Response was empty or didn't received access token!");
+        if (response is null || response.Token is null || response.RefreshToken is null)
+        {
+          throw new Exception("Response was empty or didn't received access token!\nProbably ClientID or ClientPassowrd doesn't match!");
+        }
         MainWindow.ConsoleWarning(response.ToString());
         // Read information from received data
         Config.Data[Config.Keys.BotOAuthToken] = response.Token;
@@ -153,6 +164,8 @@ namespace AbevBot
       }
     }
 
+    /// <summary> Validates access token. </summary>
+    /// <returns> true if access token is valid, otherwise false. </returns>
     private static bool ValidateOAuthToken()
     {
       using HttpRequestMessage request = new(HttpMethod.Get, "https://id.twitch.tv/oauth2/validate");
@@ -165,14 +178,12 @@ namespace AbevBot
         MainWindow.ConsoleWarning($">> Access token validation succeeded. Token expiries in {response.ExpiresIn.Value / 3600f} hours.");
         return true;
       }
-      else
-      {
-        MainWindow.ConsoleWarning(">> Access token validation failed.");
-      }
+      else { MainWindow.ConsoleWarning(">> Access token validation failed."); }
 
       return false;
     }
 
+    /// <summary> Refreshes access token using refresh token. </summary>
     public static void RefreshAccessToken()
     {
       if (DateTime.Now < BotOAuthTokenExpiration) return;
