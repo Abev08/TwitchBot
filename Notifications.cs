@@ -22,6 +22,14 @@ namespace AbevBot
     private static readonly Dictionary<string, FileInfo> SampleSounds = new();
     private static readonly List<FileInfo> RandomVideos = new();
 
+    public static NotificationsConfig ConfigFollow { get; set; } = new();
+    public static NotificationsConfig ConfigSubscription { get; set; } = new();
+    public static NotificationsConfig ConfigSubscriptionExt { get; set; } = new();
+    public static NotificationsConfig ConfigSubscriptionGift { get; set; } = new();
+    public static NotificationsConfig ConfigSubscriptionGiftReceived { get; set; } = new();
+    public static NotificationsConfig ConfigCheer { get; set; } = new();
+    private static readonly string[] NotificationData = new string[8];
+
     public enum TextPosition { TOP, MIDDLE, BOTTOM }
 
     public static void Start()
@@ -59,7 +67,7 @@ namespace AbevBot
               // Update returned true == notificaion has ended, remove it from queue
               NotificationQueue.RemoveAt(0);
               notificationEnded = true;
-              MainWindow.SetNotificationQueueCount(NotificationQueue.Count);
+              MainWindow.I.SetNotificationQueueCount(NotificationQueue.Count);
             }
           }
 
@@ -85,7 +93,7 @@ namespace AbevBot
         lock (NotificationQueue)
         {
           NotificationQueue.Add(notification);
-          MainWindow.SetNotificationQueueCount(NotificationQueue.Count);
+          MainWindow.I.SetNotificationQueueCount(NotificationQueue.Count);
         }
       });
     }
@@ -93,121 +101,102 @@ namespace AbevBot
     /// <summary> Creates and adds to queue Follow notification. </summary>
     public static void CreateFollowNotification(string userName)
     {
+      if (!ConfigFollow.Enable) return;
+
       string chatter = userName.Trim();
       if (string.IsNullOrWhiteSpace(chatter)) chatter = "Anonymous";
 
-      Chat.AddMessageToQueue($"@{chatter} thank you for following!");
-      AddNotification(new Notification()
-      {
-        TextToDisplay = $"{chatter} hacked in!",
-        TextToDisplayPosition = TextPosition.TOP,
-        SoundPath = "Resources/tone1.wav",
-        SoundVolume = 0.3f
-      });
+      Array.Clear(NotificationData);
+      NotificationData[0] = chatter;
+
+      Chat.AddMessageToQueue(string.Format(ConfigFollow.ChatMessage, NotificationData));
+      AddNotification(new Notification(ConfigFollow, NotificationData));
     }
 
     /// <summary> Creates and adds to queue Subscription notification. </summary>
     public static void CreateSubscriptionNotification(string userName, string tier, string message)
     {
+      if (!ConfigSubscription.Enable) return;
+
       string chatter = userName.Trim();
       if (string.IsNullOrWhiteSpace(chatter)) chatter = "Anonymous";
 
-      string videoPath = Config.Data[Config.Keys.PathToSubscriptionVideo];
-      if (videoPath is null || videoPath.Length == 0) videoPath = "Resources/peepoHey.mp4";
+      Array.Clear(NotificationData);
+      NotificationData[0] = chatter;
+      NotificationData[1] = tier[..1];
+      NotificationData[7] = message;
 
-      AddNotification(new Notification()
-      {
-        TextToDisplay = $"{chatter} just subscribed!\n{message}",
-        TextToDisplayPosition = TextPosition.BOTTOM,
-        TextToRead = $"Thank you {chatter} for subscription! {message}",
-        TTSVolume = 0.4f,
-        VideoPath = videoPath,
-        SoundVolume = 0.8f
-      });
+      Chat.AddMessageToQueue(string.Format(ConfigSubscription.ChatMessage, NotificationData));
+      AddNotification(new Notification(ConfigSubscription, NotificationData));
     }
 
     /// <summary> This is more advanced CreateSubscriptionNotification version - more info in message variable. </summary>
     public static void CreateSubscriptionNotification(string userName, string tier, int duration, int streak, EventPayloadMessage message)
     {
-      // For now just create simpler version of it
-      CreateSubscriptionNotification(userName, tier, message.Text);
-      return;
-
-      // TODO: Create message to read - remove emotes from the message using message.Emotes[], don't read them
-      string chatter = userName.Trim();
-      if (string.IsNullOrWhiteSpace(chatter)) chatter = "Anonymous";
-
-      string videoPath = Config.Data[Config.Keys.PathToSubscriptionVideo];
-      if (videoPath is null || videoPath.Length == 0) videoPath = "Resources/peepoHey.mp4";
-
-      AddNotification(new Notification()
-      {
-        TextToDisplay = $"Thank you {chatter}!\n{message.Text}",
-        TextToDisplayPosition = TextPosition.BOTTOM,
-        TextToRead = string.Concat(
-          "Thank you ", chatter, " for ",
-          duration > 1 ? $"{duration} months in advance" : "",
-          " tier ", tier[..1], " sub!",
-          streak > 1 ? $" It's your {streak} month in a row!" : "",
-          " ", message.Text
-          ),
-        TTSVolume = 0.4f,
-        VideoPath = videoPath,
-        SoundVolume = 0.8f
-      });
-    }
-
-    /// <summary> Creates and adds to queue Gifted Subscription notification. </summary>
-    public static void CreateReceiveGiftSubscriptionNotification(string userName)
-    {
-      return; // Disable for now
+      if (!ConfigSubscriptionExt.Enable) return;
 
       string chatter = userName.Trim();
       if (string.IsNullOrWhiteSpace(chatter)) chatter = "Anonymous";
 
-      AddNotification(new Notification()
-      {
-        TextToDisplay = $"New subscriber {chatter}!",
-        SoundPath = "Resources/tone1.wav",
-        SoundVolume = 0.3f
-      });
+      Array.Clear(NotificationData);
+      NotificationData[0] = chatter;
+      NotificationData[1] = tier[..1];
+      NotificationData[2] = duration.ToString();
+      NotificationData[3] = streak.ToString();
+      NotificationData[7] = message.Text; // TODO: Create message to read - remove emotes from the message using message.Emotes[], don't read them
+
+      Chat.AddMessageToQueue(string.Format(ConfigSubscriptionExt.ChatMessage, NotificationData));
+      AddNotification(new Notification(ConfigSubscriptionExt, NotificationData));
     }
 
     /// <summary> Creates and adds to queue Received Gifted Subscription notification. </summary>
     public static void CreateGiftSubscriptionNotification(string userName, string tier, int count, string message)
     {
+      if (!ConfigSubscriptionGift.Enable) return;
+
       string chatter = userName.Trim();
       if (string.IsNullOrWhiteSpace(chatter)) chatter = "Anonymous";
 
-      string videoPath = Config.Data[Config.Keys.PathToGiftSubscriptionVideo];
-      if (videoPath is null || videoPath.Length == 0) videoPath = "Resources/peepoHey.mp4";
+      Array.Clear(NotificationData);
+      NotificationData[0] = chatter;
+      NotificationData[1] = tier[..1];
+      NotificationData[4] = count.ToString();
+      NotificationData[7] = message;
 
-      AddNotification(new Notification()
-      {
-        TextToDisplay = $"Thank you {chatter} for {count} subs!\n{message}",
-        TextToDisplayPosition = TextPosition.BOTTOM,
-        TextToRead = $"Thank you {chatter} for gifting {count} tier {tier[..1]} subs! {message}",
-        TTSVolume = 0.4f,
-        VideoPath = videoPath,
-        SoundVolume = 0.8f
-      });
+      Chat.AddMessageToQueue(string.Format(ConfigSubscriptionGift.ChatMessage, NotificationData));
+      AddNotification(new Notification(ConfigSubscriptionGift, NotificationData));
+    }
+
+    /// <summary> Creates and adds to queue Gifted Subscription notification. </summary>
+    public static void CreateReceiveGiftSubscriptionNotification(string userName)
+    {
+      if (!ConfigSubscriptionGiftReceived.Enable) return;
+
+      string chatter = userName.Trim();
+      if (string.IsNullOrWhiteSpace(chatter)) chatter = "Anonymous";
+
+      Array.Clear(NotificationData);
+      NotificationData[0] = chatter;
+
+      Chat.AddMessageToQueue(string.Format(ConfigSubscriptionGiftReceived.ChatMessage, NotificationData));
+      AddNotification(new Notification(ConfigSubscriptionGiftReceived, NotificationData));
     }
 
     /// <summary> Creates and adds to queue Cheer notification. </summary>
     public static void CreateCheerNotification(string userName, int count, string message)
     {
+      if (!ConfigCheer.Enable) return;
+
       string chatter = userName.Trim();
       if (string.IsNullOrWhiteSpace(chatter)) chatter = "Anonymous";
 
-      AddNotification(new Notification()
-      {
-        TextToDisplay = $"Thank you {chatter} for {count} bits!\n{message}",
-        TextToDisplayPosition = TextPosition.TOP,
-        TextToRead = $"Thank you {chatter} for {count} bits! {message}",
-        TTSVolume = 0.4f,
-        SoundPath = "Resources/tone1.wav",
-        SoundVolume = 0.3f
-      });
+      Array.Clear(NotificationData);
+      NotificationData[0] = chatter;
+      NotificationData[4] = count.ToString();
+      NotificationData[7] = message;
+
+      Chat.AddMessageToQueue(string.Format(ConfigCheer.ChatMessage, NotificationData));
+      AddNotification(new Notification(ConfigCheer, NotificationData));
     }
 
     /// <summary> Creates and adds to queue Channel Points Redemption notification. </summary>
@@ -218,7 +207,7 @@ namespace AbevBot
       {
 
       }
-      else if (Config.Data[Config.Keys.ChannelPointRandomVideo].Equals(id))
+      else if (Config.Data[Config.Keys.ChannelPoints_RandomVideo].Equals(id))
       {
         CreateRandomVideoNotification();
       }
@@ -232,7 +221,7 @@ namespace AbevBot
       AddNotification(new Notification()
       {
         TextToRead = text,
-        TTSVolume = 0.4f
+        TTSVolume = Config.VolumeTTS
       });
     }
 
@@ -345,5 +334,16 @@ namespace AbevBot
 
       return RandomVideos;
     }
+  }
+
+  public class NotificationsConfig
+  {
+    public bool Enable { get; set; }
+    public string ChatMessage { get; set; } = string.Empty;
+    public string TextToDisplay { get; set; } = string.Empty;
+    public Notifications.TextPosition TextPosition { get; set; } = Notifications.TextPosition.MIDDLE;
+    public string TextToSpeech { get; set; } = string.Empty;
+    public string SoundToPlay { get; set; } = string.Empty;
+    public string VideoToPlay { get; set; } = string.Empty;
   }
 }

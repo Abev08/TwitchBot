@@ -6,7 +6,7 @@
         mc:Ignorable="d"
         Title="AbevBot"
         Height="720" Width="1280"
-        MinHeight="660" MinWidth="500">
+        MinHeight="700" MinWidth="500">
   <Grid>
     <Grid.ColumnDefinitions>
       <ColumnDefinition Width="170px"/>
@@ -16,7 +16,7 @@
     <!-- Control elements -->
     <StackPanel Grid.Column="0" Orientation="Vertical">
       <!-- Pause and skip buttons -->
-      <Border Padding="0,10,0,10" Margin="2,20,4,0" BorderThickness="1" BorderBrush="Black" CornerRadius="10">
+      <Border Padding="0,10,0,10" Margin="2,10,4,0" BorderThickness="1" BorderBrush="Black" CornerRadius="10">
         <StackPanel>
           <Button x:Name="btnPause" Width="150" Height="25" Content="Toggle notifications pause" Margin="0,0,0,0" Click="PauseNotifications"/>
           <Button x:Name="btnSkip" Width="150" Height="25" Content="Skip notification" Margin="0,10,0,0" Click="SkipNotification"/>
@@ -25,12 +25,19 @@
       </Border>
 
       <!-- Enable checkboxes -->
-      <Border Padding="0,10,0,10" Margin="2,20,4,0" BorderThickness="1" BorderBrush="Black" CornerRadius="10">
+      <Border Padding="0,10,0,10" Margin="2,10,4,0" BorderThickness="1" BorderBrush="Black" CornerRadius="10">
         <StackPanel>
-          <CheckBox x:Name="chkTTS" Width="150" Height="25" Content="!tts enabled (chat)" VerticalContentAlignment="Center" IsChecked="True" Checked="ChkTTS_CheckChanged" Unchecked="ChkTTS_CheckChanged"/>
-          <CheckBox x:Name="chkGamba" Width="150" Height="25" Content="!gamba enabled" VerticalContentAlignment="Center" IsChecked="True" Checked="ChkGamba_CheckChanged" Unchecked="ChkGamba_CheckChanged"/>
-          <CheckBox x:Name="chkGambaLife" Width="150" Height="25" Content="!gamba life enabled" VerticalContentAlignment="Center" IsChecked="True" Checked="ChkGambaLife_CheckChanged" Unchecked="ChkGambaLife_CheckChanged"/>
-          <CheckBox x:Name="chkFight" Width="150" Height="25" Content="!fight enabled" VerticalContentAlignment="Center" IsChecked="True" Checked="ChkFight_CheckChanged" Unchecked="ChkFight_CheckChanged"/>
+          <TextBlock x:Name="tbVolumeTTS" Text="TTS Volume: 40%" HorizontalAlignment="Center"/>
+          <Slider x:Name="volumeTTS" Margin="5,0,5,0" Maximum="100" SmallChange="1" Value="40" ValueChanged="VolumeTTSChanged" IsSnapToTickEnabled="True" MouseWheel="VolumeChange"/>
+          <TextBlock x:Name="tbVolumeSounds" Text="Sounds Volume: 30%" HorizontalAlignment="Center"/>
+          <Slider x:Name="volumeSounds" Margin="5,0,5,0" Maximum="100" SmallChange="1" Value="30" ValueChanged="VolumeSoundsChanged" IsSnapToTickEnabled="True" MouseWheel="VolumeChange"/>
+          <TextBlock x:Name="tbVolumeVideos" Text="Videos Volume: 80%" HorizontalAlignment="Center"/>
+          <Slider x:Name="volumeVideos" Margin="5,0,5,0" Maximum="100" SmallChange="1" Value="80" ValueChanged="VolumeVideosChanged" IsSnapToTickEnabled="True" MouseWheel="VolumeChange"/>
+
+          <CheckBox Width="150" Height="25" Content="!tts enabled (chat)" VerticalContentAlignment="Center" IsChecked="True" Checked="ChkTTS_CheckChanged" Unchecked="ChkTTS_CheckChanged"/>
+          <CheckBox Width="150" Height="25" Content="!gamba enabled" VerticalContentAlignment="Center" IsChecked="True" Checked="ChkGamba_CheckChanged" Unchecked="ChkGamba_CheckChanged"/>
+          <CheckBox Width="150" Height="25" Content="!gamba life enabled" VerticalContentAlignment="Center" IsChecked="True" Checked="ChkGambaLife_CheckChanged" Unchecked="ChkGambaLife_CheckChanged"/>
+          <CheckBox Width="150" Height="25" Content="!fight enabled" VerticalContentAlignment="Center" IsChecked="True" Checked="ChkFight_CheckChanged" Unchecked="ChkFight_CheckChanged"/>
         </StackPanel>
       </Border>
     </StackPanel>
@@ -86,10 +93,9 @@
 
     <!-- Test elements -->
     <StackPanel Grid.Column="0" Orientation="Vertical" VerticalAlignment="Bottom">
-      <TextBlock Text="Test things" VerticalAlignment="Center" HorizontalAlignment="Center"/>
       <Border Padding="0,10,0,10" Margin="2,0,4,10" BorderThickness="1" BorderBrush="Black" CornerRadius="10">
         <StackPanel>
-          <TextBox x:Name="tbTTSText" Width="150" Height="90" Text="stitch: Test message" Margin="0,10,0,0" VerticalContentAlignment="Center" TextWrapping="WrapWithOverflow"/>
+          <TextBox x:Name="tbTTSText" Width="150" Height="65" Text="stitch: Test message" Margin="0,0,0,0" VerticalContentAlignment="Center" TextWrapping="WrapWithOverflow"/>
           <Button x:Name="btnTestTTS" Width="150" Height="25" Content="Test TTS" Margin="0,10,0,0" Click="TTSTest"/>
           <Button x:Name="btnTestVideo" Width="150" Height="25" Content="Test Video" Margin="0,10,0,0" Click="VideoTest"/>
           <Button x:Name="btnTestGamba" Width="150" Height="25" Content="Test Gamba" Margin="0,10,0,0" Click="GambaTest"/>
@@ -97,12 +103,13 @@
       </Border>
 
       <!-- Notifications test -->
-      <Border Padding="0,10,0,10" Margin="2,0,4,20" BorderThickness="1" BorderBrush="Black" CornerRadius="10">
+      <Border Padding="0,10,0,10" Margin="2,0,4,10" BorderThickness="1" BorderBrush="Black" CornerRadius="10">
         <StackPanel>
           <ComboBox x:Name="cbNotificationType" Width="150" Height="25" SelectedIndex="0" Margin="0,0,0,10">
             <ComboBoxItem Content="Follow"/>
             <ComboBoxItem Content="Subscription"/>
-            <ComboBoxItem Content="Gifted Subscription"/>
+            <ComboBoxItem Content="Subscription Gifted"/>
+            <ComboBoxItem Content="Subscription Ext. Msg"/>
             <ComboBoxItem Content="Cheer"/>
           </ComboBox>
           <Button x:Name="btnTestNotification" Width="150" Height="25" Content="Test Notification" Click="NotificationTest"/>

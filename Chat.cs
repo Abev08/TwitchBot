@@ -11,6 +11,7 @@ namespace AbevBot
   public static class Chat
   {
     private const int MESSAGESENTMAXLEN = 460; // 500 characters Twitch limit, -40 characters as a buffer
+    private const string RESPONSEMESSAGESPATH = "Resources/ResponseMessages.csv";
 
     /// <summary> Chat bot started. </summary>
     public static bool Started { get; private set; }
@@ -25,6 +26,7 @@ namespace AbevBot
     public static TimeSpan PeriodicMessageInterval = new(0, 10, 0);
     private static readonly List<string> MessageQueue = new();
     private static readonly HttpClient Client = new();
+    private static DateTime RespMsgFileTimestamp;
 
     public static void Start()
     {
@@ -479,8 +481,8 @@ namespace AbevBot
         if (ChatSocket?.Connected == true)
         {
           MainWindow.ConsoleWarning(">> Chat bot connected.");
-          ChatSocket.Send(Encoding.UTF8.GetBytes($"PASS oauth:{Config.Data[Config.Keys.BotOAuthToken]}\r\n"));
-          ChatSocket.Send(Encoding.UTF8.GetBytes($"NICK {Config.Data[Config.Keys.BotNick]}\r\n"));
+          ChatSocket.Send(Encoding.UTF8.GetBytes($"PASS oauth:{Secret.Data[Secret.Keys.OAuthToken]}\r\n"));
+          ChatSocket.Send(Encoding.UTF8.GetBytes($"NICK {Secret.Data[Secret.Keys.Name]}\r\n"));
           ChatSocket.Send(Encoding.UTF8.GetBytes($"JOIN #{Config.Data[Config.Keys.ChannelName]},#{Config.Data[Config.Keys.ChannelName]}\r\n"));
           ChatSocket.Send(Encoding.UTF8.GetBytes("CAP REQ :twitch.tv/commands twitch.tv/tags\r\n")); // request extended chat messages
         }
@@ -513,11 +515,12 @@ namespace AbevBot
       }
     }
 
-    private static void LoadResponseMessages()
+    public static void LoadResponseMessages(bool reload = false)
     {
-      MainWindow.ConsoleWarning(">> Loading response messages.");
+      if (reload) { MainWindow.ConsoleWarning(">> Reloading response messages."); }
+      else { MainWindow.ConsoleWarning(">> Loading response messages."); }
 
-      FileInfo messagesFile = new(@"Resources/ResponseMessages.csv");
+      FileInfo messagesFile = new(RESPONSEMESSAGESPATH);
       // The file doesn't exist - create new one
       if (messagesFile.Exists == false)
       {
@@ -559,7 +562,12 @@ namespace AbevBot
           else
           {
             // Try to add response message
-            if (ResponseMessages.TryAdd(text[0], (text[1], new DateTime())))
+            if (reload)
+            {
+              if (ResponseMessages.ContainsKey(text[0])) { ResponseMessages[text[0]] = (text[1].Trim(), DateTime.MinValue); }
+              else { ResponseMessages.Add(text[0], (text[1].Trim(), DateTime.MinValue)); }
+            }
+            else if (ResponseMessages.TryAdd(text[0], (text[1].Trim(), new DateTime())))
             {
               MainWindow.ConsoleWarning($">> Added respoonse to \"{text[0]}\" key.");
               responseCount++;
@@ -567,8 +575,21 @@ namespace AbevBot
             else MainWindow.ConsoleWarning($">> Redefiniton of \"{text[0]}\" key in line {lineIndex}."); // TryAdd returned false - probably a duplicate
           }
         }
-        MainWindow.ConsoleWarning($">> Loaded {responseCount} automated response messages.");
+        if (!reload) MainWindow.ConsoleWarning($">> Loaded {responseCount} automated response messages.");
       }
+
+      RespMsgFileTimestamp = messagesFile.LastWriteTime;
+    }
+
+    public static bool IsRespMsgFileUpdated()
+    {
+      FileInfo file = new(RESPONSEMESSAGESPATH);
+      if (file.Exists)
+      {
+        return file.LastWriteTime != RespMsgFileTimestamp;
+      }
+
+      return false;
     }
 
     public static void AddMessageToQueue(string message)
@@ -589,8 +610,8 @@ namespace AbevBot
 
       string uri = $"https://api.twitch.tv/helix/chat/chatters?broadcaster_id={Config.Data[Config.Keys.ChannelID]}&moderator_id={Config.Data[Config.Keys.ChannelID]}&first=1000";
       using HttpRequestMessage request = new(HttpMethod.Get, uri);
-      request.Headers.Add("Authorization", $"Bearer {Config.Data[Config.Keys.BotOAuthToken]}");
-      request.Headers.Add("Client-Id", Config.Data[Config.Keys.BotClientID]);
+      request.Headers.Add("Authorization", $"Bearer {Secret.Data[Secret.Keys.OAuthToken]}");
+      request.Headers.Add("Client-Id", Secret.Data[Secret.Keys.CustomerID]);
 
       GetChattersResponse response = GetChattersResponse.Deserialize(Client.Send(request).Content.ReadAsStringAsync().Result);
       if (response?.Data?.Length > 0)
@@ -631,8 +652,8 @@ namespace AbevBot
       string uri = $"https://api.twitch.tv/helix/moderation/bans?broadcaster_id={Config.Data[Config.Keys.ChannelID]}&moderator_id={Config.Data[Config.Keys.ChannelID]}";
       using HttpRequestMessage request = new(HttpMethod.Post, uri);
       request.Content = new StringContent(new BanMessageRequest(c.ID, durSeconds, message).ToJsonString(), Encoding.UTF8, "application/json");
-      request.Headers.Add("Authorization", $"Bearer {Config.Data[Config.Keys.BotOAuthToken]}");
-      request.Headers.Add("Client-Id", Config.Data[Config.Keys.BotClientID]);
+      request.Headers.Add("Authorization", $"Bearer {Secret.Data[Secret.Keys.OAuthToken]}");
+      request.Headers.Add("Client-Id", Secret.Data[Secret.Keys.CustomerID]);
 
       Client.Send(request); // We don't really need the result, just assume that it worked
     }

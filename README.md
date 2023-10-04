@@ -39,19 +39,24 @@ Uses Windows Presentation Foundation (WPF, an UI framework) to open bot configur
   - Backseat points (`!point`) - the streamer can reward the chatter for helping, <p align="center"><img src="ReadmeImages/MinigamePoint.png" width=200 alt="Gamba minigame"></p>
   - Rude points (`!rude`) - chatters can point a chatter for being rude, <p align="center"><img src="ReadmeImages/MinigameRude.png" width=200 alt="Gamba minigame"></p>
   - Vanish (`!vanish`) - self timeout for the chatter, also deletes chatter messages.
+  - Hug (`!hug`) - just a friendly hug to other person.
 
 - Bot configuration is carried out in:
-  - Config.ini (channel name, passwords, etc.),
+  - Secrets.ini (Twitch app data: customer ID, passwords, etc.),
+  - Config.ini (channel name, bot notifications configuration, etc.),
   - ResponseMessages.csv (automated response messages).
 <br><br>
+
+## **Required information in Secrets.ini**
+The file will be generated automatically the first time the bot is run.
+ - Bot's name (`Name`) - Name of the registered application on https://dev.twitch.tv/console/apps.
+ - Bot's client ID (`CustomerID`) - Customer ID of the registered application on https://dev.twitch.tv/console/apps.
+ - Bot's password (`Password`) - Customer password of the registered application on https://dev.twitch.tv/console/apps.
+<p align="center"><img src="ReadmeImages/BotLogin.png" height="400" alt="Bot's Nick, ClientID and Password"></p>  
 
 ## **Required information in Config.ini**
 The file will be generated automatically the first time the bot is run.
  - Channel name (`ChannelName`) - Name of the channel to connect to.
- - Bot's name (`BotNick`) - Name of the registered application on https://dev.twitch.tv/console/apps.
- - Bot's client ID (`BotClientID`) - Customer ID of the registered application on https://dev.twitch.tv/console/apps.
- - Bot's password (`BotPass`) - Customer password of the registered application on https://dev.twitch.tv/console/apps.
-<p align="center"><img src="ReadmeImages/BotLogin.png" height="400" alt="Bot's Nick, ClientID and Password"></p>  
-<br><br>
+<br><br><br><br>
 
 [Deprecated source code explanation (maybe it will be updated someday)](SourceCodeExplanation.md)

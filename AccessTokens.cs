@@ -36,8 +36,8 @@ namespace AbevBot
         else
         {
           // Read file data
-          Config.Data[Config.Keys.BotOAuthToken] = lines[0].Trim();
-          Config.Data[Config.Keys.BotOAuthRefreshToken] = lines[1].Trim();
+          Secret.Data[Secret.Keys.OAuthToken] = lines[0].Trim();
+          Secret.Data[Secret.Keys.OAuthRefreshToken] = lines[1].Trim();
 
           // Check if readed token works
           if (!ValidateOAuthToken())
@@ -66,8 +66,15 @@ namespace AbevBot
         RefreshTimer = new((e) =>
         {
           RefreshAccessToken();
+
           Chatter.UpdateChattersFile();
-        }, null, TimeSpan.Zero, new TimeSpan(0, 1, 0));
+
+          Config.UpdateVolumesFile();
+
+          if (Config.IsConfigFileUpdated()) { Config.ParseConfigFile(true); }
+
+          if (Chat.IsRespMsgFileUpdated()) { Chat.LoadResponseMessages(true); }
+        }, null, TimeSpan.Zero, new TimeSpan(0, 0, 10));
       }
     }
 
@@ -76,8 +83,8 @@ namespace AbevBot
     {
       File.WriteAllLines(TOKENSFILE,
         new string[] {
-          Config.Data[Config.Keys.BotOAuthToken],
-          Config.Data[Config.Keys.BotOAuthRefreshToken]
+          Secret.Data[Secret.Keys.OAuthToken],
+          Secret.Data[Secret.Keys.OAuthRefreshToken]
         });
     }
 
@@ -88,7 +95,7 @@ namespace AbevBot
 
       string uri = string.Concat(
         "https://id.twitch.tv/oauth2/authorize?",
-        "client_id=", Config.Data[Config.Keys.BotClientID],
+        "client_id=", Secret.Data[Secret.Keys.CustomerID],
         "&redirect_uri=http://localhost:3000",
         "&response_type=code",
         // When asking for permissions the scope of permissions has to be determined
@@ -139,8 +146,8 @@ namespace AbevBot
         string code = requestUrl.Substring(6, requestUrl.IndexOf('&', 6) - 6);
         using HttpRequestMessage request = new(HttpMethod.Post, "https://id.twitch.tv/oauth2/token");
         request.Content = new StringContent(string.Concat(
-            "client_id=", Config.Data[Config.Keys.BotClientID],
-            "&client_secret=", Config.Data[Config.Keys.BotPass],
+            "client_id=", Secret.Data[Secret.Keys.CustomerID],
+            "&client_secret=", Secret.Data[Secret.Keys.Password],
             "&code=", code,
             "&grant_type=authorization_code",
             "&redirect_uri=http://localhost:3000"
@@ -153,8 +160,8 @@ namespace AbevBot
         }
         MainWindow.ConsoleWarning(response.ToString());
         // Read information from received data
-        Config.Data[Config.Keys.BotOAuthToken] = response.Token;
-        Config.Data[Config.Keys.BotOAuthRefreshToken] = response.RefreshToken;
+        Secret.Data[Secret.Keys.OAuthToken] = response.Token;
+        Secret.Data[Secret.Keys.OAuthRefreshToken] = response.RefreshToken;
         BotOAuthTokenExpiration = DateTime.Now + new TimeSpan(0, 0, response.ExpiresIn.Value) - OAuthTokenExpirationSomething;
       }
       else
@@ -169,10 +176,10 @@ namespace AbevBot
     private static bool ValidateOAuthToken()
     {
       using HttpRequestMessage request = new(HttpMethod.Get, "https://id.twitch.tv/oauth2/validate");
-      request.Headers.Add("Authorization", $"OAuth {Config.Data[Config.Keys.BotOAuthToken]}");
+      request.Headers.Add("Authorization", $"OAuth {Secret.Data[Secret.Keys.OAuthToken]}");
 
       AccessTokenValidationResponse response = AccessTokenValidationResponse.Deserialize(Client.Send(request).Content.ReadAsStringAsync().Result);
-      if (response?.ClientID?.Equals(Config.Data[Config.Keys.BotClientID]) == true && response?.ExpiresIn > 0)
+      if (response?.ClientID?.Equals(Secret.Data[Secret.Keys.CustomerID]) == true && response?.ExpiresIn > 0)
       {
         BotOAuthTokenExpiration = DateTime.Now + new TimeSpan(0, 0, response.ExpiresIn.Value) - OAuthTokenExpirationSomething;
         MainWindow.ConsoleWarning($">> Access token validation succeeded. Token expiries in {response.ExpiresIn.Value / 3600f} hours.");
@@ -191,10 +198,10 @@ namespace AbevBot
       MainWindow.ConsoleWarning(">> Refreshing access token.");
       using HttpRequestMessage request = new(HttpMethod.Post, "https://id.twitch.tv/oauth2/token");
       request.Content = new StringContent(string.Concat(
-          "client_id=", Config.Data[Config.Keys.BotClientID],
-          "&client_secret=", Config.Data[Config.Keys.BotPass],
+          "client_id=", Secret.Data[Secret.Keys.CustomerID],
+          "&client_secret=", Secret.Data[Secret.Keys.Password],
           "&grant_type=refresh_token",
-          "&refresh_token=", Config.Data[Config.Keys.BotOAuthRefreshToken].Replace(":", "%3A") // Change to url encoded
+          "&refresh_token=", Secret.Data[Secret.Keys.OAuthRefreshToken].Replace(":", "%3A") // Change to url encoded
       ));
       request.Content.Headers.ContentType = MediaTypeHeaderValue.Parse("application/x-www-form-urlencoded");
 
@@ -202,10 +209,23 @@ namespace AbevBot
       if (response is null || response.Token is null || response.RefreshToken is null) throw new Exception("Response was empty or didn't received access token!");
       MainWindow.ConsoleWarning(response.ToString());
       // Read information from received data
-      Config.Data[Config.Keys.BotOAuthToken] = response.Token;
-      Config.Data[Config.Keys.BotOAuthRefreshToken] = response.RefreshToken;
+      Secret.Data[Secret.Keys.OAuthToken] = response.Token;
+      Secret.Data[Secret.Keys.OAuthRefreshToken] = response.RefreshToken;
       BotOAuthTokenExpiration = DateTime.Now + new TimeSpan(0, 0, response.ExpiresIn.Value) - OAuthTokenExpirationSomething;
       UpdateTokensFile();
+    }
+
+    public static void GetBroadcasterID()
+    {
+      MainWindow.ConsoleWarning(">> Getting broadcaster ID.");
+      string uri = $"https://api.twitch.tv/helix/users?login={Config.Data[Config.Keys.ChannelName]}";
+      using HttpRequestMessage request = new(HttpMethod.Get, uri);
+      request.Headers.Add("Authorization", $"Bearer {Secret.Data[Secret.Keys.OAuthToken]}");
+      request.Headers.Add("Client-Id", Secret.Data[Secret.Keys.CustomerID]);
+
+      ChannelIDResponse response = ChannelIDResponse.Deserialize(Client.Send(request).Content.ReadAsStringAsync().Result);
+      if (response != null && response?.Data?.Length == 1) { Config.Data[Config.Keys.ChannelID] = response.Data[0].ID; }
+      else { MainWindow.ConsoleWarning(">> Couldn't acquire broadcaster ID. Probably defined channel name doesn't exist."); }
     }
   }
 }

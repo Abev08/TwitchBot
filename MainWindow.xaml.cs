@@ -26,21 +26,14 @@ namespace AbevBot
     private const int WS_MAXIMIZEBOX = 0x10000;
     private const int WS_MINIMIZEBOX = 0x20000;
 
-    private static MainWindow WindowRef;
-    private static TextBlock TBMiddleRef, TBTopRef, TBBottomRef;
-    private static TextBlock NotificationsQueueCountRef;
-    private static MediaElement VideoPlayerRef;
+    /// <summary> MainWindow instance - the window. </summary>
+    public static MainWindow I { get; private set; }
     public static bool VideoEnded { get; private set; }
 
     public MainWindow(string[] args = null)
     {
       InitializeComponent();
-      WindowRef = this;
-      TBTopRef = tbTop;
-      TBMiddleRef = tbMid;
-      TBBottomRef = tbBottom;
-      NotificationsQueueCountRef = tbNotificationsQueue;
-      VideoPlayerRef = VideoPlayer;
+      I = this;
 
       // Catch all unhandled exceptions and print them into a file
       AppDomain.CurrentDomain.UnhandledException += (sender, ex) =>
@@ -55,19 +48,27 @@ namespace AbevBot
       Closing += (sender, e) =>
       {
         Chatter.UpdateChattersFile();
+        Config.UpdateVolumesFile();
         ConsoleFreed = true;
         FreeConsole();
       };
 
       ConsoleWarning(">> Hi. I'm AbevBot.");
 
-      // Read Config.ini
-      if (Config.ParseConfigFile())
+      // Read Secrets.ini and Config.ini
+      bool error = false;
+      error |= Secret.ParseSecretFile();
+      error |= Config.ParseConfigFile();
+      if (error)
       {
+        Console.ReadLine();
         ConsoleFreed = true;
         FreeConsole();
         return;
       }
+
+      AccessTokens.GetAccessTokens();
+      AccessTokens.GetBroadcasterID();
 
       if (args.Length > 0 && args[0] == "--consoleVisible") { } // Force console visibility in vscode with command line args
       else if (!Config.ConsoleVisible)
@@ -96,14 +97,14 @@ namespace AbevBot
         }
         catch (Exception ex) { ConsoleWarning($">> {ex.Message}"); }
 
-        VideoPlayerRef.Source = new Uri(new FileInfo("Resources/peepoHey.mp4").FullName);
-        VideoPlayerRef.Play();
+        VideoPlayer.Source = new Uri(new FileInfo("Resources/peepoHey.mp4").FullName);
+        VideoPlayer.Play();
       };
 
       // Don't allow minimizing the window
       StateChanged += (sender, e) =>
       {
-        if (WindowRef.WindowState == WindowState.Minimized) WindowRef.WindowState = WindowState.Normal;
+        if (I.WindowState == WindowState.Minimized) I.WindowState = WindowState.Normal;
       };
     }
 
@@ -135,42 +136,42 @@ namespace AbevBot
       Notifications.SkipNotification = true;
     }
 
-    public static void SetTextDisplayed(string text, Notifications.TextPosition position)
+    public void SetTextDisplayed(string text, Notifications.TextPosition position)
     {
-      WindowRef.Dispatcher.Invoke(new Action(() =>
+      Dispatcher.Invoke(new Action(() =>
       {
         switch (position)
         {
           case Notifications.TextPosition.TOP:
-            TBTopRef.Text = text;
+            tbTop.Text = text;
             break;
 
           case Notifications.TextPosition.MIDDLE:
-            TBMiddleRef.Text = text;
+            tbMid.Text = text;
             break;
 
           case Notifications.TextPosition.BOTTOM:
-            TBBottomRef.Text = text;
+            tbBottom.Text = text;
             break;
         }
       }));
     }
 
-    public static void ClearTextDisplayed()
+    public void ClearTextDisplayed()
     {
-      WindowRef.Dispatcher.Invoke(new Action(() =>
+      Dispatcher.Invoke(new Action(() =>
       {
-        TBTopRef.Text = string.Empty;
-        TBMiddleRef.Text = string.Empty;
-        TBBottomRef.Text = string.Empty;
+        tbTop.Text = string.Empty;
+        tbMid.Text = string.Empty;
+        tbBottom.Text = string.Empty;
       }));
     }
 
-    public static void StartVideoPlayer(string path, float volume)
+    public void StartVideoPlayer(string path, float volume)
     {
-      WindowRef.Dispatcher.Invoke(new Action(() =>
+      Dispatcher.Invoke(new Action(() =>
       {
-        if (VideoPlayerRef.Source != null)
+        if (VideoPlayer.Source != null)
         {
           VideoEnded = true;
           return;
@@ -184,27 +185,27 @@ namespace AbevBot
         }
 
         VideoEnded = false;
-        VideoPlayerRef.Source = new Uri(file.FullName);
-        VideoPlayerRef.Volume = volume;
-        VideoPlayerRef.Play();
+        VideoPlayer.Source = new Uri(file.FullName);
+        VideoPlayer.Volume = volume;
+        VideoPlayer.Play();
       }));
     }
 
-    public static void StopVideoPlayer()
+    public void StopVideoPlayer()
     {
-      WindowRef.Dispatcher.Invoke(new Action(() =>
+      Dispatcher.Invoke(new Action(() =>
       {
-        VideoPlayerRef.Stop();
-        VideoPlayerRef.Source = null;
+        VideoPlayer.Stop();
+        VideoPlayer.Source = null;
         VideoEnded = true;
       }));
     }
 
-    public static void SetNotificationQueueCount(int count)
+    public void SetNotificationQueueCount(int count)
     {
-      WindowRef.Dispatcher.Invoke(new Action(() =>
+      Dispatcher.Invoke(new Action(() =>
       {
-        NotificationsQueueCountRef.Text = $"Notifications in queue: {count}";
+        tbNotificationsQueue.Text = $"Notifications in queue: {count}";
       }));
     }
 
@@ -230,14 +231,14 @@ namespace AbevBot
 
     private void MainVideoEnded(object sender, RoutedEventArgs e)
     {
-      VideoPlayerRef.Source = null;
+      VideoPlayer.Source = null;
       VideoEnded = true;
     }
 
     private void VideoTest(object sender, RoutedEventArgs e)
     {
-      VideoPlayerRef.Source = new Uri(new FileInfo("Resources/peepoHey.mp4").FullName);
-      VideoPlayerRef.Play();
+      VideoPlayer.Source = new Uri(new FileInfo("Resources/peepoHey.mp4").FullName);
+      VideoPlayer.Play();
     }
 
     private void TTSTest(object sender, RoutedEventArgs e)
@@ -259,14 +260,52 @@ namespace AbevBot
           Notifications.CreateSubscriptionNotification("Chatter", "1", "This is a test");
           break;
 
-        case "Gifted Subscription":
+        case "Subscription Gifted":
           Notifications.CreateGiftSubscriptionNotification("Chatter", "1", 7, "This is a test");
+          break;
+
+        case "Subscription Ext. Msg":
+          Notifications.CreateSubscriptionNotification("Chatter", "1", 7, 77, new EventPayloadMessage() { Text = "This is a test" });
           break;
 
         case "Cheer":
           Notifications.CreateCheerNotification("Chatter", 100, "This is a test");
           break;
       }
+    }
+
+    private void VolumeTTSChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+      tbVolumeTTS.Text = $"TTS Volume: {e.NewValue}%";
+      Config.VolumeTTS = (float)e.NewValue / 100f;
+      Config.VolumeValuesDirty = true;
+    }
+
+    private void VolumeSoundsChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+      tbVolumeSounds.Text = $"Sounds Volume: {e.NewValue}%";
+      Config.VolumeSounds = (float)e.NewValue / 100f;
+      Config.VolumeValuesDirty = true;
+    }
+
+    private void VolumeVideosChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+      tbVolumeVideos.Text = $"Videos Volume: {e.NewValue}%";
+      Config.VolumeVideos = (float)e.NewValue / 100f;
+      Config.VolumeValuesDirty = true;
+    }
+
+    private void VolumeChange(object sender, System.Windows.Input.MouseWheelEventArgs e)
+    {
+      ((Slider)sender).Value += e.Delta > 0 ? 1 : -1;
+    }
+
+    /// <summary> Sets volume sliders value to values present in Config class. </summary>
+    public void SetVolumeSliderValues()
+    {
+      volumeTTS.Value = MathF.Round(Config.VolumeTTS * 100);
+      volumeSounds.Value = MathF.Round(Config.VolumeSounds * 100);
+      volumeVideos.Value = MathF.Round(Config.VolumeVideos * 100);
     }
 
 
@@ -279,7 +318,7 @@ namespace AbevBot
     #region GAMBA TESTING, DO NOT LOOK :D
     public void GambaVideoStart(string videoPath, string userName, string points)
     {
-      WindowRef.Dispatcher.Invoke(new Action(() =>
+      Dispatcher.Invoke(new Action(() =>
       {
         tbGambaName.Text = userName;
         FileInfo file = new(videoPath);
@@ -297,7 +336,7 @@ namespace AbevBot
         {
           for (int i = 0; i <= 60; i++)
           {
-            WindowRef.Dispatcher.Invoke(new Action(() =>
+            I.Dispatcher.Invoke(new Action(() =>
             {
               tbGambaPoints.Margin = new Thickness(0, tbGambaPoints.Margin.Top + 1, 0, 0);
               if (i == 60)

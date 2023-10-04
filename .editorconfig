@@ -9,21 +9,17 @@ indent_size = 2
 end_of_line = crlf
 charset = utf-8
 trim_trailing_whitespace = true
-insert_final_newline = true
 
 [*.md]
 trim_trailing_whitespace = false
-insert_final_newline = false
-
-[.tokens]
-insert_final_newline = false
-
-[*.json]
-insert_final_newline = false
-
-[*.bat]
-insert_final_newline = false
 
 [*.cs]
+insert_final_newline = true
 # CS8618: Non nullable field _name is not initialized. Consider declare the field as nullable type
 #dotnet_diagnostic.CS8618.severity = none
+
+[*.xaml]
+insert_final_newline = true
+
+[*.xaml.cs]
+insert_final_newline = true

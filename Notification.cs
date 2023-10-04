@@ -29,6 +29,20 @@ namespace AbevBot
     private readonly List<WaveOut> AudioToPlay = new();
     private bool AudioStarted;
 
+    public Notification() { }
+
+    public Notification(NotificationsConfig config, string[] data)
+    {
+      TextToDisplay = string.Format(config.TextToDisplay, data).Replace("\\n", Environment.NewLine);
+      TextToDisplayPosition = config.TextPosition;
+      TextToRead = string.Format(config.TextToSpeech, data).Replace("\\n", Environment.NewLine);
+      TTSVolume = Config.VolumeTTS;
+      SoundPath = config.SoundToPlay;
+      SoundVolume = Config.VolumeSounds;
+      VideoPath = config.VideoToPlay;
+      VideoVolume = Config.VolumeVideos;
+    }
+
     /// <summary> Initializes required things and starts the notification </summary>
     public void Start()
     {
@@ -124,8 +138,8 @@ namespace AbevBot
       if (DateTime.Now - StartTime > MaximumNotificationTime)
       {
         MainWindow.ConsoleWarning(">> Maximum notification time reached, something went wrong, to not block other notificaitons force closing this one!");
-        MainWindow.ClearTextDisplayed();
-        MainWindow.StopVideoPlayer();
+        MainWindow.I.ClearTextDisplayed();
+        MainWindow.I.StopVideoPlayer();
         foreach (var audio in AudioToPlay)
         {
           audio?.Stop();
@@ -139,7 +153,7 @@ namespace AbevBot
       if (!TextDisplayed && !Notifications.NotificationsPaused && !Notifications.SkipNotification && TextToDisplay?.Length > 0)
       {
         TextDisplayed = true;
-        MainWindow.SetTextDisplayed(TextToDisplay, TextToDisplayPosition);
+        MainWindow.I.SetTextDisplayed(TextToDisplay, TextToDisplayPosition);
       }
 
       if (!VideoEnded)
@@ -148,11 +162,11 @@ namespace AbevBot
         {
           // Start the video
           VideoStarted = true;
-          MainWindow.StartVideoPlayer(VideoPath, VideoVolume);
+          MainWindow.I.StartVideoPlayer(VideoPath, VideoVolume);
         }
         else if (Notifications.SkipNotification)
         {
-          MainWindow.StopVideoPlayer();
+          MainWindow.I.StopVideoPlayer();
           VideoEnded = true;
         }
         else if (MainWindow.VideoEnded) { VideoEnded = true; }
@@ -163,7 +177,7 @@ namespace AbevBot
       if (!TextCleared && (DateTime.Now - StartTime >= MinimumNotificationTime))
       {
         TextCleared = true;
-        MainWindow.ClearTextDisplayed();
+        MainWindow.I.ClearTextDisplayed();
       }
 
       // Play the audio
@@ -216,7 +230,7 @@ namespace AbevBot
 
       // The notification is over, clear after it
       if (!Notifications.SkipNotification && (DateTime.Now - StartTime < MinimumNotificationTime)) return false;
-      MainWindow.ClearTextDisplayed(); // Clear displayed text, again just to be sure
+      MainWindow.I.ClearTextDisplayed(); // Clear displayed text, again just to be sure
 
       return true; // return true when notification has ended
     }

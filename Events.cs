@@ -53,8 +53,8 @@ namespace AbevBot
         if (WebSocketClient is null)
         {
           WebSocketClient = new();
-          WebSocketClient.Options.SetRequestHeader("Client-Id", Config.Data[Config.Keys.BotClientID]);
-          WebSocketClient.Options.SetRequestHeader("Authorization", $"Bearer {Config.Data[Config.Keys.BotOAuthToken]}");
+          WebSocketClient.Options.SetRequestHeader("Client-Id", Secret.Data[Secret.Keys.CustomerID]);
+          WebSocketClient.Options.SetRequestHeader("Authorization", $"Bearer {Secret.Data[Secret.Keys.OAuthToken]}");
           try { WebSocketClient.ConnectAsync(new Uri(WEBSOCKETURL), CancellationToken.None).Wait(); }
           catch (AggregateException ex) { MainWindow.ConsoleWarning($">> Events bot error: {ex.Message}"); }
 
@@ -244,8 +244,8 @@ namespace AbevBot
       MainWindow.ConsoleWarning($">> Events bot subscribing to {type} event.");
       using HttpRequestMessage request = new(HttpMethod.Post, SUBSCRIPTIONRUL);
       request.Content = new StringContent(new SubscriptionMessage(type, version, Config.Data[Config.Keys.ChannelID], sessionID).ToJsonString(), Encoding.UTF8, "application/json");
-      request.Headers.Add("Client-Id", Config.Data[Config.Keys.BotClientID]);
-      request.Headers.Add("Authorization", $"Bearer {Config.Data[Config.Keys.BotOAuthToken]}");
+      request.Headers.Add("Client-Id", Secret.Data[Secret.Keys.CustomerID]);
+      request.Headers.Add("Authorization", $"Bearer {Secret.Data[Secret.Keys.OAuthToken]}");
       ResponseMessage response = ResponseMessage.Deserialize(HttpClient.Send(request).Content.ReadAsStringAsync().Result);
       if (response.Error != null) { MainWindow.ConsoleWarning($">> Events bot subscription error: {response.Message}"); }
       else

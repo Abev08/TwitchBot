@@ -129,7 +129,7 @@ namespace AbevBot
     {
       if (name is null || name.Length == 0) return string.Empty;
 
-      if (Config.Data[Config.Keys.TikTokSessionID].Length == 0) return string.Empty;
+      if (Secret.Data[Secret.Keys.TikTokSessionID].Length == 0) return string.Empty;
 
       string voiceName = name.ToLower();
       var voice = Voices.GetEnumerator();
@@ -161,7 +161,7 @@ namespace AbevBot
 
     public static Stream GetTTS(string _text, string voice)
     {
-      if (Config.Data[Config.Keys.TikTokSessionID].Length == 0) return null;
+      if (Secret.Data[Secret.Keys.TikTokSessionID].Length == 0) return null;
       if (_text is null || _text.Length == 0) return null;
 
       string text = _text;
@@ -174,7 +174,7 @@ namespace AbevBot
       TikTokTTSResponse result;
       using HttpRequestMessage request = new(HttpMethod.Post, url);
       request.Headers.Add("User-Agent", "com.zhiliaoapp.musically/2022600030 (Linux; U; Android 7.1.2; es_ES; SM-G988N; Build/NRD90M;tt-ok/3.12.13.1)");
-      request.Headers.Add("Cookie", $"sessionid={Config.Data[Config.Keys.TikTokSessionID]}");
+      request.Headers.Add("Cookie", $"sessionid={Secret.Data[Secret.Keys.TikTokSessionID]}");
 
       result = TikTokTTSResponse.Deserialize(Notifications.Client.Send(request).Content.ReadAsStringAsync().Result);
       if (result?.StatusCode != 0)

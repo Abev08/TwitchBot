@@ -4,14 +4,16 @@
 ## Get latest from https://github.com/github/gitignore/blob/main/VisualStudio.gitignore
 
 # Do not add user specyfic files
+Secrets.ini
 Config.ini
 ResponseMessages.csv
 .tokens
-twitch-cli*/
-error.txt
 .chatters
+.volumes
+error.txt
 Resources/Sounds/
 Resources/Videos/
+twitch-cli*/
 Doc/*
 !Doxyfile
 

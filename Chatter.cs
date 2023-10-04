@@ -132,6 +132,8 @@ namespace AbevBot
       UpdateRequired = false;
       if (Chatters is null || Chatters.Count == 0) return;
 
+      MainWindow.ConsoleWarning(">> Updating chatters file.");
+
       string data;
       lock (Chatters)
       {

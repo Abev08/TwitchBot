@@ -23,8 +23,13 @@ namespace AbevBot
       else if (sound is string)
       {
         FileInfo file = new((string)sound);
-        if (file.Exists == true && file.Extension.Equals(".mp3")) { sample = new Mp3FileReader(file.FullName).ToSampleProvider(); }
-        else if (file.Exists == true && file.Extension.Equals(".wav")) { sample = new WaveFileReader(file.FullName).ToSampleProvider(); }
+        if (!file.Exists)
+        {
+          MainWindow.ConsoleWarning($">> Sound not found {file.FullName}!");
+          return null;
+        }
+        else if (file.Extension.Equals(".mp3")) { sample = new Mp3FileReader(file.FullName).ToSampleProvider(); }
+        else if (file.Extension.Equals(".wav")) { sample = new WaveFileReader(file.FullName).ToSampleProvider(); }
         else
         {
           MainWindow.ConsoleWarning($">> Sound extension {file.Extension} not supported!");
@@ -34,8 +39,13 @@ namespace AbevBot
       else if (sound is Stream) { sample = new Mp3FileReader((Stream)sound).ToSampleProvider(); }
       else if (sound is FileInfo file)
       {
-        if (file.Exists == true && file.Extension.Equals(".mp3")) { sample = new Mp3FileReader(file.FullName).ToSampleProvider(); }
-        else if (file.Exists == true && file.Extension.Equals(".wav")) { sample = new WaveFileReader(file.FullName).ToSampleProvider(); }
+        if (!file.Exists)
+        {
+          MainWindow.ConsoleWarning($">> Sound not found {file.FullName}!");
+          return null;
+        }
+        else if (file.Extension.Equals(".mp3")) { sample = new Mp3FileReader(file.FullName).ToSampleProvider(); }
+        else if (file.Extension.Equals(".wav")) { sample = new WaveFileReader(file.FullName).ToSampleProvider(); }
         else
         {
           MainWindow.ConsoleWarning($">> Sound extension {file.Extension} not supported!");
