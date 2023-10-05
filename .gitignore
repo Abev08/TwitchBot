@@ -16,6 +16,7 @@ Resources/Videos/
 twitch-cli*/
 Doc/*
 !Doxyfile
+eventlog_*.txt
 
 # User-specific files
 *.rsuser

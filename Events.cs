@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Net.Http;
 using System.Net.WebSockets;
 using System.Text;
@@ -111,6 +112,17 @@ namespace AbevBot
             }
             else if (messageDeserialized?.Metadata?.MessageType?.Equals("notification") == true)
             {
+              // TODO: Delete after testing, temporary event messages logging
+              {
+                try
+                {
+                  File.AppendAllText($"eventlog_{DateTime.Now:d}.txt", $"{DateTime.Now:G}\r\n");
+                  File.AppendAllText($"eventlog_{DateTime.Now:d}.txt", message);
+                  File.AppendAllText($"eventlog_{DateTime.Now:d}.txt", "\r\n\r\n");
+                }
+                catch { }
+              }
+
               // Received a notification
               if (messageDeserialized?.Metadata?.SubscriptionType?.Equals("channel.follow") == true)
               {
