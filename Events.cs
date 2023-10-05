@@ -169,7 +169,12 @@ namespace AbevBot
                 // Received subscription with message event
                 Payload payload = Payload.Deserialize(messageDeserialized?.Payload);
                 MainWindow.ConsoleWarning($">> New subscription from {payload?.Event?.UserName}. {payload?.Event?.Message.Text}");
-                Notifications.CreateSubscriptionNotification(payload?.Event?.UserName, payload?.Event?.Tier, (int)payload?.Event?.MonthsDuration, (int)payload?.Event?.MonthsStreak, payload?.Event?.Message);
+                Notifications.CreateSubscriptionNotification(
+                  payload?.Event?.UserName, payload?.Event?.Tier,
+                  (int)payload?.Event?.MonthsDuration.Value,
+                  (int)payload?.Event?.MonthsStreak.Value,
+                  (int)payload?.Event?.MonthsCumulative.Value,
+                  payload?.Event?.Message);
                 // MainWindow.ConsoleWriteLine(message);
               }
               else if (messageDeserialized?.Metadata?.SubscriptionType?.Equals("channel.cheer") == true)
@@ -177,7 +182,7 @@ namespace AbevBot
                 // Received cheer event
                 PayloadCheer payload = PayloadCheer.Deserialize(messageDeserialized?.Payload);
                 MainWindow.ConsoleWarning($">> {payload?.Event?.UserName} cheered with {payload?.Event?.Bits} bits.");
-                Notifications.CreateCheerNotification(payload?.Event?.UserName, (int)payload?.Event?.Bits, payload?.Event?.Message);
+                Notifications.CreateCheerNotification(payload?.Event?.UserName, (int)payload?.Event?.Bits.Value, payload?.Event?.Message);
                 // MainWindow.ConsoleWriteLine(message);
               }
               else if (messageDeserialized?.Metadata?.SubscriptionType?.Equals("channel.channel_points_custom_reward_redemption.add") == true)

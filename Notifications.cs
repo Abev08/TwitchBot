@@ -131,7 +131,7 @@ namespace AbevBot
     }
 
     /// <summary> This is more advanced CreateSubscriptionNotification version - more info in message variable. </summary>
-    public static void CreateSubscriptionNotification(string userName, string tier, int duration, int streak, EventPayloadMessage message)
+    public static void CreateSubscriptionNotification(string userName, string tier, int duration, int streak, int cumulative, EventPayloadMessage message)
     {
       if (!ConfigSubscriptionExt.Enable) return;
 
@@ -143,6 +143,7 @@ namespace AbevBot
       NotificationData[1] = tier[..1];
       NotificationData[2] = duration.ToString();
       NotificationData[3] = streak.ToString();
+      NotificationData[5] = cumulative.ToString();
       NotificationData[7] = message.Text; // TODO: Create message to read - remove emotes from the message using message.Emotes[], don't read them
 
       Chat.AddMessageToQueue(string.Format(ConfigSubscriptionExt.ChatMessage, NotificationData));

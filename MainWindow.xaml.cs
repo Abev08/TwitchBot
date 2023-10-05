@@ -265,7 +265,7 @@ namespace AbevBot
           break;
 
         case "Subscription Ext. Msg":
-          Notifications.CreateSubscriptionNotification("Chatter", "1", 7, 77, new EventPayloadMessage() { Text = "This is a test" });
+          Notifications.CreateSubscriptionNotification("Chatter", "1", 7, 77, 777, new EventPayloadMessage() { Text = "This is a test" });
           break;
 
         case "Cheer":

@@ -320,6 +320,7 @@ namespace AbevBot
         writer.WriteLine("; {2} - subscription duration in advance, for example subscribed for next 3 months (only in extended subscription message)");
         writer.WriteLine("; {3} - subscription streak, for example subscribed for 10 months in a row (only in extended subscription message)");
         writer.WriteLine("; {4} - gifted subscription count, cheered bits count");
+        writer.WriteLine("; {5} - cumulative subscription months (only in extended subscription message)");
         writer.WriteLine("; {7} - attached message");
         writer.WriteLine("; Using index out of supported range WILL CRASH THE BOT!");
         writer.WriteLine(";");
