@@ -25,10 +25,25 @@ namespace AbevBot
     {
       Chatter chatter = Chatter.GetChatterByID(userID, userName);
 
-      string msg = message.Trim().ToLower();
+      string msg = message.Replace("\U000e0000", "").Trim().ToLower(); // Removing ShadeEleven's "white space" characters :)
       int pointsToRoll;
       if (msg.Length == 0) { GetStats(chatter); return; }
       else if (msg.Equals("ladder")) { GetLadder(); return; }
+      else if (msg.Equals("help"))
+      {
+        Chat.AddMessageToQueue(string.Concat(
+         "GAMBA minigame. ",
+         "\" !gamba <empty / value / quarter / half / all / ladder / life> \". ",
+         "empty - your stats, ",
+         "value - gamble provided amount, ",
+         "quarter - gamble 1/4 of your points, ",
+         "half - gamble 1/2 of your points, ",
+         "all - gamble all your points, ",
+         "ladder - the ladder, ",
+         "life - gamble your life"
+        ));
+        return;
+      }
       else if (msg.Equals("all")) { pointsToRoll = chatter.Gamba.Points; }
       else if (msg.Equals("half")) { pointsToRoll = chatter.Gamba.Points / 2; }
       else if (msg.Equals("quarter")) { pointsToRoll = chatter.Gamba.Points / 4; }
@@ -59,10 +74,22 @@ namespace AbevBot
         // try to parse points
         if (int.TryParse(msg, out pointsToRoll))
         {
-          if (pointsToRoll <= 0) return; // Provided negative amount of points or a zero
-          if (pointsToRoll > chatter.Gamba.Points) return; // Provided more points that the chatter has
+          if (pointsToRoll <= 0)
+          {
+            Chat.AddMessageToQueue($"@{chatter.Name} you can't gamble negative amount of points WeirdDude");
+            return; // Provided negative amount of points or a zero
+          }
+          if (pointsToRoll > chatter.Gamba.Points)
+          {
+            Chat.AddMessageToQueue($"@{chatter.Name} you don't have that many points to gamble WeirdDude");
+            return; // Provided more points that the chatter has
+          }
         }
-        else { return; } // Points amount was not a number?
+        else
+        {
+          Chat.AddMessageToQueue($"@{chatter.Name} that's not a valid amount WeirdDude");
+          return; // Points amount was not a number?
+        }
       }
 
       if (pointsToRoll == 0) pointsToRoll = 1; // At least one point to roll

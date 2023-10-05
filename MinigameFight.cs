@@ -24,7 +24,7 @@ namespace AbevBot
     {
       Chatter fighter1 = Chatter.GetChatterByID(userID, userName);
 
-      string chatter = message.Trim();
+      string chatter = message.Replace("\U000e0000", "").Trim(); // Removing ShadeEleven's "white space" characters :)
       if (chatter.StartsWith('@')) { chatter = chatter[1..]; }
 
       if (string.IsNullOrEmpty(chatter))
@@ -35,6 +35,17 @@ namespace AbevBot
       else if (chatter.ToLower().Equals("ladder"))
       {
         GetLadder();
+        return;
+      }
+      else if (chatter.ToLower().Equals("help"))
+      {
+        Chat.AddMessageToQueue(string.Concat(
+         "peepoBox minigame. ",
+         "\" !fight <empty / chatter_name / ladder> \". ",
+         "empty - your stats, ",
+         "chatter_name - fighting others, ",
+         "ladder - the ladder"
+        ));
         return;
       }
 
@@ -52,19 +63,25 @@ namespace AbevBot
       }
       if (InitFighter(fighter1))
       {
+        TimeSpan restTimer = FIGHTINGTIMEOUT - (DateTime.Now - fighter1.Fight.LastFight);
+
         Chat.AddMessageToQueue(string.Concat(
-          fighter1.Name, " is exhausted, needs to rest for another ",
-          Math.Ceiling((FIGHTINGTIMEOUT - (DateTime.Now - fighter1.Fight.LastFight)).TotalMinutes),
-          " minutes"
+          "@", fighter1.Name, " you are exhausted, you need to rest for another ",
+          restTimer.TotalSeconds < 60 ?
+            $"{Math.Ceiling(restTimer.TotalSeconds)} seconds" :
+            $"{Math.Ceiling(restTimer.TotalMinutes)} minutes"
         ));
         return; // The fighter can't fight
       }
       if (InitFighter(fighter2))
       {
+        TimeSpan restTimer = FIGHTINGTIMEOUT - (DateTime.Now - fighter1.Fight.LastFight);
+
         Chat.AddMessageToQueue(string.Concat(
           fighter2.Name, " is exhausted, needs to rest for another ",
-          Math.Ceiling((FIGHTINGTIMEOUT - (DateTime.Now - fighter2.Fight.LastFight)).TotalMinutes),
-          " minutes"
+          restTimer.TotalSeconds < 60 ?
+            $"{Math.Ceiling(restTimer.TotalSeconds)} seconds" :
+            $"{Math.Ceiling(restTimer.TotalMinutes)} minutes"
         ));
         return; // The fighter can't fight
       }
