@@ -15,7 +15,11 @@ namespace AbevBot
 
     public static void NewFight(long userID, string userName, string message)
     {
-      if (!Enabled) return;
+      if (!Enabled)
+      {
+        Chat.AddMessageToQueue($"@{userName} !fight disabled peepoSad");
+        return;
+      }
 
       Task.Run(() => StartNewFight(userID, userName, message));
     }

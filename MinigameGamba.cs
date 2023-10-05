@@ -16,7 +16,11 @@ namespace AbevBot
 
     public static void NewGamba(long userID, string userName, string message)
     {
-      if (!Enabled) return;
+      if (!Enabled)
+      {
+        Chat.AddMessageToQueue($"@{userName} !gamba disabled peepoSad");
+        return;
+      }
 
       Task.Run(() => StartNewGamba(userID, userName, message));
     }
@@ -49,7 +53,11 @@ namespace AbevBot
       else if (msg.Equals("quarter")) { pointsToRoll = chatter.Gamba.Points / 4; }
       else if (msg.Equals("life"))
       {
-        if (!GambaLifeEnabled) return;
+        if (!GambaLifeEnabled)
+        {
+          Chat.AddMessageToQueue($"@{chatter.Name} !gamba life disabled peepoSad");
+          return;
+        }
 
         // Gambling a life - if lost the chatter will get banned, if won nothing?
         Chat.AddMessageToQueue(string.Concat("@", chatter.Name, " GAMBA is putting a life at risk peepoShake"));
