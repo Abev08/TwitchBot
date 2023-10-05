@@ -9,6 +9,7 @@ namespace AbevBot
   {
     private const int MAXLADDERENTRIES = 10;
     private const int GAMBALIFELOSTTIMEOUTSECONDS = 30;
+    private static readonly TimeSpan GAMBATIMEOUT = new(0, 5, 0);
     public static readonly GambaLadderComparer GambaLadderComparer = new();
 
     public static bool Enabled { get; set; }
@@ -99,6 +100,21 @@ namespace AbevBot
           return; // Points amount was not a number?
         }
       }
+
+      if (DateTime.Now - chatter.Gamba.LastGamba < GAMBATIMEOUT)
+      {
+        TimeSpan restTimer = GAMBATIMEOUT - (DateTime.Now - chatter.Gamba.LastGamba);
+
+        Chat.AddMessageToQueue(string.Concat(
+          "@", chatter.Name, " you are still shaking, you need to rest for another ",
+          restTimer.TotalSeconds < 60 ?
+            $"{Math.Ceiling(restTimer.TotalSeconds)} seconds" :
+            $"{Math.Ceiling(restTimer.TotalMinutes)} minutes"
+        ));
+        return; // The gamba timeout
+      }
+
+      chatter.Gamba.LastGamba = DateTime.Now; // Remember last time the chatter gambled
 
       if (pointsToRoll == 0) pointsToRoll = 1; // At least one point to roll
       Chat.AddMessageToQueue(string.Concat(
@@ -199,6 +215,7 @@ namespace AbevBot
     public int Wins { get; set; }
     public int Looses { get; set; }
     public int Bankruptcies { get; set; }
+    public DateTime LastGamba { get; set; }
   }
 
   public class GambaLadderComparer : IComparer<int>
