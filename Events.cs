@@ -128,8 +128,17 @@ namespace AbevBot
               {
                 // Received channel follow event
                 Payload payload = Payload.Deserialize(messageDeserialized?.Payload);
-                MainWindow.ConsoleWarning($">> New follow from {payload?.Event?.UserName}.");
-                Notifications.CreateFollowNotification(payload?.Event?.UserName);
+                if (payload?.Event?.UserName?.Length > 0)
+                {
+                  Chatter c = Chatter.GetChatterByID(long.Parse(payload.Event.UserID), payload.Event.UserName);
+                  if (c.LastTimeFollowed != DateTime.Now.Date)
+                  {
+                    c.SetLastTimeFollowedToNow();
+                    MainWindow.ConsoleWarning($">> New follow from {c.Name}.");
+                    Notifications.CreateFollowNotification(payload?.Event?.UserName);
+                  }
+                  else { MainWindow.ConsoleWarning($">> {c.Name} refollowed again in the same day."); }
+                }
               }
               else if (messageDeserialized?.Metadata?.SubscriptionType?.Equals("channel.subscribe") == true)
               {

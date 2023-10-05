@@ -15,6 +15,7 @@ namespace AbevBot
 
     public long ID { get; set; }
     public string Name { get; set; }
+    public DateTime LastTimeFollowed { get; set; } = DateTime.MinValue;
     public int BackseatPoints { get; set; }
     public int RudePoints { get; set; }
     public GambaStats Gamba { get; set; }
@@ -71,6 +72,12 @@ namespace AbevBot
       }
       else { Fight.CheckStats(); }
 
+      UpdateRequired = true;
+    }
+
+    public void SetLastTimeFollowedToNow()
+    {
+      LastTimeFollowed = DateTime.Now.Date;
       UpdateRequired = true;
     }
 
