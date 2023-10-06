@@ -38,7 +38,7 @@ namespace AbevBot
       {
         Chat.AddMessageToQueue(string.Concat(
          "GAMBA minigame. ",
-         "\" !gamba <empty / value / quarter / half / all / ladder / life> \". ",
+         "\" !gamba <empty/value/quarter/half/all/ladder/life> \". ",
          "empty - your stats, ",
          "value - gamble provided amount, ",
          "quarter - gamble 1/4 of your points, ",
@@ -106,7 +106,7 @@ namespace AbevBot
         TimeSpan restTimer = GAMBATIMEOUT - (DateTime.Now - chatter.Gamba.LastGamba);
 
         Chat.AddMessageToQueue(string.Concat(
-          "@", chatter.Name, " you are still shaking, you need to rest for another ",
+          "@", chatter.Name, " you're still shaking, you need to rest for another ",
           restTimer.TotalSeconds < 60 ?
             $"{Math.Ceiling(restTimer.TotalSeconds)} seconds" :
             $"{Math.Ceiling(restTimer.TotalMinutes)} minutes"
@@ -138,8 +138,8 @@ namespace AbevBot
         Chat.AddMessageToQueue(string.Concat(
           "@", chatter.Name, " won ",
           pointsToRoll, " points ",
-          jackpot ? "hitting a jackpot" : "",
-          " peepoHappy and have ",
+          jackpot ? "hitting a jackpot OMEGALUL" : "",
+          " and have ",
           chatter.Gamba.Points + pointsToRoll, " points peepoHappy"
         ));
 
@@ -151,9 +151,9 @@ namespace AbevBot
         int newPoints = chatter.Gamba.Points - pointsToRoll;
         Chat.AddMessageToQueue(string.Concat(
           "@", chatter.Name, " lost ",
-          pointsToRoll, " points PepeLaugh and have ",
+          pointsToRoll, " points and now have ",
           newPoints < 0 ? 0 : newPoints, " points PepeLaugh",
-          newPoints <= 0 ? $" also went bankrupt for {chatter.Gamba.Bankruptcies + 1} time GAMBAADDICT" : ""
+          newPoints <= 0 ? $" having gone bankrupt {chatter.Gamba.Bankruptcies + 1} times GAMBAADDICT" : ""
         ));
         chatter.AddGambaPoints(-pointsToRoll);
       }
@@ -206,6 +206,14 @@ namespace AbevBot
       }
 
       Chat.AddMessageToQueue(sb.ToString());
+    }
+
+    public static string GetCommands()
+    {
+      if (!Enabled) return string.Empty;
+
+      if (!GambaLifeEnabled) return "!gamba <empty/value/quarter/half/all/ladder/help>";
+      return "!gamba <empty/value/quarter/half/all/ladder/life/help>";
     }
   }
 

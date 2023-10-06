@@ -80,5 +80,10 @@ namespace AbevBot
 
       Chat.AddMessageToQueue(sb.ToString());
     }
+
+    public static string GetCommands()
+    {
+      return "!rude chatter_name";
+    }
   }
 }

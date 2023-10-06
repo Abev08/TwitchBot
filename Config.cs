@@ -10,6 +10,7 @@ namespace AbevBot
     {
       ChannelName, ChannelID,
       ConsoleVisible, PeriodicMessageTimeInterval,
+      AlwaysReadTTSFromThem, OverpoweredInFight,
 
       Follow_Enable, Follow_ChatMessage, Follow_TextToDisplay, Follow_TextPosition, Follow_TextToSpeech, Follow_SoundToPlay, Follow_VideoToPlay,
       Subscription_Enable, Subscription_ChatMessage, Subscription_TextToDisplay, Subscription_TextPosition, Subscription_TextToSpeech, Subscription_SoundToPlay, Subscription_VideoToPlay,
@@ -59,6 +60,10 @@ namespace AbevBot
       dir = new DirectoryInfo("Resources/Videos");
       if (!dir.Exists) dir.Create();
 
+      Chat.PeriodicMessages.Clear(); // Clear previous preiodic messages
+      Chatter.AlwaysReadTTSFromThem.Clear();
+      Chatter.OverpoweredInFight.Clear();
+
       FileInfo configFile = new(FILENAME);
       if (configFile.Exists == false)
       {
@@ -70,20 +75,23 @@ namespace AbevBot
         using (StreamReader reader = new(configFile.FullName))
         {
           string line;
-          int lineIndex = 0;
+          int lineIndex = 0, indexOf;
           bool result;
           object position;
+          string[] text = new string[2];
           while ((line = reader.ReadLine()) != null)
           {
             lineIndex++;
             // Skip commented out lines
             if (line.StartsWith("//") || line.StartsWith(';') || line.StartsWith('#') || string.IsNullOrWhiteSpace(line)) continue;
 
-            string[] text = line.Split(';')[0].Split('=', StringSplitOptions.TrimEntries);
-            if (text.Length < 2 || string.IsNullOrWhiteSpace(text[1]))
+            indexOf = line.IndexOf('=');
+            if (indexOf > 0)
             {
-              // MainWindow.ConsoleWarning($">> Bad {FILENAME} line: {lineIndex}.");
-              continue;
+              text[0] = line[..indexOf].Trim();
+              text[1] = line[(indexOf + 1)..].Trim();
+              indexOf = text[1].IndexOf(';');
+              if (indexOf >= 0) text[1] = text[1][..indexOf].Trim();
             }
             object key;
             if (Enum.TryParse(typeof(Keys), text[0], out key))
@@ -121,10 +129,10 @@ namespace AbevBot
                   Notifications.ConfigFollow.TextToSpeech = text[1].Trim();
                   break;
                 case Keys.Follow_SoundToPlay:
-                  Notifications.ConfigFollow.SoundToPlay = $"Resources\\{text[1].Trim()}";
+                  if (text[1].Length > 0) Notifications.ConfigFollow.SoundToPlay = $"Resources\\{text[1].Trim()}";
                   break;
                 case Keys.Follow_VideoToPlay:
-                  Notifications.ConfigFollow.VideoToPlay = $"Resources\\{text[1].Trim()}";
+                  if (text[1].Length > 0) Notifications.ConfigFollow.VideoToPlay = $"Resources\\{text[1].Trim()}";
                   break;
 
                 case Keys.Subscription_Enable:
@@ -143,10 +151,10 @@ namespace AbevBot
                   Notifications.ConfigSubscription.TextToSpeech = text[1].Trim();
                   break;
                 case Keys.Subscription_SoundToPlay:
-                  Notifications.ConfigSubscription.SoundToPlay = $"Resources\\{text[1].Trim()}";
+                  if (text[1].Length > 0) Notifications.ConfigSubscription.SoundToPlay = $"Resources\\{text[1].Trim()}";
                   break;
                 case Keys.Subscription_VideoToPlay:
-                  Notifications.ConfigSubscription.VideoToPlay = $"Resources\\{text[1].Trim()}";
+                  if (text[1].Length > 0) Notifications.ConfigSubscription.VideoToPlay = $"Resources\\{text[1].Trim()}";
                   break;
 
                 case Keys.SubscriptionExt_Enable:
@@ -165,10 +173,10 @@ namespace AbevBot
                   Notifications.ConfigSubscriptionExt.TextToSpeech = text[1].Trim();
                   break;
                 case Keys.SubscriptionExt_SoundToPlay:
-                  Notifications.ConfigSubscriptionExt.SoundToPlay = $"Resources\\{text[1].Trim()}";
+                  if (text[1].Length > 0) Notifications.ConfigSubscriptionExt.SoundToPlay = $"Resources\\{text[1].Trim()}";
                   break;
                 case Keys.SubscriptionExt_VideoToPlay:
-                  Notifications.ConfigSubscriptionExt.VideoToPlay = $"Resources\\{text[1].Trim()}";
+                  if (text[1].Length > 0) Notifications.ConfigSubscriptionExt.VideoToPlay = $"Resources\\{text[1].Trim()}";
                   break;
 
                 case Keys.SubscriptionGift_Enable:
@@ -187,10 +195,10 @@ namespace AbevBot
                   Notifications.ConfigSubscriptionGift.TextToSpeech = text[1].Trim();
                   break;
                 case Keys.SubscriptionGift_SoundToPlay:
-                  Notifications.ConfigSubscriptionGift.SoundToPlay = $"Resources\\{text[1].Trim()}";
+                  if (text[1].Length > 0) Notifications.ConfigSubscriptionGift.SoundToPlay = $"Resources\\{text[1].Trim()}";
                   break;
                 case Keys.SubscriptionGift_VideoToPlay:
-                  Notifications.ConfigSubscriptionGift.VideoToPlay = $"Resources\\{text[1].Trim()}";
+                  if (text[1].Length > 0) Notifications.ConfigSubscriptionGift.VideoToPlay = $"Resources\\{text[1].Trim()}";
                   break;
 
                 case Keys.SubscriptionGiftReceived_Enable:
@@ -209,10 +217,10 @@ namespace AbevBot
                   Notifications.ConfigSubscriptionGiftReceived.TextToSpeech = text[1].Trim();
                   break;
                 case Keys.SubscriptionGiftReceived_SoundToPlay:
-                  Notifications.ConfigSubscriptionGiftReceived.SoundToPlay = $"Resources\\{text[1].Trim()}";
+                  if (text[1].Length > 0) Notifications.ConfigSubscriptionGiftReceived.SoundToPlay = $"Resources\\{text[1].Trim()}";
                   break;
                 case Keys.SubscriptionGiftReceived_VideoToPlay:
-                  Notifications.ConfigSubscriptionGiftReceived.VideoToPlay = $"Resources\\{text[1].Trim()}";
+                  if (text[1].Length > 0) Notifications.ConfigSubscriptionGiftReceived.VideoToPlay = $"Resources\\{text[1].Trim()}";
                   break;
 
                 case Keys.Cheer_Enable:
@@ -231,10 +239,10 @@ namespace AbevBot
                   Notifications.ConfigCheer.TextToSpeech = text[1].Trim();
                   break;
                 case Keys.Cheer_SoundToPlay:
-                  Notifications.ConfigCheer.SoundToPlay = $"Resources\\{text[1].Trim()}";
+                  if (text[1].Length > 0) Notifications.ConfigCheer.SoundToPlay = $"Resources\\{text[1].Trim()}";
                   break;
                 case Keys.Cheer_VideoToPlay:
-                  Notifications.ConfigCheer.VideoToPlay = $"Resources\\{text[1].Trim()}";
+                  if (text[1].Length > 0) Notifications.ConfigCheer.VideoToPlay = $"Resources\\{text[1].Trim()}";
                   break;
 
                 case Keys.msg:
@@ -245,6 +253,14 @@ namespace AbevBot
 
                 case Keys.ChannelPoints_RandomVideo:
                   Data[(Keys)key] = text[1].Trim();
+                  break;
+
+                case Keys.AlwaysReadTTSFromThem:
+                  Chatter.AlwaysReadTTSFromThem.AddRange(text[1].Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
+                  break;
+
+                case Keys.OverpoweredInFight:
+                  Chatter.OverpoweredInFight.AddRange(text[1].Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
                   break;
 
                 default:
@@ -303,9 +319,13 @@ namespace AbevBot
         writer.WriteLine();
         writer.WriteLine("; Internal bot configuration.");
         writer.WriteLine("; Debug console visibility. Default: false");
-        writer.WriteLine("ConsoleVisible = false");
+        writer.WriteLine(string.Concat(Keys.ConsoleVisible.ToString(), " = false"));
         writer.WriteLine("; Periodic messages time interval (HH:MM:SS format -> 1 hour: 1:00:00, 1 minute 0:01:00, 1 second: 0:00:01). Default: empty - 10 minutes");
-        writer.WriteLine("PeriodicMessageTimeInterval = ");
+        writer.WriteLine(string.Concat(Keys.PeriodicMessageTimeInterval.ToString(), " = "));
+        writer.WriteLine("; Comma separated list of user names from which TTS messages will ALWAYS be read (even when !tts chat is turned off)");
+        writer.WriteLine(string.Concat(Keys.AlwaysReadTTSFromThem.ToString(), " = AbevBot, Abev08"));
+        writer.WriteLine("; Comma separated list of user names that will be overpowered in !fight minigame");
+        writer.WriteLine(string.Concat(Keys.OverpoweredInFight.ToString(), " = Abev08"));
 
         writer.WriteLine();
         writer.WriteLine();
@@ -333,8 +353,8 @@ namespace AbevBot
         writer.WriteLine(string.Concat(Keys.Follow_SoundToPlay.ToString(), " = tone1.wav"));
         writer.WriteLine(string.Concat(Keys.Follow_VideoToPlay.ToString(), " = "));
         writer.WriteLine(";");
-        writer.WriteLine("; ----- Subscription");
-        writer.WriteLine(string.Concat(Keys.Subscription_Enable.ToString(), " = true"));
+        writer.WriteLine("; ----- Subscription (notification message, always received when someone subscribes even when the subscriber doesn't want it to be public)");
+        writer.WriteLine(string.Concat(Keys.Subscription_Enable.ToString(), " = false"));
         writer.WriteLine(string.Concat(Keys.Subscription_ChatMessage.ToString(), " = "));
         writer.WriteLine(string.Concat(Keys.Subscription_TextToDisplay.ToString(), " = {0} just subscribed!\\n{7}"));
         writer.WriteLine(string.Concat(Keys.Subscription_TextPosition.ToString(), " = BOTTOM"));
@@ -342,7 +362,7 @@ namespace AbevBot
         writer.WriteLine(string.Concat(Keys.Subscription_SoundToPlay.ToString(), " = "));
         writer.WriteLine(string.Concat(Keys.Subscription_VideoToPlay.ToString(), " = peepoHey.mp4"));
         writer.WriteLine(";");
-        writer.WriteLine("; ----- Subscription Extended Message (this message is rare?)");
+        writer.WriteLine("; ----- Subscription Extended Message (the subscriber shares that he subscribed)");
         writer.WriteLine(string.Concat(Keys.SubscriptionExt_Enable.ToString(), " = true"));
         writer.WriteLine(string.Concat(Keys.SubscriptionExt_ChatMessage.ToString(), " = "));
         writer.WriteLine(string.Concat(Keys.SubscriptionExt_TextToDisplay.ToString(), " = {0} just subscribed!\\n{7}"));

@@ -73,5 +73,10 @@ namespace AbevBot
 
       Chat.AddMessageToQueue(sb.ToString());
     }
+
+    public static string GetCommands()
+    {
+      return "!point/unpoint chatter_name";
+    }
   }
 }

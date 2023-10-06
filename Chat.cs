@@ -21,7 +21,7 @@ namespace AbevBot
     private static Thread ChatReceiveThread;
     private static Thread ChatSendThread;
     public static List<string> PeriodicMessages { get; set; } = new();
-    private static int PeriodicMessageIndex = 0;
+    private static int PeriodicMessageIndex = -1;
     private static DateTime LastPeriodicMessage = DateTime.Now;
     public static TimeSpan PeriodicMessageInterval = new(0, 10, 0);
     private static readonly List<string> MessageQueue = new();
@@ -35,6 +35,10 @@ namespace AbevBot
 
       MainWindow.ConsoleWarning(">> Starting chat bot.");
       LoadResponseMessages();
+      if (!ResponseMessages.TryAdd("!commands", (string.Empty, DateTime.MinValue)))
+      {
+        MainWindow.ConsoleWarning(">> Couldn't add !commands response. Maybe something already declared it?");
+      }
 
       ChatReceiveThread = new Thread(Update)
       {
@@ -61,6 +65,7 @@ namespace AbevBot
       /// <summary> message[0] - header, message[1] - body </summary>
       string[] message = new string[2];
       (string, DateTime) dictionaryResponse;
+      Chatter chatter;
       ManualResetEvent receiveEvent = new(false);
       while (true)
       {
@@ -206,10 +211,18 @@ namespace AbevBot
                     message[1][1..]
                   ));
 
+                  chatter = Chatter.GetChatterByID(userID, userName);
+                  if (Notifications.WelcomeMessagesEnabled && chatter?.WelcomeMessage.Length > 0 && chatter.LastWelcomeMessage.Date != DateTime.Now.Date)
+                  {
+                    MainWindow.ConsoleWarning($">> Creating {chatter.Name} welcome message TTS.");
+                    chatter.SetLastWelcomeMessageToNow();
+                    Notifications.CreateTTSNotification(chatter.WelcomeMessage);
+                  }
+
                   if (message[1][1..].StartsWith("!tts")) // Check if the message starts with !tts key
                   {
                     if (message[1].Length <= 5) { MainWindow.ConsoleWarning(">> !tts command without a message Susge"); } // No message to read, do nothing
-                    else if (Notifications.ChatTTSEnabled) { Notifications.CreateTTSNotification(message[1][6..]); } // 6.. - without ":!tts "
+                    else if (Notifications.ChatTTSEnabled || Chatter.AlwaysReadTTSFromThem.Contains(userName)) { Notifications.CreateTTSNotification(message[1][6..]); } // 6.. - without ":!tts "
                     else { AddMessageToQueue($"@{userName} TTS disabled peepoSad"); }
                   }
                   else if (message[1][1..].StartsWith("!gamba")) // Check if the message starts with !gamba key
@@ -227,6 +240,7 @@ namespace AbevBot
                   else if (message[1][1..].StartsWith("!point")) // Check if the message starts with !point key
                   {
                     if (userBadge.Equals("STR")) MinigameBackseat.AddBackseatPoint(message[1][7..], 1); // 7.. - without ":!point"
+                    else AddMessageToQueue($"@{userName} That's for the streamer, you shouldn't be using it Madge");
                   }
                   else if (message[1][1..].StartsWith("!unpoint")) // Check if the message starts with !unpoint key
                   {
@@ -251,6 +265,32 @@ namespace AbevBot
                   else if (message[1][1..].StartsWith("!hug")) // Check if the message starts with !hug key
                   {
                     Hug(userName, message[1][5..]); // 5.. - without ":!hug"
+                  }
+                  else if (message[1][1..].StartsWith("!commands")) // Check if the message starts with !commands key
+                  {
+                    // Check the timeout
+                    if (DateTime.Now - ResponseMessages["!commands"].Item2 >= CooldownBetweenTheSameMessage)
+                    {
+                      SendCommandsResponse(userName);
+                      ResponseMessages["!commands"] = (string.Empty, DateTime.Now);
+                    }
+                    else { MainWindow.ConsoleWarning(">> Not sending response for \"!commands\" key. Cooldown active."); }
+                  }
+                  else if (message[1][1..].StartsWith("!welcomemessage")) // Check if the message starts with !welcomemessage key
+                  {
+                    temp = message[1][16..].Trim();
+                    if (string.IsNullOrWhiteSpace(temp))
+                    {
+                      // Print out current welcome message
+                      if (chatter.WelcomeMessage?.Length > 0) AddMessageToQueue($"@{chatter.Name} current welcome message: {chatter.WelcomeMessage}");
+                      else AddMessageToQueue($"@{chatter.Name} your welcome message is empty peepoSad");
+                    }
+                    else
+                    {
+                      // Set new welcome message
+                      chatter.SetWelcomeMessage(temp);
+                      AddMessageToQueue($"@{chatter.Name} welcome message was updated peepoHappy");
+                    }
                   }
                   else if (ResponseMessages.Count > 0) // Check if message starts with key to get automatic response
                   {
@@ -506,8 +546,8 @@ namespace AbevBot
           else if ((PeriodicMessages.Count > 0) && (DateTime.Now - LastPeriodicMessage >= PeriodicMessageInterval))
           {
             LastPeriodicMessage = DateTime.Now;
-            ChatSocket.Send(Encoding.UTF8.GetBytes($"PRIVMSG #{Config.Data[Config.Keys.ChannelName]} :{PeriodicMessages[PeriodicMessageIndex]}\r\n"));
             PeriodicMessageIndex = (PeriodicMessageIndex + 1) % PeriodicMessages.Count;
+            ChatSocket.Send(Encoding.UTF8.GetBytes($"PRIVMSG #{Config.Data[Config.Keys.ChannelName]} :{PeriodicMessages[PeriodicMessageIndex]}\r\n"));
           }
         }
 
@@ -661,6 +701,34 @@ namespace AbevBot
     private static void Hug(string userName, string message)
     {
       AddMessageToQueue($"{userName} peepoHug {message.Trim()} HUGGIES");
+    }
+
+    private static void SendCommandsResponse(string userName)
+    {
+      StringBuilder sb = new();
+      string s;
+      sb.Append('@').Append(userName).Append(" ");
+      if (Notifications.ChatTTSEnabled) sb.Append("!tts message, ");
+      s = MinigameFight.GetCommands();
+      if (s?.Length > 0) sb.Append(s).Append(", ");
+      s = MinigameGamba.GetCommands();
+      if (s?.Length > 0) sb.Append(s).Append(", ");
+      s = MinigameBackseat.GetCommands();
+      if (s?.Length > 0) sb.Append(s).Append(", ");
+      s = MinigameRude.GetCommands();
+      if (s?.Length > 0) sb.Append(s).Append(", ");
+      sb.Append("!hug, ");
+      if (Notifications.WelcomeMessagesEnabled) sb.Append("!welcomemessage <empty/message>, ");
+
+      foreach (string key in ResponseMessages.Keys)
+      {
+        sb.Append($"!{key}, ");
+      }
+
+      s = sb.ToString().Trim();
+      if (s.EndsWith(',')) s = s[..^1];
+
+      AddMessageToQueue(s);
     }
   }
 }

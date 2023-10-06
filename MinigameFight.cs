@@ -45,7 +45,7 @@ namespace AbevBot
       {
         Chat.AddMessageToQueue(string.Concat(
          "peepoBox minigame. ",
-         "\" !fight <empty / chatter_name / ladder> \". ",
+         "\" !fight <empty/chatter_name/ladder> \". ",
          "empty - your stats, ",
          "chatter_name - fighting others, ",
          "ladder - the ladder"
@@ -79,7 +79,7 @@ namespace AbevBot
       }
       if (InitFighter(fighter2))
       {
-        TimeSpan restTimer = FIGHTINGTIMEOUT - (DateTime.Now - fighter1.Fight.LastFight);
+        TimeSpan restTimer = FIGHTINGTIMEOUT - (DateTime.Now - fighter2.Fight.LastFight);
 
         Chat.AddMessageToQueue(string.Concat(
           fighter2.Name, " is exhausted, needs to rest for another ",
@@ -132,7 +132,7 @@ namespace AbevBot
         int hp = fighter1.Fight.CurrentHp;
         fighter1.Fight.Wins++;
         fighter2.Fight.Looses++;
-        fighter2.Fight.CheckStats();
+        fighter2.Fight.CheckStats(fighter2.Name);
         fighter1.AddFightExp(fighter2.Fight.Level);
         msg = string.Concat(
           fighter1.Name, " won with ", hp, " hp left! The fight took ", rounds, " rounds",
@@ -146,7 +146,7 @@ namespace AbevBot
         int hp = fighter2.Fight.CurrentHp;
         fighter1.Fight.Looses++;
         fighter2.Fight.Wins++;
-        fighter1.Fight.CheckStats();
+        fighter1.Fight.CheckStats(fighter1.Name);
         fighter2.AddFightExp(fighter1.Fight.Level);
         msg = string.Concat(
           fighter2.Name, " won with ", hp, " hp left! The fight took ", rounds, " rounds",
@@ -163,11 +163,11 @@ namespace AbevBot
       if (fighter.Fight is null)
       {
         fighter.Fight = new();
-        fighter.Fight.Init();
+        fighter.Fight.Init(fighter.Name);
       }
       else
       {
-        fighter.Fight.CheckStats();
+        fighter.Fight.CheckStats(fighter.Name);
         if (DateTime.Now - fighter.Fight.LastFight < FIGHTINGTIMEOUT) return true;
       }
       return false;
@@ -232,6 +232,13 @@ namespace AbevBot
 
       Chat.AddMessageToQueue(sb.ToString());
     }
+
+    public static string GetCommands()
+    {
+      if (!Enabled) return string.Empty;
+
+      return "!fight <empty/chatter_name/ladder/help>";
+    }
   }
 
   public class FightStats
@@ -253,18 +260,25 @@ namespace AbevBot
     public int Draws { get; set; }
     public DateTime LastFight { get; set; }
 
-    public void Init()
+    public void Init(string name)
     {
       Level = 1;
-      CheckStats();
+      CheckStats(name);
     }
 
-    public void CheckStats(bool leveledUp = false)
+    public void CheckStats(string name, bool leveledUp = false)
     {
+      bool overpowered = Chatter.OverpoweredInFight.Contains(name);
+
       if (leveledUp || DmgMin == 0 || DmgMax == 0)
       {
         DmgMin = BASEDMG + (5 * Level);
         DmgMax = BASEDMG + (15 * Level);
+        if (overpowered)
+        {
+          DmgMin *= 2;
+          DmgMax *= 2;
+        }
       }
       if (leveledUp || RequiredExp == 0)
       {
@@ -273,6 +287,8 @@ namespace AbevBot
       if (leveledUp || CurrentHp <= 0)
       {
         int maxHp = (int)((4f * Level * Level) + (60f * Level) + 180f); // 4x^2 + 60x + 180
+        if (overpowered) maxHp *= 2;
+
         if (CurrentHp <= 0) { CurrentHp = maxHp; }
         else
         {

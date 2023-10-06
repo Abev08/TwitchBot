@@ -15,6 +15,7 @@ namespace AbevBot
     public static bool NotificationsPaused { get; set; }
     public static bool SkipNotification { get; set; }
     public static bool ChatTTSEnabled { get; set; }
+    public static bool WelcomeMessagesEnabled { get; set; }
     static readonly List<Notification> NotificationQueue = new();
     private static Thread NotificationsThread;
     public static readonly HttpClient Client = new();
@@ -217,7 +218,7 @@ namespace AbevBot
     /// <summary> Creates and adds to queue TTS notification (mainly for chat messages). </summary>
     public static void CreateTTSNotification(string text)
     {
-      if (!ChatTTSEnabled) return;
+      if (string.IsNullOrWhiteSpace(text)) return;
 
       AddNotification(new Notification()
       {

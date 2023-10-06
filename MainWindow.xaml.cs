@@ -229,6 +229,11 @@ namespace AbevBot
       MinigameFight.Enabled = ((CheckBox)sender).IsChecked == true;
     }
 
+    private void ChkWelcome_CheckChanged(object sender, RoutedEventArgs e)
+    {
+      Notifications.WelcomeMessagesEnabled = ((CheckBox)sender).IsChecked == true;
+    }
+
     private void MainVideoEnded(object sender, RoutedEventArgs e)
     {
       VideoPlayer.Source = null;

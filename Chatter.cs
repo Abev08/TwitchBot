@@ -12,6 +12,8 @@ namespace AbevBot
 
     private static bool UpdateRequired;
     private static readonly Dictionary<long, Chatter> Chatters = new();
+    public static readonly List<string> AlwaysReadTTSFromThem = new();
+    public static readonly List<string> OverpoweredInFight = new();
 
     public long ID { get; set; }
     public string Name { get; set; }
@@ -20,6 +22,8 @@ namespace AbevBot
     public int RudePoints { get; set; }
     public GambaStats Gamba { get; set; }
     public FightStats Fight { get; set; }
+    public DateTime LastWelcomeMessage { get; set; } = DateTime.MinValue;
+    public string WelcomeMessage { get; set; } = string.Empty;
 
     /// <summary> Sets starting values for new chatter. </summary>
     private void InitChatter(long id)
@@ -68,9 +72,9 @@ namespace AbevBot
       {
         Fight.Level++;
         Fight.CurrentExp -= Fight.RequiredExp;
-        Fight.CheckStats(true);
+        Fight.CheckStats(Name, true);
       }
-      else { Fight.CheckStats(); }
+      else { Fight.CheckStats(Name); }
 
       UpdateRequired = true;
     }
@@ -78,6 +82,18 @@ namespace AbevBot
     public void SetLastTimeFollowedToNow()
     {
       LastTimeFollowed = DateTime.Now.Date;
+      UpdateRequired = true;
+    }
+
+    public void SetLastWelcomeMessageToNow()
+    {
+      LastWelcomeMessage = DateTime.Now.Date;
+      UpdateRequired = true;
+    }
+
+    public void SetWelcomeMessage(string msg)
+    {
+      WelcomeMessage = msg;
       UpdateRequired = true;
     }
 

@@ -38,6 +38,7 @@
           <CheckBox Width="150" Height="25" Content="!gamba enabled" VerticalContentAlignment="Center" IsChecked="True" Checked="ChkGamba_CheckChanged" Unchecked="ChkGamba_CheckChanged"/>
           <CheckBox Width="150" Height="25" Content="!gamba life enabled" VerticalContentAlignment="Center" IsChecked="True" Checked="ChkGambaLife_CheckChanged" Unchecked="ChkGambaLife_CheckChanged"/>
           <CheckBox Width="150" Height="25" Content="!fight enabled" VerticalContentAlignment="Center" IsChecked="True" Checked="ChkFight_CheckChanged" Unchecked="ChkFight_CheckChanged"/>
+          <CheckBox Width="150" Height="25" Content="!welcomemessage enabled" VerticalContentAlignment="Center" IsChecked="True" Checked="ChkWelcome_CheckChanged" Unchecked="ChkWelcome_CheckChanged"/>
         </StackPanel>
       </Border>
     </StackPanel>
@@ -54,21 +55,21 @@
 
         <MediaElement x:Name="VideoPlayer" Grid.Row="1" MediaEnded="MainVideoEnded" LoadedBehavior="Manual" UnloadedBehavior="Manual"/>
 
-        <TextBlock x:Name="tbTop" Grid.Row="0" Text="" FontSize="48" FontFamily="{DynamicResource OpenSans}" Foreground="White" TextWrapping="Wrap" TextAlignment="Center" VerticalAlignment="Center" HorizontalAlignment="Stretch" FontWeight="Bold">
+        <TextBlock x:Name="tbTop" Grid.Row="0" Text="" FontSize="48" FontFamily="{DynamicResource OpenSans}" Foreground="DodgerBlue" TextWrapping="Wrap" TextAlignment="Center" VerticalAlignment="Center" HorizontalAlignment="Stretch" FontWeight="Bold">
           <TextBlock.Effect>
-            <DropShadowEffect ShadowDepth="2" BlurRadius="1"/>
+            <DropShadowEffect ShadowDepth="2" BlurRadius="1" Color="DarkBlue"/>
           </TextBlock.Effect>
         </TextBlock>
 
-        <TextBlock x:Name="tbMid" Grid.Row="1" Text="" FontSize="48" FontFamily="{DynamicResource OpenSans}" Foreground="White" TextWrapping="Wrap" TextAlignment="Center" VerticalAlignment="Center" HorizontalAlignment="Stretch" FontWeight="Bold">
+        <TextBlock x:Name="tbMid" Grid.Row="1" Text="" FontSize="48" FontFamily="{DynamicResource OpenSans}" Foreground="DodgerBlue" TextWrapping="Wrap" TextAlignment="Center" VerticalAlignment="Center" HorizontalAlignment="Stretch" FontWeight="Bold">
           <TextBlock.Effect>
-            <DropShadowEffect ShadowDepth="2" BlurRadius="1"/>
+            <DropShadowEffect ShadowDepth="2" BlurRadius="1" Color="DarkBlue"/>
           </TextBlock.Effect>
         </TextBlock>
 
-        <TextBlock x:Name="tbBottom" Grid.Row="2" Text="" FontSize="48" FontFamily="{DynamicResource OpenSans}" Foreground="White" TextWrapping="Wrap" TextAlignment="Center" VerticalAlignment="Center" HorizontalAlignment="Stretch" FontWeight="Bold">
+        <TextBlock x:Name="tbBottom" Grid.Row="2" Text="" FontSize="48" FontFamily="{DynamicResource OpenSans}" Foreground="DodgerBlue" TextWrapping="Wrap" TextAlignment="Center" VerticalAlignment="Center" HorizontalAlignment="Stretch" FontWeight="Bold">
           <TextBlock.Effect>
-            <DropShadowEffect ShadowDepth="2" BlurRadius="1"/>
+            <DropShadowEffect ShadowDepth="2" BlurRadius="1" Color="DarkBlue"/>
           </TextBlock.Effect>
         </TextBlock>
       </Grid>
