@@ -1,0 +1,1 @@
+## Don't use the animations in other projects without permission. ##

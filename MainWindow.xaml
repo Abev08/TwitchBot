@@ -6,7 +6,7 @@
         mc:Ignorable="d"
         Title="AbevBot"
         Height="720" Width="1280"
-        MinHeight="700" MinWidth="500">
+        MinHeight="720" MinWidth="500">
   <Grid>
     <Grid.ColumnDefinitions>
       <ColumnDefinition Width="170px"/>
@@ -37,6 +37,7 @@
           <CheckBox Width="150" Height="25" Content="!tts enabled (chat)" VerticalContentAlignment="Center" IsChecked="True" Checked="ChkTTS_CheckChanged" Unchecked="ChkTTS_CheckChanged"/>
           <CheckBox Width="150" Height="25" Content="!gamba enabled" VerticalContentAlignment="Center" IsChecked="True" Checked="ChkGamba_CheckChanged" Unchecked="ChkGamba_CheckChanged"/>
           <CheckBox Width="150" Height="25" Content="!gamba life enabled" VerticalContentAlignment="Center" IsChecked="True" Checked="ChkGambaLife_CheckChanged" Unchecked="ChkGambaLife_CheckChanged"/>
+          <CheckBox Width="150" Height="25" Content="!gamba anim. enabled" VerticalContentAlignment="Center" IsChecked="True" Checked="ChkGambaAnim_CheckChanged" Unchecked="ChkGambaAnim_CheckChanged"/>
           <CheckBox Width="150" Height="25" Content="!fight enabled" VerticalContentAlignment="Center" IsChecked="True" Checked="ChkFight_CheckChanged" Unchecked="ChkFight_CheckChanged"/>
           <CheckBox Width="150" Height="25" Content="!welcomemessage enabled" VerticalContentAlignment="Center" IsChecked="True" Checked="ChkWelcome_CheckChanged" Unchecked="ChkWelcome_CheckChanged"/>
         </StackPanel>
@@ -55,7 +56,7 @@
 
         <MediaElement x:Name="VideoPlayer" Grid.Row="1" MediaEnded="MainVideoEnded" LoadedBehavior="Manual" UnloadedBehavior="Manual"/>
 
-        <TextBlock x:Name="tbTop" Grid.Row="0" Text="" FontSize="48" FontFamily="{DynamicResource OpenSans}" Foreground="DodgerBlue" TextWrapping="Wrap" TextAlignment="Center" VerticalAlignment="Center" HorizontalAlignment="Stretch" FontWeight="Bold">
+        <TextBlock x:Name="tbTop" Grid.Row="0" Text="" FontSize="48" FontFamily="{DynamicResource OpenSans}" Foreground="DodgerBlue" TextWrapping="Wrap" TextAlignment="Center" VerticalAlignment="Bottom" HorizontalAlignment="Stretch" FontWeight="Bold">
           <TextBlock.Effect>
             <DropShadowEffect ShadowDepth="2" BlurRadius="1" Color="DarkBlue"/>
           </TextBlock.Effect>
@@ -67,7 +68,7 @@
           </TextBlock.Effect>
         </TextBlock>
 
-        <TextBlock x:Name="tbBottom" Grid.Row="2" Text="" FontSize="48" FontFamily="{DynamicResource OpenSans}" Foreground="DodgerBlue" TextWrapping="Wrap" TextAlignment="Center" VerticalAlignment="Center" HorizontalAlignment="Stretch" FontWeight="Bold">
+        <TextBlock x:Name="tbBottom" Grid.Row="2" Text="" FontSize="48" FontFamily="{DynamicResource OpenSans}" Foreground="DodgerBlue" TextWrapping="Wrap" TextAlignment="Center" VerticalAlignment="Top" HorizontalAlignment="Stretch" FontWeight="Bold">
           <TextBlock.Effect>
             <DropShadowEffect ShadowDepth="2" BlurRadius="1" Color="DarkBlue"/>
           </TextBlock.Effect>
@@ -96,7 +97,7 @@
     <StackPanel Grid.Column="0" Orientation="Vertical" VerticalAlignment="Bottom">
       <Border Padding="0,10,0,10" Margin="2,0,4,10" BorderThickness="1" BorderBrush="Black" CornerRadius="10">
         <StackPanel>
-          <TextBox x:Name="tbTTSText" Width="150" Height="65" Text="stitch: Test message" Margin="0,0,0,0" VerticalContentAlignment="Center" TextWrapping="WrapWithOverflow"/>
+          <TextBox x:Name="tbTTSText" Width="150" Height="35" Text="stitch: Test message" Margin="0,0,0,0" VerticalContentAlignment="Center" TextWrapping="WrapWithOverflow"/>
           <Button x:Name="btnTestTTS" Width="150" Height="25" Content="Test TTS" Margin="0,10,0,0" Click="TTSTest"/>
           <Button x:Name="btnTestVideo" Width="150" Height="25" Content="Test Video" Margin="0,10,0,0" Click="VideoTest"/>
           <Button x:Name="btnTestGamba" Width="150" Height="25" Content="Test Gamba" Margin="0,10,0,0" Click="GambaTest"/>

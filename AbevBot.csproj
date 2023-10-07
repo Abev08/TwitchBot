@@ -24,6 +24,7 @@
   <ItemGroup>
     <None Include="Secrets.ini" Condition="Exists('Secrets.ini')" CopyToOutputDirectory="PreserveNewest" />
     <None Include="Config.ini" Condition="Exists('Config.ini')" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="Config_example.ini" Condition="Exists('Config_example.ini')" CopyToOutputDirectory="PreserveNewest" />
     <None Include=".tokens" Condition="Exists('.tokens')" CopyToOutputDirectory="PreserveNewest" />
     <None Include=".chatters" Condition="Exists('.chatters')" CopyToOutputDirectory="PreserveNewest" />
     <None Include=".volumes" Condition="Exists('.volumes')" CopyToOutputDirectory="PreserveNewest" />

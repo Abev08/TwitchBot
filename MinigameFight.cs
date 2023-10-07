@@ -65,6 +65,16 @@ namespace AbevBot
         Chat.AddMessageToQueue($"{fighter1.Name} you can't fight yourself WeirdDude");
         return;
       }
+      if (DateTime.Now - fighter2.LastChatted >= Chatter.OfflineTimeout)
+      {
+        // Check if chatter is present in the chat
+        if (!Chat.CheckIfChatterIsInChat(fighter2.Name))
+        {
+          Chat.AddMessageToQueue($"@{fighter1.Name}, couldn't find {chatter} in the chat");
+          return;
+        }
+        fighter2.LastChatted = DateTime.Now; // Still in the chat, pretend that he chatted
+      }
       if (InitFighter(fighter1))
       {
         TimeSpan restTimer = FIGHTINGTIMEOUT - (DateTime.Now - fighter1.Fight.LastFight);

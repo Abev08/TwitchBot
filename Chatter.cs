@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace AbevBot
 {
@@ -14,6 +15,7 @@ namespace AbevBot
     private static readonly Dictionary<long, Chatter> Chatters = new();
     public static readonly List<string> AlwaysReadTTSFromThem = new();
     public static readonly List<string> OverpoweredInFight = new();
+    public static readonly TimeSpan OfflineTimeout = new(0, 30, 0);
 
     public long ID { get; set; }
     public string Name { get; set; }
@@ -24,6 +26,8 @@ namespace AbevBot
     public FightStats Fight { get; set; }
     public DateTime LastWelcomeMessage { get; set; } = DateTime.MinValue;
     public string WelcomeMessage { get; set; } = string.Empty;
+    [JsonIgnore]
+    public DateTime LastChatted { get; set; } = DateTime.MinValue;
 
     /// <summary> Sets starting values for new chatter. </summary>
     private void InitChatter(long id)
@@ -141,7 +145,9 @@ namespace AbevBot
       {
         if (c.name.ToLower().Equals(name))
         {
-          return GetChatterByID(c.id, c.name);
+          Chatter cc = GetChatterByID(c.id, c.name);
+          cc.LastChatted = DateTime.Now;
+          return cc;
         }
       }
 

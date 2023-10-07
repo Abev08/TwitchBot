@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -10,10 +11,15 @@ namespace AbevBot
     private const int MAXLADDERENTRIES = 10;
     private const int GAMBALIFELOSTTIMEOUTSECONDS = 30;
     private static readonly TimeSpan GAMBATIMEOUT = new(0, 5, 0);
+    private static readonly TimeSpan ANIMATIONTIMEOUT = new(0, 3, 0);
     public static readonly GambaLadderComparer GambaLadderComparer = new();
+    private static readonly bool AnimationVideosAvailable = LoadAnimations();
+    private static FileInfo[] AnimationJackpot, AnimationWin, AnimationLoose;
 
     public static bool Enabled { get; set; }
     public static bool GambaLifeEnabled { get; set; }
+    public static bool GambaAnimationsEnabled { get; set; }
+    private static DateTime LastAnimation;
 
     public static void NewGamba(long userID, string userName, string message)
     {
@@ -117,6 +123,40 @@ namespace AbevBot
       chatter.Gamba.LastGamba = DateTime.Now; // Remember last time the chatter gambled
 
       if (pointsToRoll == 0) pointsToRoll = 1; // At least one point to roll
+
+      // Gamba machine instead of chat message
+      if (GambaAnimationsEnabled && AnimationVideosAvailable && DateTime.Now - LastAnimation >= ANIMATIONTIMEOUT)
+      {
+        LastAnimation = DateTime.Now;
+        bool won = Random.Shared.Next(0, 2) == 1;
+        bool jackpot;
+        int pointsReceived;
+        FileInfo videoPath;
+        if (won)
+        {
+          jackpot = Random.Shared.Next(0, 100) == 0;
+          if (jackpot)
+          {
+            pointsReceived = pointsToRoll * 100;
+            videoPath = AnimationJackpot[Random.Shared.Next(0, AnimationJackpot.Length)];
+          }
+          else
+          {
+            pointsReceived = pointsToRoll;
+            videoPath = AnimationWin[Random.Shared.Next(0, AnimationWin.Length)];
+          }
+        }
+        else
+        {
+          pointsReceived = -pointsToRoll;
+          videoPath = AnimationLoose[Random.Shared.Next(0, AnimationLoose.Length)];
+        }
+
+        chatter.AddGambaPoints(pointsReceived);
+        MainWindow.I.GambaAnimationStart(videoPath, chatter.Name, pointsToRoll, pointsReceived);
+        return;
+      }
+
       Chat.AddMessageToQueue(string.Concat(
           "@", chatter.Name, " GAMBA is putting ",
           pointsToRoll, " points at risk peepoShake"
@@ -214,6 +254,37 @@ namespace AbevBot
 
       if (!GambaLifeEnabled) return "!gamba <empty/value/quarter/half/all/ladder/help>";
       return "!gamba <empty/value/quarter/half/all/ladder/life/help>";
+    }
+
+    private static bool LoadAnimations()
+    {
+      FileInfo file;
+
+      // Jackpot
+      AnimationJackpot = new FileInfo[1];
+      file = new("Resources/Gamba/GambaJackpot.mp4");
+      if (!file.Exists) return false;
+      AnimationJackpot[0] = file;
+
+      // Wins
+      AnimationWin = new FileInfo[2];
+      file = new("Resources/Gamba/GambaWin1.mp4");
+      if (!file.Exists) return false;
+      AnimationWin[0] = file;
+      file = new("Resources/Gamba/GambaWin2.mp4");
+      if (!file.Exists) return false;
+      AnimationWin[1] = file;
+
+      // Looses
+      AnimationLoose = new FileInfo[2];
+      file = new("Resources/Gamba/GambaLoose1.mp4");
+      if (!file.Exists) return false;
+      AnimationLoose[0] = file;
+      file = new("Resources/Gamba/GambaLoose2.mp4");
+      if (!file.Exists) return false;
+      AnimationLoose[1] = file;
+
+      return true;
     }
   }
 

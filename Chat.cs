@@ -212,6 +212,7 @@ namespace AbevBot
                   ));
 
                   chatter = Chatter.GetChatterByID(userID, userName);
+                  chatter.LastChatted = DateTime.Now;
                   if (Notifications.WelcomeMessagesEnabled && chatter?.WelcomeMessage.Length > 0 && chatter.LastWelcomeMessage.Date != DateTime.Now.Date)
                   {
                     MainWindow.ConsoleWarning($">> Creating {chatter.Name} welcome message TTS.");
@@ -291,6 +292,15 @@ namespace AbevBot
                       chatter.SetWelcomeMessage(temp);
                       AddMessageToQueue($"@{chatter.Name} welcome message was updated peepoHappy");
                     }
+                  }
+                  else if (message[1][1..].StartsWith("!sounds")) // Check if the message starts with !sounds key
+                  {
+                    if (Notifications.AreSoundsAvailable())
+                    {
+                      temp = Notifications.GetSampleSoundsResponse();
+                      AddMessageToQueue($"@{chatter.Name} {temp}");
+                    }
+                    else { AddMessageToQueue($"@{chatter.Name} there are no sounds to use peepoSad"); }
                   }
                   else if (ResponseMessages.Count > 0) // Check if message starts with key to get automatic response
                   {
@@ -676,6 +686,17 @@ namespace AbevBot
       return chatters;
     }
 
+    public static bool CheckIfChatterIsInChat(string userName)
+    {
+      var chatters = GetChatters();
+      foreach (var chatter in chatters)
+      {
+        if (chatter.name.Equals(userName)) return true;
+      }
+
+      return false;
+    }
+
     /// <summary> Bans a chatter. Duration == 0 seconds -> perma ban. </summary>
     public static void BanChatter(string message, long id, string userName = null, int durSeconds = 15)
     {
@@ -718,11 +739,12 @@ namespace AbevBot
       s = MinigameRude.GetCommands();
       if (s?.Length > 0) sb.Append(s).Append(", ");
       sb.Append("!hug, ");
+      if (Notifications.AreSoundsAvailable()) sb.Append("!sounds, ");
       if (Notifications.WelcomeMessagesEnabled) sb.Append("!welcomemessage <empty/message>, ");
 
       foreach (string key in ResponseMessages.Keys)
       {
-        sb.Append($"!{key}, ");
+        sb.Append($"{key}, ");
       }
 
       s = sb.ToString().Trim();

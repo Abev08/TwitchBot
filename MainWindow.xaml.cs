@@ -224,6 +224,11 @@ namespace AbevBot
       MinigameGamba.GambaLifeEnabled = ((CheckBox)sender).IsChecked == true;
     }
 
+    private void ChkGambaAnim_CheckChanged(object sender, RoutedEventArgs e)
+    {
+      MinigameGamba.GambaAnimationsEnabled = ((CheckBox)sender).IsChecked == true;
+    }
+
     private void ChkFight_CheckChanged(object sender, RoutedEventArgs e)
     {
       MinigameFight.Enabled = ((CheckBox)sender).IsChecked == true;
@@ -313,44 +318,66 @@ namespace AbevBot
       volumeVideos.Value = MathF.Round(Config.VolumeVideos * 100);
     }
 
-
-
-
-
-
-
-
-    #region GAMBA TESTING, DO NOT LOOK :D
-    public void GambaVideoStart(string videoPath, string userName, string points)
+    public void GambaAnimationStart(FileInfo videoPath, string userName, int points, int pointsResult)
     {
       Dispatcher.Invoke(new Action(() =>
       {
+        Console.WriteLine(videoPath.FullName);
         tbGambaName.Text = userName;
-        FileInfo file = new(videoPath);
-        if (file.Exists)
+
+        if (videoPath.Exists)
         {
-          videoGamba.Source = new Uri(file.FullName);
+          videoGamba.Source = new Uri(videoPath.FullName);
           videoGamba.Play();
         }
 
+        while (!videoGamba.HasVideo || !videoGamba.NaturalDuration.HasTimeSpan || videoGamba.Position.TotalSeconds == 0) Task.Delay(1).Wait();
+
+        var duration = videoGamba.NaturalDuration.TimeSpan.TotalSeconds;
+        double sleepDuration = 0;
+
         tbGambaPoints.Margin = new Thickness(0, -210, 0, 0);
-        tbGambaPoints.Text = points;
 
         // Animate points
-        Task.Run(() =>
+        Task.Run(async () =>
         {
           for (int i = 0; i <= 60; i++)
           {
             I.Dispatcher.Invoke(new Action(() =>
             {
+              if (i == 0) tbGambaPoints.Text = points.ToString();
+
               tbGambaPoints.Margin = new Thickness(0, tbGambaPoints.Margin.Top + 1, 0, 0);
+
               if (i == 60)
               {
                 tbGambaPoints.Text = string.Empty;
                 if (!videoGamba.HasVideo) tbGambaName.Text = string.Empty; // If the video doesn't play "finish" the animation
+                sleepDuration = (duration - videoGamba.Position.TotalSeconds - 1d) * 1000d;
               }
             }));
-            Task.Delay(10).Wait();
+            await Task.Delay(10);
+          }
+
+          if (pointsResult > 0)
+          {
+            if (sleepDuration > 0) await Task.Delay((int)sleepDuration);
+
+            for (int i = 0; i <= 60; i++)
+            {
+              I.Dispatcher.Invoke(new Action(() =>
+              {
+                if (i == 0) tbGambaPoints.Text = $"+{pointsResult}";
+
+                tbGambaPoints.Margin = new Thickness(0, tbGambaPoints.Margin.Top - 1, 0, 0);
+                if (i == 60)
+                {
+                  tbGambaPoints.Text = string.Empty;
+                  if (!videoGamba.HasVideo) tbGambaName.Text = string.Empty; // If the video doesn't play "finish" the animation
+                }
+              }));
+              await Task.Delay(10);
+            }
           }
         });
       }));
@@ -359,13 +386,14 @@ namespace AbevBot
     private void GambaVideoEnded(object sender, RoutedEventArgs e)
     {
       ((MediaElement)sender).Source = null;
+      ((MediaElement)sender).Stop();
+      ((MediaElement)sender).Position = new TimeSpan();
       tbGambaName.Text = string.Empty;
     }
 
     private void GambaTest(object sender, RoutedEventArgs e)
     {
-      GambaVideoStart("Resources/Gamba/GambaLoose1.mp4", "chatter", "1000");
+      GambaAnimationStart(new FileInfo("Resources/Gamba/GambaLoose1.mp4"), "Chatter", 1000, 0);
     }
-    #endregion
   }
 }

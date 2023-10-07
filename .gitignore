@@ -6,6 +6,7 @@
 # Do not add user specyfic files
 Secrets.ini
 Config.ini
+Config_example.ini
 ResponseMessages.csv
 .tokens
 .chatters

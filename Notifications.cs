@@ -5,6 +5,7 @@ using System.Net.Http;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Windows.Input;
 
 namespace AbevBot
 {
@@ -22,6 +23,7 @@ namespace AbevBot
     public static string VoicesLink { get; private set; }
     private static readonly Dictionary<string, FileInfo> SampleSounds = new();
     private static readonly List<FileInfo> RandomVideos = new();
+    private static bool SoundsAvailable;
 
     public static NotificationsConfig ConfigFollow { get; set; } = new();
     public static NotificationsConfig ConfigSubscription { get; set; } = new();
@@ -30,6 +32,7 @@ namespace AbevBot
     public static NotificationsConfig ConfigSubscriptionGiftReceived { get; set; } = new();
     public static NotificationsConfig ConfigCheer { get; set; } = new();
     private static readonly string[] NotificationData = new string[8];
+    public static readonly List<ChannelRedemption> ChannelRedemptions = new();
 
     public enum TextPosition { TOP, MIDDLE, BOTTOM }
 
@@ -213,6 +216,29 @@ namespace AbevBot
       {
         CreateRandomVideoNotification();
       }
+      else
+      {
+        // Look throught channel redemptions list
+        foreach (var redemption in ChannelRedemptions)
+        {
+          if (redemption.ID.Equals(id))
+          {
+            // Create notification
+            Array.Clear(NotificationData);
+            Chat.AddMessageToQueue(redemption.Config.ChatMessage);
+            AddNotification(new Notification(redemption.Config, NotificationData));
+
+            // Press keys
+            if (redemption.KeysToPress.Count > 0)
+            {
+              for (int i = 0; i < redemption.KeysToPress.Count; i++) Simulation.Keyboard.Press(redemption.KeysToPress[i]);
+              for (int i = redemption.KeysToPress.Count - 1; i >= 0; i--) Simulation.Keyboard.Release(redemption.KeysToPress[i]);
+            }
+
+            return;
+          }
+        }
+      }
     }
 
     /// <summary> Creates and adds to queue TTS notification (mainly for chat messages). </summary>
@@ -304,6 +330,7 @@ namespace AbevBot
             if (file.Extension.Equals(".mp3") || file.Extension.Equals(".wav"))
             {
               SampleSounds.Add(file.Name.Replace(file.Extension, "").ToLower(), file);
+              SoundsAvailable = true;
             }
           }
         }
@@ -312,6 +339,27 @@ namespace AbevBot
       }
 
       return SampleSounds;
+    }
+
+    public static string GetSampleSoundsResponse()
+    {
+      StringBuilder sb = new();
+      var samples = GetSampleSounds();
+      foreach (var sample in samples)
+      {
+        sb.Append(sample.Key).Append(", ");
+      }
+
+      string result = sb.ToString().Trim();
+      if (result.EndsWith(',')) return result[..^1];
+      return result;
+    }
+
+    public static bool AreSoundsAvailable()
+    {
+      if (SampleSounds.Count == 0) GetSampleSounds();
+
+      return SoundsAvailable;
     }
 
     public static List<FileInfo> GetRandomVideos()
@@ -347,5 +395,12 @@ namespace AbevBot
     public string TextToSpeech { get; set; } = string.Empty;
     public string SoundToPlay { get; set; } = string.Empty;
     public string VideoToPlay { get; set; } = string.Empty;
+  }
+
+  public class ChannelRedemption
+  {
+    public string ID { get; set; }
+    public NotificationsConfig Config { get; set; } = new();
+    public List<Key> KeysToPress { get; set; } = new();
   }
 }

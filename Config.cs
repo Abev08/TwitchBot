@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Windows.Input;
 
 namespace AbevBot
 {
@@ -20,6 +21,7 @@ namespace AbevBot
       Cheer_Enable, Cheer_ChatMessage, Cheer_TextToDisplay, Cheer_TextPosition, Cheer_TextToSpeech, Cheer_SoundToPlay, Cheer_VideoToPlay,
 
       ChannelPoints_RandomVideo,
+      ChannelRedemption_ID, ChannelRedemption_KeyAction, ChannelRedemption_ChatMessage, ChannelRedemption_TextToDisplay, ChannelRedemption_TextPosition, ChannelRedemption_TextToSpeech, ChannelRedemption_SoundToPlay, ChannelRedemption_VideoToPlay,
       msg
     };
 
@@ -63,8 +65,14 @@ namespace AbevBot
       Chat.PeriodicMessages.Clear(); // Clear previous preiodic messages
       Chatter.AlwaysReadTTSFromThem.Clear();
       Chatter.OverpoweredInFight.Clear();
+      Notifications.ChannelRedemptions.Clear();
 
-      FileInfo configFile = new(FILENAME);
+      // Create example Config.ini
+      FileInfo configFile = new("Config_example.ini");
+      CreateConfigFile(configFile, true);
+
+      // Create real Config.ini
+      configFile = new(FILENAME);
       if (configFile.Exists == false)
       {
         CreateConfigFile(configFile);
@@ -79,6 +87,8 @@ namespace AbevBot
           bool result;
           object position;
           string[] text = new string[2];
+          string temp;
+          ChannelRedemption redemption = null;
           while ((line = reader.ReadLine()) != null)
           {
             lineIndex++;
@@ -245,6 +255,87 @@ namespace AbevBot
                   if (text[1].Length > 0) Notifications.ConfigCheer.VideoToPlay = $"Resources\\{text[1].Trim()}";
                   break;
 
+                case Keys.ChannelRedemption_ID:
+                  if (text[1].Length > 0)
+                  {
+                    temp = text[1].Trim();
+                    redemption = null;
+                    for (int i = 0; i < Notifications.ChannelRedemptions.Count; i++)
+                    {
+                      if (Notifications.ChannelRedemptions[i].ID.Equals(temp))
+                      {
+                        redemption = Notifications.ChannelRedemptions[i];
+                        break;
+                      }
+                    }
+                    if (redemption is null)
+                    {
+                      redemption = new() { ID = temp };
+                      Notifications.ChannelRedemptions.Add(redemption);
+                    }
+                  }
+                  break;
+                case Keys.ChannelRedemption_KeyAction:
+                  if (redemption is null)
+                  {
+                    MainWindow.ConsoleWarning($">> Bad config line {lineIndex}. Missing previous ID filed declaration!");
+                    continue;
+                  }
+                  string[] keys = text[1].Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+                  foreach (string k in keys)
+                  {
+                    if (Enum.TryParse(typeof(Key), k, out position)) redemption.KeysToPress.Add((Key)position);
+                  }
+                  break;
+                case Keys.ChannelRedemption_ChatMessage:
+                  if (redemption is null)
+                  {
+                    MainWindow.ConsoleWarning($">> Bad config line {lineIndex}. Missing previous ID filed declaration!");
+                    continue;
+                  }
+                  redemption.Config.ChatMessage = text[1].Trim();
+                  break;
+                case Keys.ChannelRedemption_TextToDisplay:
+                  if (redemption is null)
+                  {
+                    MainWindow.ConsoleWarning($">> Bad config line {lineIndex}. Missing previous ID filed declaration!");
+                    continue;
+                  }
+                  redemption.Config.TextToDisplay = text[1].Trim();
+                  break;
+                case Keys.ChannelRedemption_TextPosition:
+                  if (redemption is null)
+                  {
+                    MainWindow.ConsoleWarning($">> Bad config line {lineIndex}. Missing previous ID filed declaration!");
+                    continue;
+                  }
+                  if (Enum.TryParse(typeof(Notifications.TextPosition), text[1].Trim(), out position)) redemption.Config.TextPosition = (Notifications.TextPosition)position;
+                  break;
+                case Keys.ChannelRedemption_TextToSpeech:
+                  if (redemption is null)
+                  {
+                    MainWindow.ConsoleWarning($">> Bad config line {lineIndex}. Missing previous ID filed declaration!");
+                    continue;
+                  }
+                  redemption.Config.TextToSpeech = text[1].Trim();
+                  break;
+                case Keys.ChannelRedemption_SoundToPlay:
+                  if (redemption is null)
+                  {
+                    MainWindow.ConsoleWarning($">> Bad config line {lineIndex}. Missing previous ID filed declaration!");
+                    continue;
+                  }
+                  if (text[1].Length > 0) redemption.Config.SoundToPlay = $"Resources\\{text[1].Trim()}";
+                  break;
+                case Keys.ChannelRedemption_VideoToPlay:
+                  if (redemption is null)
+                  {
+                    MainWindow.ConsoleWarning($">> Bad config line {lineIndex}. Missing previous ID filed declaration!");
+                    continue;
+                  }
+                  if (text[1].Length > 0) redemption.Config.VideoToPlay = $"Resources\\{text[1].Trim()}";
+                  break;
+
                 case Keys.msg:
                   // If there are '=' symbols in the message the previous splitting would brake it
                   string msg = line.Substring(line.IndexOf('=') + 1).Trim();
@@ -294,10 +385,23 @@ namespace AbevBot
       return false;
     }
 
-    private static void CreateConfigFile(FileInfo file)
+    private static void CreateConfigFile(FileInfo file, bool example = false)
     {
       using (StreamWriter writer = new(file.FullName))
       {
+        if (example)
+        {
+          writer.WriteLine();
+          writer.WriteLine(";                               CAUTION");
+          writer.WriteLine("; ----------------------------------------------------------------------");
+          writer.WriteLine("; ---------------------------------------------------------------------");
+          writer.WriteLine("; EXAMPLE CONFIG.INI FILE, WILL BE OVERRIDEN EVERY TIME THE BOT IS RUN");
+          writer.WriteLine("; ---------------------------------------------------------------------");
+          writer.WriteLine("; ----------------------------------------------------------------------");
+          writer.WriteLine();
+          writer.WriteLine();
+        }
+
         writer.WriteLine("; Required things, needs to be filled in.");
         writer.WriteLine("; Channel name the bot should connect to.");
         writer.WriteLine(string.Concat(Keys.ChannelName.ToString(), " = "));
@@ -403,6 +507,23 @@ namespace AbevBot
         writer.WriteLine("; Channel points redemptions. Assign channel point redemption ID.");
         writer.WriteLine("; Plays random video from Resources/Videos folder.");
         writer.WriteLine(string.Concat(Keys.ChannelPoints_RandomVideo.ToString(), " = "));
+        writer.WriteLine(";");
+        writer.WriteLine("; Custom channel points redemptions.");
+        writer.WriteLine("; The configuration group has to start with ID filed.");
+        writer.WriteLine("; Multiple groups are allowed. Just copy the group and start with ID field.");
+        writer.WriteLine("; Other available fields after ID fileds are referencing last assigned ID field.");
+        writer.WriteLine("; This means that for example setting chat message 2 times after assigning ID would override each other.");
+        writer.WriteLine("; KeyAction is comma separated list of keyboard keys that should be pressed when the channel redemption happens.");
+        writer.WriteLine("; The keys needs to be written in according to: https://learn.microsoft.com/en-us/dotnet/api/system.windows.input.key");
+        writer.WriteLine("; For example to open task manager the combination would be: LeftCtrl, LeftShift, Escape.");
+        writer.WriteLine(string.Concat(Keys.ChannelRedemption_ID.ToString(), " = "));
+        writer.WriteLine(string.Concat(Keys.ChannelRedemption_KeyAction.ToString(), " = "));
+        writer.WriteLine(string.Concat(Keys.ChannelRedemption_ChatMessage.ToString(), " = "));
+        writer.WriteLine(string.Concat(Keys.ChannelRedemption_TextToDisplay.ToString(), " = "));
+        writer.WriteLine(string.Concat(Keys.ChannelRedemption_TextPosition.ToString(), " = "));
+        writer.WriteLine(string.Concat(Keys.ChannelRedemption_TextToSpeech.ToString(), " = "));
+        writer.WriteLine(string.Concat(Keys.ChannelRedemption_SoundToPlay.ToString(), " = "));
+        writer.WriteLine(string.Concat(Keys.ChannelRedemption_VideoToPlay.ToString(), " = "));
 
         writer.WriteLine();
         writer.WriteLine();
@@ -410,12 +531,15 @@ namespace AbevBot
         writer.WriteLine("; msg = Commented out periodic message (deactivated) peepoSad");
       }
 
-      // Notify the user
-      MainWindow.ConsoleWarning(string.Concat(
-        $">> Missing required info in {FILENAME} file.", Environment.NewLine,
-        "The file was generated.", Environment.NewLine,
-        "Please fill it up and restart the bot."
-      ));
+      if (!example)
+      {
+        // Notify the user
+        MainWindow.ConsoleWarning(string.Concat(
+          $">> Missing required info in {FILENAME} file.", Environment.NewLine,
+          "The file was generated.", Environment.NewLine,
+          "Please fill it up and restart the bot."
+        ));
+      }
     }
 
     public static bool IsConfigFileUpdated()
