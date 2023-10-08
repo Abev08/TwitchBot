@@ -58,7 +58,7 @@ namespace AbevBot
     private static void Update()
     {
       byte[] receiveBuffer = new byte[16384]; // Max IRC message is 4096 bytes? let's allocate 4 times that, 2 times max message length wasn't enaugh for really fast chats
-      int zeroBytesReceivedCounter = 0, currentIndex, nextIndex, bytesReceived, messageStartOffset = 0;
+      int zeroBytesReceivedCounter = 0, currentIndex, nextIndex, bytesReceived, messageStartOffset = 0, temp2;
       string userBadge, userName, customRewardID, temp;
       long userID;
       List<string> messages = new();
@@ -437,14 +437,29 @@ namespace AbevBot
                       ));
                       break;
                     case "raid":
-                      currentIndex = message[0].IndexOf("msg-param-viewerCount=") + 22; // 26 == "msg-param-viewerCount=".Length
+                      currentIndex = message[0].IndexOf("msg-param-viewerCount=") + 22; // 22 == "msg-param-viewerCount=".Length
+                      if (!int.TryParse(message[0].Substring(currentIndex, message[0].IndexOf(';', currentIndex) - currentIndex), out temp2)) temp2 = -1;
+                      currentIndex = message[0].LastIndexOf("user-id=") + 8; // 8 == "user-id=".Length
+                      temp = message[0].Substring(currentIndex, message[0].IndexOf(';', currentIndex) - currentIndex);
                       MainWindow.ConsoleWriteLine(string.Concat(
                         "> ",
                         userName,
                         " raided the channel with ",
-                        message[0].Substring(currentIndex, message[0].IndexOf(';', currentIndex) - currentIndex),
+                        temp2,
                         " viewers."
                       ));
+                      Notifications.CreateRaidNotification(userName, temp, temp2);
+
+                      // TODO: Delete after testing, temporary event messages logging
+                      {
+                        try
+                        {
+                          File.AppendAllText($"eventlog_{DateTime.Now:d}.txt", $"{DateTime.Now:G}\r\n");
+                          File.AppendAllText($"eventlog_{DateTime.Now:d}.txt", message[0]);
+                          File.AppendAllText($"eventlog_{DateTime.Now:d}.txt", "\r\n\r\n");
+                        }
+                        catch { }
+                      }
                       break;
                     default:
                       if (message[1].Equals(":")) MainWindow.ConsoleWriteLine(message[0]);
@@ -751,6 +766,20 @@ namespace AbevBot
       if (s.EndsWith(',')) s = s[..^1];
 
       AddMessageToQueue(s);
+    }
+
+    public static void Shoutout(string userID)
+    {
+      if (userID is null || userID.Length == 0) return;
+
+      MainWindow.ConsoleWarning($"> Creating shoutout for {userID}.");
+
+      string uri = $"https://api.twitch.tv/helix/chat/shoutouts?from_broadcaster_id={Config.Data[Config.Keys.ChannelID]}&to_broadcaster_id={userID}&moderator_id={Config.Data[Config.Keys.ChannelID]}";
+      using HttpRequestMessage request = new(HttpMethod.Post, uri);
+      request.Headers.Add("Authorization", $"Bearer {Secret.Data[Secret.Keys.OAuthToken]}");
+      request.Headers.Add("Client-Id", Secret.Data[Secret.Keys.CustomerID]);
+
+      Client.Send(request); // We don't really need the result, just assume that it worked
     }
   }
 }

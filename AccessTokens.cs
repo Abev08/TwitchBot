@@ -1,91 +1,53 @@
 using System;
 using System.Diagnostics;
-using System.IO;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
-using System.Threading;
 
 namespace AbevBot
 {
   /// <summary> Everything related to access tokens. </summary>
   public static class AccessTokens
   {
-    /// <summary> Name of the file where access token should be stored. </summary>
-    private const string TOKENSFILE = ".tokens";
-
     /// <summary> Date and time when access token expiries. </summary>
     public static DateTime BotOAuthTokenExpiration { get; private set; }
     /// <summary> Time before OAuth token expiries to try to refresh it. </summary>
     public static TimeSpan OAuthTokenExpirationSomething { get; } = new TimeSpan(0, 10, 0);
-    /// <summary> Periodic timer calling for example refresh access token method. </summary>
-    private static Timer RefreshTimer;
     /// <summary> Http client for GET and POST requests. </summary>
     private static readonly HttpClient Client = new();
 
     /// <summary> Tries to get access token by: validating existing one or refreshing existing one or requesting new one. </summary>
     public static void GetAccessTokens()
     {
-      FileInfo oauthFile = new(TOKENSFILE);
-
-      if (oauthFile.Exists)
+      if (string.IsNullOrEmpty(Secret.Data[Secret.Keys.OAuthToken]) ||
+          string.IsNullOrEmpty(Secret.Data[Secret.Keys.OAuthRefreshToken]))
       {
-        // The file exists, try it out
-        string[] lines = File.ReadAllLines(oauthFile.FullName);
-        if (lines.Length < 2) { GetNewOAuthToken(); } // File is corrupt, generate new access token
-        else
-        {
-          // Read file data
-          Secret.Data[Secret.Keys.OAuthToken] = lines[0].Trim();
-          Secret.Data[Secret.Keys.OAuthRefreshToken] = lines[1].Trim();
-
-          // Check if readed token works
-          if (!ValidateOAuthToken())
-          {
-            // The verification failed. First try to refresh access token before requesting new one
-            RefreshAccessToken();
-            if (!ValidateOAuthToken())
-            {
-              // Refreshing access token also failed, request new one
-              GetNewOAuthToken();
-            }
-          }
-        }
+        GetNewOAuthToken();
+        UpdateTokens();
       }
       else
       {
-        // The file doesn't exist, get new access token
-        GetNewOAuthToken();
-      }
-
-      UpdateTokensFile();
-
-      // Start refresh timer, every 1 min. check if access token should be refreshed, also do some periodic things
-      if (RefreshTimer is null)
-      {
-        RefreshTimer = new((e) =>
+        // Check if readed token works
+        if (!ValidateOAuthToken())
         {
+          // The verification failed. First try to refresh access token before requesting new one
           RefreshAccessToken();
+          if (!ValidateOAuthToken())
+          {
+            // Refreshing access token also failed, request new one
+            GetNewOAuthToken();
+          }
 
-          Chatter.UpdateChattersFile();
-
-          Config.UpdateVolumesFile();
-
-          if (Config.IsConfigFileUpdated()) { Config.ParseConfigFile(true); }
-
-          if (Chat.IsRespMsgFileUpdated()) { Chat.LoadResponseMessages(true); }
-        }, null, TimeSpan.Zero, new TimeSpan(0, 0, 10));
+          UpdateTokens();
+        }
       }
     }
 
     /// <summary> Updates tokens file saving current access tokens. </summary>
-    private static void UpdateTokensFile()
+    private static void UpdateTokens()
     {
-      File.WriteAllLines(TOKENSFILE,
-        new string[] {
-          Secret.Data[Secret.Keys.OAuthToken],
-          Secret.Data[Secret.Keys.OAuthRefreshToken]
-        });
+      Database.UpdateValueInConfig(Database.Keys.TwitchOAuth, Secret.Data[Secret.Keys.OAuthToken]).Wait();
+      Database.UpdateValueInConfig(Database.Keys.TwitchOAuthRefresh, Secret.Data[Secret.Keys.OAuthRefreshToken]).Wait();
     }
 
     /// <summary> Request new access token. </summary>
@@ -109,13 +71,14 @@ namespace AbevBot
             "+whispers:read", // View your whisper messages
             "+whispers:edit", // 	Send whisper messages
             "+bits:read", // View Bits information for a channel
+            "+moderator:manage:banned_users", // Ban chatters
+            "+moderator:manage:shoutouts", // Create and receive shoutout information
 
             // Events bot scopes
             "+channel:read:redemptions", // View Channel Points custom rewards and their redemptions on a channel
             "+channel:read:subscriptions", // View a list of all subscribers to a channel and check if a user is subscribed to a channel
             "+moderator:read:followers", // Read the followers of a broadcaster
-            "+moderator:read:chatters", // Read chatters
-            "+moderator:manage:banned_users" // Ban chatters
+            "+moderator:read:chatters" // Read chatters
           ).Replace(":", "%3A") // Change to url encoded
         );
 
@@ -212,7 +175,6 @@ namespace AbevBot
       Secret.Data[Secret.Keys.OAuthToken] = response.Token;
       Secret.Data[Secret.Keys.OAuthRefreshToken] = response.RefreshToken;
       BotOAuthTokenExpiration = DateTime.Now + new TimeSpan(0, 0, response.ExpiresIn.Value) - OAuthTokenExpirationSomething;
-      UpdateTokensFile();
     }
 
     public static void GetBroadcasterID()

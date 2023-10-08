@@ -19,14 +19,14 @@ namespace AbevBot
       SubscriptionGift_Enable, SubscriptionGift_ChatMessage, SubscriptionGift_TextToDisplay, SubscriptionGift_TextPosition, SubscriptionGift_TextToSpeech, SubscriptionGift_SoundToPlay, SubscriptionGift_VideoToPlay,
       SubscriptionGiftReceived_Enable, SubscriptionGiftReceived_ChatMessage, SubscriptionGiftReceived_TextToDisplay, SubscriptionGiftReceived_TextPosition, SubscriptionGiftReceived_TextToSpeech, SubscriptionGiftReceived_SoundToPlay, SubscriptionGiftReceived_VideoToPlay,
       Cheer_Enable, Cheer_ChatMessage, Cheer_TextToDisplay, Cheer_TextPosition, Cheer_TextToSpeech, Cheer_SoundToPlay, Cheer_VideoToPlay,
+      Raid_Enable, Raid_ChatMessage, Raid_TextToDisplay, Raid_TextPosition, Raid_TextToSpeech, Raid_SoundToPlay, Raid_VideoToPlay, Raid_MinimumRaiders, Raid_DoShoutout,
 
       ChannelPoints_RandomVideo,
-      ChannelRedemption_ID, ChannelRedemption_KeyAction, ChannelRedemption_ChatMessage, ChannelRedemption_TextToDisplay, ChannelRedemption_TextPosition, ChannelRedemption_TextToSpeech, ChannelRedemption_SoundToPlay, ChannelRedemption_VideoToPlay,
+      ChannelRedemption_ID, ChannelRedemption_KeyAction, ChannelRedemption_KeyActionType, ChannelRedemption_KeyActionAfterTime, ChannelRedemption_KeyActionAfterTimeType, ChannelRedemption_ChatMessage, ChannelRedemption_TextToDisplay, ChannelRedemption_TextPosition, ChannelRedemption_TextToSpeech, ChannelRedemption_SoundToPlay, ChannelRedemption_VideoToPlay,
       msg
     };
 
     private const string FILENAME = "Config.ini";
-    private const string VOLUMESFILENAME = ".volumes";
 
     private static Dictionary<Keys, string> _Data;
     public static Dictionary<Keys, string> Data
@@ -88,7 +88,9 @@ namespace AbevBot
           object position;
           string[] text = new string[2];
           string temp;
+          int temp2;
           ChannelRedemption redemption = null;
+          string[] keys;
           while ((line = reader.ReadLine()) != null)
           {
             lineIndex++;
@@ -255,6 +257,34 @@ namespace AbevBot
                   if (text[1].Length > 0) Notifications.ConfigCheer.VideoToPlay = $"Resources\\{text[1].Trim()}";
                   break;
 
+                case Keys.Raid_Enable:
+                  if (bool.TryParse(text[1], out result)) Notifications.ConfigRaid.Enable = result;
+                  break;
+                case Keys.Raid_ChatMessage:
+                  Notifications.ConfigRaid.ChatMessage = text[1].Trim();
+                  break;
+                case Keys.Raid_TextToDisplay:
+                  Notifications.ConfigRaid.TextToDisplay = text[1].Trim();
+                  break;
+                case Keys.Raid_TextPosition:
+                  if (Enum.TryParse(typeof(Notifications.TextPosition), text[1].Trim(), out position)) Notifications.ConfigRaid.TextPosition = (Notifications.TextPosition)position;
+                  break;
+                case Keys.Raid_TextToSpeech:
+                  Notifications.ConfigRaid.TextToSpeech = text[1].Trim();
+                  break;
+                case Keys.Raid_SoundToPlay:
+                  if (text[1].Length > 0) Notifications.ConfigRaid.SoundToPlay = $"Resources\\{text[1].Trim()}";
+                  break;
+                case Keys.Raid_VideoToPlay:
+                  if (text[1].Length > 0) Notifications.ConfigRaid.VideoToPlay = $"Resources\\{text[1].Trim()}";
+                  break;
+                case Keys.Raid_MinimumRaiders:
+                  if (int.TryParse(text[1], out temp2) && temp2 > 0) Notifications.ConfigRaid.MinimumRaiders = temp2;
+                  break;
+                case Keys.Raid_DoShoutout:
+                  if (bool.TryParse(text[1], out result)) Notifications.ConfigRaid.DoShoutout = result;
+                  break;
+
                 case Keys.ChannelRedemption_ID:
                   if (text[1].Length > 0)
                   {
@@ -276,18 +306,57 @@ namespace AbevBot
                   }
                   break;
                 case Keys.ChannelRedemption_KeyAction:
+                  if (text[1].Length == 0) continue;
                   if (redemption is null)
                   {
                     MainWindow.ConsoleWarning($">> Bad config line {lineIndex}. Missing previous ID filed declaration!");
                     continue;
                   }
-                  string[] keys = text[1].Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+                  keys = text[1].Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
                   foreach (string k in keys)
                   {
                     if (Enum.TryParse(typeof(Key), k, out position)) redemption.KeysToPress.Add((Key)position);
+                    else MainWindow.ConsoleWarning($">> Keycode: {k} not recognized in line {lineIndex} in Config.ini file.");
                   }
                   break;
+                case Keys.ChannelRedemption_KeyActionType:
+                  if (text[1].Length == 0) continue;
+                  if (redemption is null)
+                  {
+                    MainWindow.ConsoleWarning($">> Bad config line {lineIndex}. Missing previous ID filed declaration!");
+                    continue;
+                  }
+                  if (Enum.TryParse(typeof(KeyActionType), text[1].Trim(), out position)) redemption.KeysToPressType = (KeyActionType)position;
+                  break;
+                case Keys.ChannelRedemption_KeyActionAfterTime:
+                  if (text[1].Length == 0) continue;
+                  if (redemption is null)
+                  {
+                    MainWindow.ConsoleWarning($">> Bad config line {lineIndex}. Missing previous ID filed declaration!");
+                    continue;
+                  }
+                  keys = text[1].Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+                  if (int.TryParse(keys[0], out temp2)) redemption.TimeToPressSecondAction = temp2;
+                  else MainWindow.ConsoleWarning($">> Action time {keys[0]} not recognized in line {lineIndex} in Config.ini file.");
+                  keys[0] = string.Empty;
+                  foreach (string k in keys)
+                  {
+                    if (k?.Length == 0) continue;
+                    if (Enum.TryParse(typeof(Key), k, out position)) redemption.KeysToPressAfterTime.Add((Key)position);
+                    else MainWindow.ConsoleWarning($">> Keycode: {k} not recognized in line {lineIndex} in Config.ini file.");
+                  }
+                  break;
+                case Keys.ChannelRedemption_KeyActionAfterTimeType:
+                  if (text[1].Length == 0) continue;
+                  if (redemption is null)
+                  {
+                    MainWindow.ConsoleWarning($">> Bad config line {lineIndex}. Missing previous ID filed declaration!");
+                    continue;
+                  }
+                  if (Enum.TryParse(typeof(KeyActionType), text[1].Trim(), out position)) redemption.KeysToPressAfterTimeType = (KeyActionType)position;
+                  break;
                 case Keys.ChannelRedemption_ChatMessage:
+                  if (text[1].Length == 0) continue;
                   if (redemption is null)
                   {
                     MainWindow.ConsoleWarning($">> Bad config line {lineIndex}. Missing previous ID filed declaration!");
@@ -296,6 +365,7 @@ namespace AbevBot
                   redemption.Config.ChatMessage = text[1].Trim();
                   break;
                 case Keys.ChannelRedemption_TextToDisplay:
+                  if (text[1].Length == 0) continue;
                   if (redemption is null)
                   {
                     MainWindow.ConsoleWarning($">> Bad config line {lineIndex}. Missing previous ID filed declaration!");
@@ -304,6 +374,7 @@ namespace AbevBot
                   redemption.Config.TextToDisplay = text[1].Trim();
                   break;
                 case Keys.ChannelRedemption_TextPosition:
+                  if (text[1].Length == 0) continue;
                   if (redemption is null)
                   {
                     MainWindow.ConsoleWarning($">> Bad config line {lineIndex}. Missing previous ID filed declaration!");
@@ -312,6 +383,7 @@ namespace AbevBot
                   if (Enum.TryParse(typeof(Notifications.TextPosition), text[1].Trim(), out position)) redemption.Config.TextPosition = (Notifications.TextPosition)position;
                   break;
                 case Keys.ChannelRedemption_TextToSpeech:
+                  if (text[1].Length == 0) continue;
                   if (redemption is null)
                   {
                     MainWindow.ConsoleWarning($">> Bad config line {lineIndex}. Missing previous ID filed declaration!");
@@ -320,6 +392,7 @@ namespace AbevBot
                   redemption.Config.TextToSpeech = text[1].Trim();
                   break;
                 case Keys.ChannelRedemption_SoundToPlay:
+                  if (text[1].Length == 0) continue;
                   if (redemption is null)
                   {
                     MainWindow.ConsoleWarning($">> Bad config line {lineIndex}. Missing previous ID filed declaration!");
@@ -328,6 +401,7 @@ namespace AbevBot
                   if (text[1].Length > 0) redemption.Config.SoundToPlay = $"Resources\\{text[1].Trim()}";
                   break;
                 case Keys.ChannelRedemption_VideoToPlay:
+                  if (text[1].Length == 0) continue;
                   if (redemption is null)
                   {
                     MainWindow.ConsoleWarning($">> Bad config line {lineIndex}. Missing previous ID filed declaration!");
@@ -379,7 +453,6 @@ namespace AbevBot
         MainWindow.ConsoleWarning($">> Loaded {Chat.PeriodicMessages.Count} periodic messages.");
       }
 
-      if (!reload) LoadVolumesFile();
       ConfigFileTimestamp = configFile.LastWriteTime;
 
       return false;
@@ -443,11 +516,11 @@ namespace AbevBot
         writer.WriteLine("; {1} - subscription tier");
         writer.WriteLine("; {2} - subscription duration in advance, for example subscribed for next 3 months (only in extended subscription message)");
         writer.WriteLine("; {3} - subscription streak, for example subscribed for 10 months in a row (only in extended subscription message)");
-        writer.WriteLine("; {4} - gifted subscription count, cheered bits count");
+        writer.WriteLine("; {4} - gifted subscription count, cheered bits count, raiders count");
         writer.WriteLine("; {5} - cumulative subscription months (only in extended subscription message)");
         writer.WriteLine("; {7} - attached message");
         writer.WriteLine("; Using index out of supported range WILL CRASH THE BOT!");
-        writer.WriteLine(";");
+        writer.WriteLine();
         writer.WriteLine("; ----- Follow");
         writer.WriteLine(string.Concat(Keys.Follow_Enable.ToString(), " = true"));
         writer.WriteLine(string.Concat(Keys.Follow_ChatMessage.ToString(), " = @{0} thank you for following!"));
@@ -456,7 +529,7 @@ namespace AbevBot
         writer.WriteLine(string.Concat(Keys.Follow_TextToSpeech.ToString(), " = "));
         writer.WriteLine(string.Concat(Keys.Follow_SoundToPlay.ToString(), " = tone1.wav"));
         writer.WriteLine(string.Concat(Keys.Follow_VideoToPlay.ToString(), " = "));
-        writer.WriteLine(";");
+        writer.WriteLine();
         writer.WriteLine("; ----- Subscription (notification message, always received when someone subscribes even when the subscriber doesn't want it to be public)");
         writer.WriteLine(string.Concat(Keys.Subscription_Enable.ToString(), " = false"));
         writer.WriteLine(string.Concat(Keys.Subscription_ChatMessage.ToString(), " = "));
@@ -465,7 +538,7 @@ namespace AbevBot
         writer.WriteLine(string.Concat(Keys.Subscription_TextToSpeech.ToString(), " = Thank you {0} for tier {1} sub! {7}"));
         writer.WriteLine(string.Concat(Keys.Subscription_SoundToPlay.ToString(), " = "));
         writer.WriteLine(string.Concat(Keys.Subscription_VideoToPlay.ToString(), " = peepoHey.mp4"));
-        writer.WriteLine(";");
+        writer.WriteLine();
         writer.WriteLine("; ----- Subscription Extended Message (the subscriber shares that he subscribed)");
         writer.WriteLine(string.Concat(Keys.SubscriptionExt_Enable.ToString(), " = true"));
         writer.WriteLine(string.Concat(Keys.SubscriptionExt_ChatMessage.ToString(), " = "));
@@ -474,7 +547,7 @@ namespace AbevBot
         writer.WriteLine(string.Concat(Keys.SubscriptionExt_TextToSpeech.ToString(), " = Thank you {0} for {2} months in advance tier {1} sub! It is your {3} month in a row! {7}"));
         writer.WriteLine(string.Concat(Keys.SubscriptionExt_SoundToPlay.ToString(), " = "));
         writer.WriteLine(string.Concat(Keys.SubscriptionExt_VideoToPlay.ToString(), " = peepoHey.mp4"));
-        writer.WriteLine(";");
+        writer.WriteLine();
         writer.WriteLine("; ----- Subscription gifted (the user is gifting subscriptions)");
         writer.WriteLine(string.Concat(Keys.SubscriptionGift_Enable.ToString(), " = true"));
         writer.WriteLine(string.Concat(Keys.SubscriptionGift_ChatMessage.ToString(), " = "));
@@ -483,7 +556,7 @@ namespace AbevBot
         writer.WriteLine(string.Concat(Keys.SubscriptionGift_TextToSpeech.ToString(), " = Thank you {0} for gifting {4} tier {1} subs! {7}"));
         writer.WriteLine(string.Concat(Keys.SubscriptionGift_SoundToPlay.ToString(), " = "));
         writer.WriteLine(string.Concat(Keys.SubscriptionGift_VideoToPlay.ToString(), " = peepoHey.mp4"));
-        writer.WriteLine(";");
+        writer.WriteLine();
         writer.WriteLine("; ----- Subscription gift received (the user received subscription gift, these events are sent before or after subscription gifted event)");
         writer.WriteLine(string.Concat(Keys.SubscriptionGiftReceived_Enable.ToString(), " = false"));
         writer.WriteLine(string.Concat(Keys.SubscriptionGiftReceived_ChatMessage.ToString(), " = "));
@@ -492,7 +565,7 @@ namespace AbevBot
         writer.WriteLine(string.Concat(Keys.SubscriptionGiftReceived_TextToSpeech.ToString(), " = "));
         writer.WriteLine(string.Concat(Keys.SubscriptionGiftReceived_SoundToPlay.ToString(), " = tone1.wav"));
         writer.WriteLine(string.Concat(Keys.SubscriptionGiftReceived_VideoToPlay.ToString(), " = "));
-        writer.WriteLine(";");
+        writer.WriteLine();
         writer.WriteLine("; ----- Bits cheer");
         writer.WriteLine(string.Concat(Keys.Cheer_Enable.ToString(), " = true"));
         writer.WriteLine(string.Concat(Keys.Cheer_ChatMessage.ToString(), " = "));
@@ -501,6 +574,18 @@ namespace AbevBot
         writer.WriteLine(string.Concat(Keys.Cheer_TextToSpeech.ToString(), " = Thank you {0} for {4} bits! {7}"));
         writer.WriteLine(string.Concat(Keys.Cheer_SoundToPlay.ToString(), " = tone1.wav"));
         writer.WriteLine(string.Concat(Keys.Cheer_VideoToPlay.ToString(), " = "));
+        writer.WriteLine();
+        writer.WriteLine("; ----- Raid (channel got raided)");
+        writer.WriteLine(string.Concat(Keys.Raid_Enable.ToString(), " = true"));
+        writer.WriteLine(string.Concat(Keys.Raid_ChatMessage.ToString(), " = "));
+        writer.WriteLine(string.Concat(Keys.Raid_TextToDisplay.ToString(), " = {4} raiders from {0} are coming!"));
+        writer.WriteLine(string.Concat(Keys.Raid_TextPosition.ToString(), " = TOP"));
+        writer.WriteLine(string.Concat(Keys.Raid_TextToSpeech.ToString(), " = "));
+        writer.WriteLine(string.Concat(Keys.Raid_SoundToPlay.ToString(), " = tone1.wav"));
+        writer.WriteLine(string.Concat(Keys.Raid_VideoToPlay.ToString(), " = "));
+        writer.WriteLine("; Default minimum raiders: 10");
+        writer.WriteLine(string.Concat(Keys.Raid_MinimumRaiders.ToString(), " = "));
+        writer.WriteLine(string.Concat(Keys.Raid_DoShoutout.ToString(), " = true"));
 
         writer.WriteLine();
         writer.WriteLine();
@@ -513,11 +598,17 @@ namespace AbevBot
         writer.WriteLine("; Multiple groups are allowed. Just copy the group and start with ID field.");
         writer.WriteLine("; Other available fields after ID fileds are referencing last assigned ID field.");
         writer.WriteLine("; This means that for example setting chat message 2 times after assigning ID would override each other.");
+        writer.WriteLine("; Unused fields can be skipped (deleted from Config.ini).");
         writer.WriteLine("; KeyAction is comma separated list of keyboard keys that should be pressed when the channel redemption happens.");
+        writer.WriteLine("; KeyActionAfterTime first value is time in miliseconds after which the action should be performed, next is comma separated list of keyboard keys that should be pressed.");
         writer.WriteLine("; The keys needs to be written in according to: https://learn.microsoft.com/en-us/dotnet/api/system.windows.input.key");
         writer.WriteLine("; For example to open task manager the combination would be: LeftCtrl, LeftShift, Escape.");
+        writer.WriteLine("; Key action type describes what key action should perform: PRESS (presses the keys at once), TYPE (presses the keys one after another like during the typing). Default: PRESS.");
         writer.WriteLine(string.Concat(Keys.ChannelRedemption_ID.ToString(), " = "));
         writer.WriteLine(string.Concat(Keys.ChannelRedemption_KeyAction.ToString(), " = "));
+        writer.WriteLine(string.Concat(Keys.ChannelRedemption_KeyActionType.ToString(), " = "));
+        writer.WriteLine(string.Concat(Keys.ChannelRedemption_KeyActionAfterTime.ToString(), " = "));
+        writer.WriteLine(string.Concat(Keys.ChannelRedemption_KeyActionAfterTimeType.ToString(), " = "));
         writer.WriteLine(string.Concat(Keys.ChannelRedemption_ChatMessage.ToString(), " = "));
         writer.WriteLine(string.Concat(Keys.ChannelRedemption_TextToDisplay.ToString(), " = "));
         writer.WriteLine(string.Concat(Keys.ChannelRedemption_TextPosition.ToString(), " = "));
@@ -553,34 +644,14 @@ namespace AbevBot
       return false;
     }
 
-    private static void LoadVolumesFile()
-    {
-      FileInfo file = new(VOLUMESFILENAME);
-      if (file.Exists)
-      {
-        var data = File.ReadAllLines(file.FullName);
-        if (data is null || data.Length != 3) { return; }
-
-        float volume;
-        if (float.TryParse(data[0], out volume)) { VolumeTTS = MathF.Round(volume / 100f, 2); }
-        if (float.TryParse(data[1], out volume)) { VolumeSounds = MathF.Round(volume / 100f, 2); }
-        if (float.TryParse(data[2], out volume)) { VolumeVideos = MathF.Round(volume / 100f, 2); }
-
-        MainWindow.I.SetVolumeSliderValues();
-      }
-    }
-
-    public static void UpdateVolumesFile()
+    public static async void UpdateVolumes()
     {
       if (!VolumeValuesDirty) return;
       VolumeValuesDirty = false;
 
-      MainWindow.ConsoleWarning(">> Updating volumes file.");
-
-      string[] data = new string[] { MathF.Round(VolumeTTS * 100).ToString(), MathF.Round(VolumeSounds * 100).ToString(), MathF.Round(VolumeVideos * 100).ToString() };
-
-      try { File.WriteAllLines(VOLUMESFILENAME, data); }
-      catch (Exception ex) { MainWindow.ConsoleWarning($">> {ex.Message}"); }
+      await Database.UpdateValueInConfig(Database.Keys.VolumeTTS, VolumeTTS.ToString().Replace('.', ','));
+      await Database.UpdateValueInConfig(Database.Keys.VolumeSounds, VolumeSounds.ToString().Replace('.', ','));
+      await Database.UpdateValueInConfig(Database.Keys.VolumeVideos, VolumeVideos.ToString().Replace('.', ','));
     }
   }
 }

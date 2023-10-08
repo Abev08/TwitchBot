@@ -31,6 +31,7 @@ namespace AbevBot
     public static NotificationsConfig ConfigSubscriptionGift { get; set; } = new();
     public static NotificationsConfig ConfigSubscriptionGiftReceived { get; set; } = new();
     public static NotificationsConfig ConfigCheer { get; set; } = new();
+    public static NotificationsConfig ConfigRaid { get; set; } = new();
     private static readonly string[] NotificationData = new string[8];
     public static readonly List<ChannelRedemption> ChannelRedemptions = new();
 
@@ -229,10 +230,39 @@ namespace AbevBot
             AddNotification(new Notification(redemption.Config, NotificationData));
 
             // Press keys
-            if (redemption.KeysToPress.Count > 0)
+            if (redemption.KeysToPressType == KeyActionType.PRESS)
             {
-              for (int i = 0; i < redemption.KeysToPress.Count; i++) Simulation.Keyboard.Press(redemption.KeysToPress[i]);
-              for (int i = redemption.KeysToPress.Count - 1; i >= 0; i--) Simulation.Keyboard.Release(redemption.KeysToPress[i]);
+              if (redemption.KeysToPress.Count > 0)
+              {
+                for (int i = 0; i < redemption.KeysToPress.Count; i++) Simulation.Keyboard.Press(redemption.KeysToPress[i]);
+                for (int i = redemption.KeysToPress.Count - 1; i >= 0; i--) Simulation.Keyboard.Release(redemption.KeysToPress[i]);
+              }
+            }
+            else if (redemption.KeysToPressType == KeyActionType.TYPE)
+            {
+              for (int i = 0; i < redemption.KeysToPress.Count; i++) Simulation.Keyboard.Type(redemption.KeysToPress[i]);
+            }
+
+            if (redemption.KeysToPressAfterTime.Count > 0)
+            {
+              Task.Run(async () =>
+              {
+                await Task.Delay(redemption.TimeToPressSecondAction);
+
+                // Press keys
+                if (redemption.KeysToPressAfterTimeType == KeyActionType.PRESS)
+                {
+                  if (redemption.KeysToPressAfterTime.Count > 0)
+                  {
+                    for (int i = 0; i < redemption.KeysToPressAfterTime.Count; i++) Simulation.Keyboard.Press(redemption.KeysToPressAfterTime[i]);
+                    for (int i = redemption.KeysToPressAfterTime.Count - 1; i >= 0; i--) Simulation.Keyboard.Release(redemption.KeysToPressAfterTime[i]);
+                  }
+                }
+                else if (redemption.KeysToPressAfterTimeType == KeyActionType.TYPE)
+                {
+                  for (int i = 0; i < redemption.KeysToPressAfterTime.Count; i++) Simulation.Keyboard.Type(redemption.KeysToPressAfterTime[i]);
+                }
+              });
             }
 
             return;
@@ -251,6 +281,23 @@ namespace AbevBot
         TextToRead = text,
         TTSVolume = Config.VolumeTTS
       });
+    }
+
+    public static void CreateRaidNotification(string userName, string userID, int count)
+    {
+      if (!ConfigRaid.Enable) return;
+      if (count < ConfigRaid.MinimumRaiders) return;
+
+      string chatter = userName.Trim();
+      if (string.IsNullOrWhiteSpace(chatter)) chatter = "Anonymous";
+
+      Array.Clear(NotificationData);
+      NotificationData[0] = chatter;
+      NotificationData[4] = count.ToString();
+
+      Chat.AddMessageToQueue(string.Format(ConfigRaid.ChatMessage, NotificationData));
+      if (ConfigRaid.DoShoutout) Chat.Shoutout(userID);
+      AddNotification(new Notification(ConfigRaid, NotificationData));
     }
 
     /// <summary> Creates and adds to queue Random Video notification. </summary>
@@ -395,6 +442,8 @@ namespace AbevBot
     public string TextToSpeech { get; set; } = string.Empty;
     public string SoundToPlay { get; set; } = string.Empty;
     public string VideoToPlay { get; set; } = string.Empty;
+    public int MinimumRaiders { get; set; } = 10;
+    public bool DoShoutout { get; set; }
   }
 
   public class ChannelRedemption
@@ -402,5 +451,11 @@ namespace AbevBot
     public string ID { get; set; }
     public NotificationsConfig Config { get; set; } = new();
     public List<Key> KeysToPress { get; set; } = new();
+    public KeyActionType KeysToPressType { get; set; } = KeyActionType.PRESS;
+    public int TimeToPressSecondAction { get; set; } = 0;
+    public List<Key> KeysToPressAfterTime { get; set; } = new();
+    public KeyActionType KeysToPressAfterTimeType { get; set; } = KeyActionType.PRESS;
   }
+
+  public enum KeyActionType { PRESS, TYPE }
 }

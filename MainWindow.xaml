@@ -34,12 +34,12 @@
           <TextBlock x:Name="tbVolumeVideos" Text="Videos Volume: 80%" HorizontalAlignment="Center"/>
           <Slider x:Name="volumeVideos" Margin="5,0,5,0" Maximum="100" SmallChange="1" Value="80" ValueChanged="VolumeVideosChanged" IsSnapToTickEnabled="True" MouseWheel="VolumeChange"/>
 
-          <CheckBox Width="150" Height="25" Content="!tts enabled (chat)" VerticalContentAlignment="Center" IsChecked="True" Checked="ChkTTS_CheckChanged" Unchecked="ChkTTS_CheckChanged"/>
-          <CheckBox Width="150" Height="25" Content="!gamba enabled" VerticalContentAlignment="Center" IsChecked="True" Checked="ChkGamba_CheckChanged" Unchecked="ChkGamba_CheckChanged"/>
-          <CheckBox Width="150" Height="25" Content="!gamba life enabled" VerticalContentAlignment="Center" IsChecked="True" Checked="ChkGambaLife_CheckChanged" Unchecked="ChkGambaLife_CheckChanged"/>
-          <CheckBox Width="150" Height="25" Content="!gamba anim. enabled" VerticalContentAlignment="Center" IsChecked="True" Checked="ChkGambaAnim_CheckChanged" Unchecked="ChkGambaAnim_CheckChanged"/>
-          <CheckBox Width="150" Height="25" Content="!fight enabled" VerticalContentAlignment="Center" IsChecked="True" Checked="ChkFight_CheckChanged" Unchecked="ChkFight_CheckChanged"/>
-          <CheckBox Width="150" Height="25" Content="!welcomemessage enabled" VerticalContentAlignment="Center" IsChecked="True" Checked="ChkWelcome_CheckChanged" Unchecked="ChkWelcome_CheckChanged"/>
+          <CheckBox x:Name="chkEnableTTS" Width="150" Height="25" Content="!tts enabled (chat)" VerticalContentAlignment="Center" IsChecked="True" Checked="ChkTTS_CheckChanged" Unchecked="ChkTTS_CheckChanged"/>
+          <CheckBox x:Name="chkEnableGamba" Width="150" Height="25" Content="!gamba enabled" VerticalContentAlignment="Center" IsChecked="True" Checked="ChkGamba_CheckChanged" Unchecked="ChkGamba_CheckChanged"/>
+          <CheckBox x:Name="chkEnableGambaLife" Width="150" Height="25" Content="!gamba life enabled" VerticalContentAlignment="Center" IsChecked="True" Checked="ChkGambaLife_CheckChanged" Unchecked="ChkGambaLife_CheckChanged"/>
+          <CheckBox x:Name="chkEnableGambaAnimations" Width="150" Height="25" Content="!gamba anim. enabled" VerticalContentAlignment="Center" IsChecked="True" Checked="ChkGambaAnim_CheckChanged" Unchecked="ChkGambaAnim_CheckChanged"/>
+          <CheckBox x:Name="chkEnableFight" Width="150" Height="25" Content="!fight enabled" VerticalContentAlignment="Center" IsChecked="True" Checked="ChkFight_CheckChanged" Unchecked="ChkFight_CheckChanged"/>
+          <CheckBox x:Name="chkEnableWelcomeMessages" Width="150" Height="25" Content="!welcomemessage enabled" VerticalContentAlignment="Center" IsChecked="True" Checked="ChkWelcome_CheckChanged" Unchecked="ChkWelcome_CheckChanged"/>
         </StackPanel>
       </Border>
     </StackPanel>

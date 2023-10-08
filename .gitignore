@@ -8,9 +8,7 @@ Secrets.ini
 Config.ini
 Config_example.ini
 ResponseMessages.csv
-.tokens
 .chatters
-.volumes
 error.txt
 Resources/Sounds/
 Resources/Videos/
@@ -18,6 +16,8 @@ twitch-cli*/
 Doc/*
 !Doxyfile
 eventlog_*.txt
+*.db
+*.db-journal
 
 # User-specific files
 *.rsuser

@@ -107,7 +107,6 @@ namespace AbevBot
       {"kr_002", "kr2"},
       {"kr_003", "kr3"},
       {"kr_004", "kr4"},
-      {"kr_003", "KoreanFemale"},
 
       // Portuguese
       {"br_001", "br1"},

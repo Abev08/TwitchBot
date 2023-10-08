@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Runtime.InteropServices;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -29,6 +30,9 @@ namespace AbevBot
     /// <summary> MainWindow instance - the window. </summary>
     public static MainWindow I { get; private set; }
     public static bool VideoEnded { get; private set; }
+    private static bool FinishedLoading;
+    /// <summary> Periodic timer calling for example refresh access token method. </summary>
+    private static Timer RefreshTimer;
 
     public MainWindow(string[] args = null)
     {
@@ -48,7 +52,7 @@ namespace AbevBot
       Closing += (sender, e) =>
       {
         Chatter.UpdateChattersFile();
-        Config.UpdateVolumesFile();
+        Config.UpdateVolumes();
         ConsoleFreed = true;
         FreeConsole();
       };
@@ -57,6 +61,7 @@ namespace AbevBot
 
       // Read Secrets.ini and Config.ini
       bool error = false;
+      error |= Database.Init();
       error |= Secret.ParseSecretFile();
       error |= Config.ParseConfigFile();
       if (error)
@@ -106,9 +111,25 @@ namespace AbevBot
       {
         if (I.WindowState == WindowState.Minimized) I.WindowState = WindowState.Normal;
       };
+
+      // Start refresh timer, every 10 sec. check if access token should be refreshed, also do some periodic things
+      RefreshTimer = new((e) =>
+      {
+        AccessTokens.RefreshAccessToken();
+
+        Chatter.UpdateChattersFile();
+
+        Config.UpdateVolumes();
+
+        if (Config.IsConfigFileUpdated()) { Config.ParseConfigFile(true); }
+
+        if (Chat.IsRespMsgFileUpdated()) { Chat.LoadResponseMessages(true); }
+      }, null, TimeSpan.Zero, new TimeSpan(0, 0, 10));
+
+      FinishedLoading = true;
     }
 
-    public static void ConsoleWarning(string text, ConsoleColor color = ConsoleColor.DarkRed)
+    public static void ConsoleWarning(string text, ConsoleColor color = ConsoleColor.DarkYellow)
     {
       if (ConsoleFreed) return;
 
@@ -209,34 +230,40 @@ namespace AbevBot
       }));
     }
 
-    private void ChkTTS_CheckChanged(object sender, RoutedEventArgs e)
+    private async void ChkTTS_CheckChanged(object sender, RoutedEventArgs e)
     {
       Notifications.ChatTTSEnabled = ((CheckBox)sender).IsChecked == true;
+      if (FinishedLoading) await Database.UpdateValueInConfig(Database.Keys.EnabledChatTTS, Notifications.ChatTTSEnabled);
     }
 
-    private void ChkGamba_CheckChanged(object sender, RoutedEventArgs e)
+    private async void ChkGamba_CheckChanged(object sender, RoutedEventArgs e)
     {
       MinigameGamba.Enabled = ((CheckBox)sender).IsChecked == true;
+      if (FinishedLoading) await Database.UpdateValueInConfig(Database.Keys.EnabledGamba, MinigameGamba.Enabled);
     }
 
-    private void ChkGambaLife_CheckChanged(object sender, RoutedEventArgs e)
+    private async void ChkGambaLife_CheckChanged(object sender, RoutedEventArgs e)
     {
       MinigameGamba.GambaLifeEnabled = ((CheckBox)sender).IsChecked == true;
+      if (FinishedLoading) await Database.UpdateValueInConfig(Database.Keys.EnabledGambaLife, MinigameGamba.GambaLifeEnabled);
     }
 
-    private void ChkGambaAnim_CheckChanged(object sender, RoutedEventArgs e)
+    private async void ChkGambaAnim_CheckChanged(object sender, RoutedEventArgs e)
     {
       MinigameGamba.GambaAnimationsEnabled = ((CheckBox)sender).IsChecked == true;
+      if (FinishedLoading) await Database.UpdateValueInConfig(Database.Keys.EnabledGambaAnimations, MinigameGamba.GambaAnimationsEnabled);
     }
 
-    private void ChkFight_CheckChanged(object sender, RoutedEventArgs e)
+    private async void ChkFight_CheckChanged(object sender, RoutedEventArgs e)
     {
       MinigameFight.Enabled = ((CheckBox)sender).IsChecked == true;
+      if (FinishedLoading) await Database.UpdateValueInConfig(Database.Keys.EnabledFight, MinigameFight.Enabled);
     }
 
-    private void ChkWelcome_CheckChanged(object sender, RoutedEventArgs e)
+    private async void ChkWelcome_CheckChanged(object sender, RoutedEventArgs e)
     {
       Notifications.WelcomeMessagesEnabled = ((CheckBox)sender).IsChecked == true;
+      if (FinishedLoading) await Database.UpdateValueInConfig(Database.Keys.EnabledWelcomeMessages, Notifications.WelcomeMessagesEnabled);
     }
 
     private void MainVideoEnded(object sender, RoutedEventArgs e)
@@ -288,21 +315,21 @@ namespace AbevBot
     {
       tbVolumeTTS.Text = $"TTS Volume: {e.NewValue}%";
       Config.VolumeTTS = (float)e.NewValue / 100f;
-      Config.VolumeValuesDirty = true;
+      if (FinishedLoading) Config.VolumeValuesDirty = true;
     }
 
     private void VolumeSoundsChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
       tbVolumeSounds.Text = $"Sounds Volume: {e.NewValue}%";
       Config.VolumeSounds = (float)e.NewValue / 100f;
-      Config.VolumeValuesDirty = true;
+      if (FinishedLoading) Config.VolumeValuesDirty = true;
     }
 
     private void VolumeVideosChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
       tbVolumeVideos.Text = $"Videos Volume: {e.NewValue}%";
       Config.VolumeVideos = (float)e.NewValue / 100f;
-      Config.VolumeValuesDirty = true;
+      if (FinishedLoading) Config.VolumeValuesDirty = true;
     }
 
     private void VolumeChange(object sender, System.Windows.Input.MouseWheelEventArgs e)
@@ -318,11 +345,21 @@ namespace AbevBot
       volumeVideos.Value = MathF.Round(Config.VolumeVideos * 100);
     }
 
+    /// <summary> Sets enabled checkboxes statuses to values present in relevant classes. </summary>
+    public void SetEnabledStatus()
+    {
+      chkEnableTTS.IsChecked = Notifications.ChatTTSEnabled;
+      chkEnableGamba.IsChecked = MinigameGamba.Enabled;
+      chkEnableGambaLife.IsChecked = MinigameGamba.GambaLifeEnabled;
+      chkEnableGambaAnimations.IsChecked = MinigameGamba.GambaAnimationsEnabled;
+      chkEnableFight.IsChecked = MinigameFight.Enabled;
+      chkEnableWelcomeMessages.IsChecked = Notifications.WelcomeMessagesEnabled;
+    }
+
     public void GambaAnimationStart(FileInfo videoPath, string userName, int points, int pointsResult)
     {
       Dispatcher.Invoke(new Action(() =>
       {
-        Console.WriteLine(videoPath.FullName);
         tbGambaName.Text = userName;
 
         if (videoPath.Exists)
