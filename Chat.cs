@@ -75,8 +75,16 @@ namespace AbevBot
 
           ChatSocket.BeginReceive(receiveBuffer, messageStartOffset, receiveBuffer.Length - messageStartOffset, SocketFlags.None, new AsyncCallback((IAsyncResult ar) =>
           {
-            if (ChatSocket.Connected) bytesReceived = ChatSocket.EndReceive(ar);
-            else bytesReceived = -1;
+            try
+            {
+              if (ChatSocket.Connected) bytesReceived = ChatSocket.EndReceive(ar);
+              else bytesReceived = -1;
+            }
+            catch (Exception ex)
+            {
+              MainWindow.ConsoleWarning($">> Chat bot error: {ex.Message}");
+              bytesReceived = -1;
+            }
 
             if (bytesReceived > 0)
             {
@@ -517,7 +525,7 @@ namespace AbevBot
               if (zeroBytesReceivedCounter >= 5)
               {
                 MainWindow.ConsoleWarning(">> Chat bot closing connection.");
-                ChatSocket.Close(); // Close connection if 5 times in a row received 0 bytes
+                ChatSocket?.Close(); // Close connection if 5 times in a row received 0 bytes
               }
             }
 

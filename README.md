@@ -1,5 +1,5 @@
 # AbevBot - Another Twitch Bot
-[![Build Status](https://github.com/Abev08/TwitchBot/actions/workflows/dotnet.yml/badge.svg)](https://github.com/Abev08/TwitchBot/actions/workflows/dotnet.yml)  
+[![Build Status](https://github.com/Abev08/TwitchBot/actions/workflows/build.yml/badge.svg)](https://github.com/Abev08/TwitchBot/actions/workflows/build.yml)  
   
 Programmed with C# on .NET 7.  
 It's modular - the functionalities are split between .cs files.  

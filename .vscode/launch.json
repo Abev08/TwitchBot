@@ -9,7 +9,7 @@
             "type": "coreclr",
             "request": "launch",
             "preLaunchTask": "build",
-            "program": "${workspaceFolder}/bin/Debug/net7.0-windows/AbevBot.dll",
+            "program": "${workspaceFolder}/bin/Debug/net7.0-windows/win-x64/AbevBot.dll",
             "args": [
               "--consoleVisible"
             ],

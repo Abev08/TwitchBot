@@ -4,6 +4,11 @@
     <TargetFramework>net7.0-windows</TargetFramework>
     <OutputType>WinExe</OutputType>
     <UseWPF>true</UseWPF>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+
+    <!-- Publishing single file with SQLite doesn't work? -->
+    <!-- <PublishSingleFile>true</PublishSingleFile> -->
+    <SelfContained>false</SelfContained>
   </PropertyGroup>
 
   <ItemGroup>

@@ -108,8 +108,9 @@ namespace AbevBot
     {
       if (!ConfigFollow.Enable) return;
 
-      string chatter = userName.Trim();
-      if (string.IsNullOrWhiteSpace(chatter)) chatter = "Anonymous";
+      string chatter;
+      if (string.IsNullOrWhiteSpace(userName)) chatter = "Anonymous";
+      else chatter = userName?.Trim();
 
       Array.Clear(NotificationData);
       NotificationData[0] = chatter;
@@ -123,8 +124,9 @@ namespace AbevBot
     {
       if (!ConfigSubscription.Enable) return;
 
-      string chatter = userName.Trim();
-      if (string.IsNullOrWhiteSpace(chatter)) chatter = "Anonymous";
+      string chatter;
+      if (string.IsNullOrWhiteSpace(userName)) chatter = "Anonymous";
+      else chatter = userName?.Trim();
 
       Array.Clear(NotificationData);
       NotificationData[0] = chatter;
@@ -140,8 +142,9 @@ namespace AbevBot
     {
       if (!ConfigSubscriptionExt.Enable) return;
 
-      string chatter = userName.Trim();
-      if (string.IsNullOrWhiteSpace(chatter)) chatter = "Anonymous";
+      string chatter;
+      if (string.IsNullOrWhiteSpace(userName)) chatter = "Anonymous";
+      else chatter = userName?.Trim();
 
       Array.Clear(NotificationData);
       NotificationData[0] = chatter;
@@ -160,8 +163,9 @@ namespace AbevBot
     {
       if (!ConfigSubscriptionGift.Enable) return;
 
-      string chatter = userName.Trim();
-      if (string.IsNullOrWhiteSpace(chatter)) chatter = "Anonymous";
+      string chatter;
+      if (string.IsNullOrWhiteSpace(userName)) chatter = "Anonymous";
+      else chatter = userName?.Trim();
 
       Array.Clear(NotificationData);
       NotificationData[0] = chatter;
@@ -178,8 +182,9 @@ namespace AbevBot
     {
       if (!ConfigSubscriptionGiftReceived.Enable) return;
 
-      string chatter = userName.Trim();
-      if (string.IsNullOrWhiteSpace(chatter)) chatter = "Anonymous";
+      string chatter;
+      if (string.IsNullOrWhiteSpace(userName)) chatter = "Anonymous";
+      else chatter = userName?.Trim();
 
       Array.Clear(NotificationData);
       NotificationData[0] = chatter;
@@ -193,8 +198,9 @@ namespace AbevBot
     {
       if (!ConfigCheer.Enable) return;
 
-      string chatter = userName.Trim();
-      if (string.IsNullOrWhiteSpace(chatter)) chatter = "Anonymous";
+      string chatter;
+      if (string.IsNullOrWhiteSpace(userName)) chatter = "Anonymous";
+      else chatter = userName?.Trim();
 
       Array.Clear(NotificationData);
       NotificationData[0] = chatter;
@@ -288,8 +294,9 @@ namespace AbevBot
       if (!ConfigRaid.Enable) return;
       if (count < ConfigRaid.MinimumRaiders) return;
 
-      string chatter = userName.Trim();
-      if (string.IsNullOrWhiteSpace(chatter)) chatter = "Anonymous";
+      string chatter;
+      if (string.IsNullOrWhiteSpace(userName)) chatter = "Anonymous";
+      else chatter = userName?.Trim();
 
       Array.Clear(NotificationData);
       NotificationData[0] = chatter;

@@ -592,7 +592,7 @@ namespace AbevBot
         writer.WriteLine("; Channel points redemptions. Assign channel point redemption ID.");
         writer.WriteLine("; Plays random video from Resources/Videos folder.");
         writer.WriteLine(string.Concat(Keys.ChannelPoints_RandomVideo.ToString(), " = "));
-        writer.WriteLine(";");
+        writer.WriteLine();
         writer.WriteLine("; Custom channel points redemptions.");
         writer.WriteLine("; The configuration group has to start with ID filed.");
         writer.WriteLine("; Multiple groups are allowed. Just copy the group and start with ID field.");
