@@ -2,13 +2,11 @@ name: Build, Publish and Release
 
 on:
   push:
-    branches:
-      - 'main'
     tags:
       - 'v*'
 
 jobs:
-  build:
+  build_publish_release:
     runs-on: windows-latest
 
     steps:
@@ -42,5 +40,3 @@ jobs:
         repo_token: ${{ secrets.GITHUB_TOKEN }}
         file: bin/Release/net7.0-windows/win-x64/AbevBot_${{ github.ref }}_win-x64.zip
         tag: ${{ github.ref }}
-        file_glob: true
-        prerelease: true
