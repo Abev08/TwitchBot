@@ -2,8 +2,11 @@
 [![Build Status](https://github.com/Abev08/TwitchBot/actions/workflows/build.yml/badge.svg)](https://github.com/Abev08/TwitchBot/actions/workflows/build.yml)  
   
 Programmed with C# on .NET 7.  
+Requires .NET 7 SDK (or newer) to build: https://dotnet.microsoft.com/download  
+
 It's modular - the functionalities are split between .cs files.  
-Uses Windows Presentation Foundation (WPF, an UI framework) to open bot configuration window. Can also be used as OBS input for for example video clips. Because WPF is used can be built only for Windows.
+Uses Windows Presentation Foundation (WPF, an UI framework) to open bot configuration window. Can also be used as OBS input for for example video clips.  
+Because WPF is used can be built only for Windows.
 <br><br>
 
 ## **Features**

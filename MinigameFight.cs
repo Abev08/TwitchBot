@@ -127,8 +127,8 @@ namespace AbevBot
         int f2level = fighter2.Fight.Level;
         fighter1.Fight.Draws++;
         fighter2.Fight.Draws++;
-        fighter1.AddFightExp((int)(fighter2.Fight.Level * 0.2f));
-        fighter2.AddFightExp((int)(f1level * 0.2f));
+        fighter1.AddFightExp(fighter2.Fight.Level * 0.2f);
+        fighter2.AddFightExp(f1level * 0.2f);
         msg = string.Concat(
           "It was a draw! The fight took ", rounds, " rounds",
           f1level != fighter1.Fight.Level ? $". {fighter1.Name} leveled up to level {fighter1.Fight.Level}" : "",
@@ -189,7 +189,7 @@ namespace AbevBot
       Chat.AddMessageToQueue(string.Concat(
         "@", fighter.Name,
         " LVL: ", fighter.Fight.Level,
-        ", REQ. EXP: ", fighter.Fight.RequiredExp - fighter.Fight.CurrentExp,
+        ", REQ. EXP: ", MathF.Round(fighter.Fight.RequiredExp - fighter.Fight.CurrentExp, 2),
         ", HP: ", fighter.Fight.CurrentHp,
         ", DMG: ", fighter.Fight.DmgMin, "-", fighter.Fight.DmgMax,
         ", Wins: ", fighter.Fight.Wins,
@@ -253,12 +253,13 @@ namespace AbevBot
 
   public class FightStats
   {
+    private const float OVERPOWEREDMULTI = 1.1f; // :)
     private const int BASEDMG = 40;
     public const int BASEDODGE = 10; // 10% to dodge
     public const int BASECRIT = 5; // 5% to crit (200% dmg)
 
     public int Level { get; set; }
-    public int CurrentExp { get; set; }
+    public float CurrentExp { get; set; }
     public int CurrentHp { get; set; }
     public int DmgMin;
     public int DmgMax;
@@ -286,8 +287,8 @@ namespace AbevBot
         DmgMax = BASEDMG + (15 * Level);
         if (overpowered)
         {
-          DmgMin *= 2;
-          DmgMax *= 2;
+          DmgMin = (int)(DmgMin * OVERPOWEREDMULTI);
+          DmgMax = (int)(DmgMax * OVERPOWEREDMULTI);
         }
       }
       if (leveledUp || RequiredExp == 0)
@@ -297,7 +298,7 @@ namespace AbevBot
       if (leveledUp || CurrentHp <= 0)
       {
         int maxHp = (int)((4f * Level * Level) + (60f * Level) + 180f); // 4x^2 + 60x + 180
-        if (overpowered) maxHp *= 2;
+        if (overpowered) maxHp = (int)(maxHp * OVERPOWEREDMULTI);
 
         if (CurrentHp <= 0) { CurrentHp = maxHp; }
         else

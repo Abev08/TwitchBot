@@ -69,9 +69,9 @@ namespace AbevBot
       UpdateRequired = true;
     }
 
-    public void AddFightExp(int exp)
+    public void AddFightExp(float exp)
     {
-      Fight.CurrentExp += exp;
+      Fight.CurrentExp += MathF.Round(exp, 2);
       if (Fight.CurrentExp >= Fight.RequiredExp)
       {
         Fight.Level++;
@@ -155,9 +155,9 @@ namespace AbevBot
       return null;
     }
 
-    public static void UpdateChattersFile()
+    public static void UpdateChattersFile(bool forceUpdate = false)
     {
-      if (!UpdateRequired) return;
+      if (!UpdateRequired && !forceUpdate) return;
       UpdateRequired = false;
       if (Chatters is null || Chatters.Count == 0) return;
 
