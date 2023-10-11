@@ -96,9 +96,20 @@ namespace AbevBot
       object result;
       int affected;
 
-      command = new($"SELECT Value FROM Config WHERE Name='{name}';", Connection);
-      result = command.ExecuteScalar();
-      if (result is null || result is DBNull || ((string)result).Length == 0)
+      command = new($"SELECT * FROM Config WHERE Name='{name}';", Connection);
+      result = command.ExecuteReader();
+      if (result is SQLiteDataReader reader && reader.HasRows && reader.StepCount == 1)
+      {
+        if (reader.Read()) { result = reader.IsDBNull("Value") ? string.Empty : reader.GetString("Value"); }
+        else
+        {
+          MainWindow.ConsoleWarning($">> Error when reading database for key {name}");
+          result = string.Empty;
+        }
+        reader.Close();
+        return (string)result;
+      }
+      else
       {
         // Row doesn't exist, add it
         if (defaultValue?.Length > 0) command = new($"INSERT INTO Config (Name, Value) VALUES ('{name}', '{defaultValue}');", Connection);
@@ -111,8 +122,6 @@ namespace AbevBot
         }
         else { return defaultValue; }
       }
-
-      return (string)result;
     }
 
     public static string GetValueFromConfig(Keys name)
@@ -140,7 +149,7 @@ namespace AbevBot
 
       if (affected != 1)
       {
-        MainWindow.ConsoleWarning($">> Couldn't update {name} to {value} in database Config table!");
+        MainWindow.ConsoleWarning($">> Couldn't update {name} in database Config table!");
         return false;
       }
       return true;
