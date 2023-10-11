@@ -38,5 +38,7 @@ jobs:
       uses: svenstaro/upload-release-action@v2
       with:
         repo_token: ${{ secrets.GITHUB_TOKEN }}
-        file: "bin/Release/net7.0-windows/win-x64/AbevBot_${{ github.ref }}_win-x64.zip"
+        file: bin/Release/net7.0-windows/win-x64/AbevBot_${{ github.ref }}_win-x64.zip
+        asset_name: AbevBot_${{ github.ref }}_win-x64
         tag: ${{ github.ref }}
+        body: ".NET Desktop Runtime 7 (or newer) is needed to run the bot: https://dotnet.microsoft.com/en-us/download/dotnet/7.0"
