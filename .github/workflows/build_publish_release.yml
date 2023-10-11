@@ -39,6 +39,6 @@ jobs:
       with:
         repo_token: ${{ secrets.GITHUB_TOKEN }}
         file: bin/Release/net7.0-windows/win-x64/AbevBot_${{ github.ref }}_win-x64.zip
-        asset_name: AbevBot_${{ github.ref }}_win-x64
+        asset_name: AbevBot_$tag_win-x64.zip
         tag: ${{ github.ref }}
-        body: ".NET Desktop Runtime 7 (or newer) is needed to run the bot: https://dotnet.microsoft.com/en-us/download/dotnet/7.0"
+        body: ".NET Desktop Runtime 7 (or newer) is required to run the bot: https://dotnet.microsoft.com/en-us/download/dotnet/7.0"
