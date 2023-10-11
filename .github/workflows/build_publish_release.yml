@@ -1,0 +1,46 @@
+name: Build, Publish and Release
+
+on:
+  push:
+    branches:
+      - 'main'
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v3
+      with:
+        dotnet-version: 7.x.x
+
+    - name: Restore dependencies
+      run: dotnet restore
+
+    - name: Build
+      run: dotnet build -c Release --no-restore
+
+    - name: Publish
+      run: dotnet publish -c Release -r win-x64 --no-build
+
+    - name: Package published files
+      run: |
+        cd bin/Release/net7.0-windows/win-x64/publish/
+        7z a -tzip -mx=9 -mfb=128 "../AbevBot_${{ github.ref }}_win-x64.zip" .
+
+    - name: Release new package
+      uses: svenstaro/upload-release-action@v2
+      with:
+        repo_token: ${{ secrets.GITHUB_TOKEN }}
+        file: bin/Release/net7.0-windows/win-x64/AbevBot_${{ github.ref }}_win-x64.zip
+        tag: ${{ github.ref }}
+        file_glob: true
+        prerelease: true
