@@ -38,5 +38,5 @@ jobs:
       uses: svenstaro/upload-release-action@v2
       with:
         repo_token: ${{ secrets.GITHUB_TOKEN }}
-        file: bin/Release/net7.0-windows/win-x64/AbevBot_${{ github.ref }}_win-x64.zip
+        file: "bin/Release/net7.0-windows/win-x64/AbevBot_${{ github.ref }}_win-x64.zip"
         tag: ${{ github.ref }}
