@@ -317,7 +317,7 @@ namespace AbevBot
 
       AddNotification(new Notification()
       {
-        TextToRead = text,
+        TextToRead = text.Replace("#", ""), // Remove '#' symbols - they are not allowed in TTS request messages
         TTSVolume = Config.VolumeTTS
       });
     }

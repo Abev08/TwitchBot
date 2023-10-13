@@ -7,8 +7,8 @@ namespace AbevBot
 {
   public class Notification
   {
-    private static readonly TimeSpan MinimumNotificationTime = TimeSpan.FromSeconds(5);
-    private static readonly TimeSpan MaximumNotificationTime = TimeSpan.FromSeconds(30);
+    private static readonly TimeSpan MinimumNotificationTime = TimeSpan.FromSeconds(3);
+    private static readonly TimeSpan MaximumNotificationTime = TimeSpan.FromSeconds(45);
 
     public bool Started { get; private set; }
     private DateTime StartTime { get; set; }
@@ -35,7 +35,7 @@ namespace AbevBot
     {
       TextToDisplay = string.Format(config.TextToDisplay, data).Replace("\\n", Environment.NewLine);
       TextToDisplayPosition = config.TextPosition;
-      TextToRead = string.Format(config.TextToSpeech, data).Replace("\\n", Environment.NewLine);
+      TextToRead = string.Format(config.TextToSpeech, data).Replace("\\n", Environment.NewLine).Replace("#", ""); // Remove '#' symbols - they are not allowed in TTS request messages
       TTSVolume = Config.VolumeTTS;
       SoundPath = config.SoundToPlay;
       SoundVolume = Config.VolumeSounds;
@@ -49,6 +49,8 @@ namespace AbevBot
       if (Started) return;
       Started = true;
 
+      TextDisplayed = TextToDisplay is null || TextToDisplay.Length == 0;
+      TextCleared = TextDisplayed;
       VideoEnded = VideoPath is null || VideoPath.Length == 0;
       SoundPlayed = SoundPath is null || SoundPath.Length == 0;
       TTSPlayed = TextToRead is null || TextToRead.Length == 0;
@@ -119,7 +121,7 @@ namespace AbevBot
           }
         }
 
-        AudioToPlay.Insert(0, Audio.GetSound(sounds, TTSVolume));
+        if (sounds.Count > 0) AudioToPlay.Insert(0, Audio.GetSound(sounds, TTSVolume));
       }
       if (!SoundPlayed)
       {
@@ -150,7 +152,7 @@ namespace AbevBot
       }
 
       // Display text
-      if (!TextDisplayed && !Notifications.NotificationsPaused && !Notifications.SkipNotification && TextToDisplay?.Length > 0)
+      if (!TextDisplayed && !Notifications.NotificationsPaused && !Notifications.SkipNotification)
       {
         TextDisplayed = true;
         MainWindow.I.SetTextDisplayed(TextToDisplay, TextToDisplayPosition);

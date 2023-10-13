@@ -628,6 +628,7 @@ namespace AbevBot
         writer.WriteLine();
         writer.WriteLine();
         writer.WriteLine("; Periodic messages (one message per line, each starting with \"msg = \"), can be left empty");
+        writer.WriteLine("; Multiple messages are allowed.");
         writer.WriteLine("; msg = Commented out periodic message (deactivated) peepoSad");
       }
 
