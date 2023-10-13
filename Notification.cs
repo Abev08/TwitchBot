@@ -7,7 +7,7 @@ namespace AbevBot
 {
   public class Notification
   {
-    private static readonly TimeSpan MinimumNotificationTime = TimeSpan.FromSeconds(3);
+    private static readonly TimeSpan MinimumNotificationTime = TimeSpan.FromSeconds(5);
     private static readonly TimeSpan MaximumNotificationTime = TimeSpan.FromSeconds(30);
 
     public bool Started { get; private set; }

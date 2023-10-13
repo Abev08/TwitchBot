@@ -10,7 +10,7 @@ namespace AbevBot
     public enum Keys
     {
       ChannelName, ChannelID,
-      ConsoleVisible, PeriodicMessageTimeInterval,
+      ConsoleVisible, PeriodicMessageTimeInterval, StartVideoEnabled,
       AlwaysReadTTSFromThem, OverpoweredInFight,
 
       Follow_Enable, Follow_ChatMessage, Follow_TextToDisplay, Follow_TextPosition, Follow_TextToSpeech, Follow_SoundToPlay, Follow_VideoToPlay,
@@ -45,6 +45,7 @@ namespace AbevBot
       }
     }
     public static bool ConsoleVisible { get; private set; }
+    public static bool StartVideoEnabled { get; private set; } = true;
     public static bool VolumeValuesDirty { get; set; }
     public static float VolumeTTS { get; set; }
     public static float VolumeSounds { get; set; }
@@ -80,362 +81,367 @@ namespace AbevBot
       }
       else
       {
-        using (StreamReader reader = new(configFile.FullName))
+        string line;
+        int lineIndex = 0, indexOf;
+        bool result;
+        object position;
+        string[] text = new string[2];
+        string temp;
+        int temp2;
+        ChannelRedemption redemption = null;
+        string[] keys;
+
+        // FileShare.ReadWrite needs to be used because it have to allow other processes to write into the file
+        using FileStream fileStream = new(configFile.FullName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+        using StreamReader reader = new(fileStream);
+        while ((line = reader.ReadLine()) != null)
         {
-          string line;
-          int lineIndex = 0, indexOf;
-          bool result;
-          object position;
-          string[] text = new string[2];
-          string temp;
-          int temp2;
-          ChannelRedemption redemption = null;
-          string[] keys;
-          while ((line = reader.ReadLine()) != null)
+          lineIndex++;
+          // Skip commented out lines
+          if (line.StartsWith("//") || line.StartsWith(';') || line.StartsWith('#') || string.IsNullOrWhiteSpace(line)) continue;
+
+          indexOf = line.IndexOf('=');
+          if (indexOf > 0)
           {
-            lineIndex++;
-            // Skip commented out lines
-            if (line.StartsWith("//") || line.StartsWith(';') || line.StartsWith('#') || string.IsNullOrWhiteSpace(line)) continue;
-
-            indexOf = line.IndexOf('=');
-            if (indexOf > 0)
-            {
-              text[0] = line[..indexOf].Trim();
-              text[1] = line[(indexOf + 1)..].Trim();
-              indexOf = text[1].IndexOf(';');
-              if (indexOf >= 0) text[1] = text[1][..indexOf].Trim();
-            }
-            object key;
-            if (Enum.TryParse(typeof(Keys), text[0], out key))
-            {
-              switch ((Keys)key)
-              {
-                case Keys.ChannelName:
-                  Data[(Keys)key] = text[1].Trim().ToLower();
-                  break;
-
-                case Keys.ConsoleVisible:
-                  if (bool.TryParse(text[1], out result)) ConsoleVisible = result;
-                  break;
-
-                case Keys.PeriodicMessageTimeInterval:
-                  if (TimeSpan.TryParse(text[1], out TimeSpan timeSpan))
-                  {
-                    if (timeSpan.TotalSeconds > 0) Chat.PeriodicMessageInterval = timeSpan;
-                  }
-                  break;
-
-                case Keys.Follow_Enable:
-                  if (bool.TryParse(text[1], out result)) Notifications.ConfigFollow.Enable = result;
-                  break;
-                case Keys.Follow_ChatMessage:
-                  Notifications.ConfigFollow.ChatMessage = text[1].Trim();
-                  break;
-                case Keys.Follow_TextToDisplay:
-                  Notifications.ConfigFollow.TextToDisplay = text[1].Trim();
-                  break;
-                case Keys.Follow_TextPosition:
-                  if (Enum.TryParse(typeof(Notifications.TextPosition), text[1].Trim(), out position)) Notifications.ConfigFollow.TextPosition = (Notifications.TextPosition)position;
-                  break;
-                case Keys.Follow_TextToSpeech:
-                  Notifications.ConfigFollow.TextToSpeech = text[1].Trim();
-                  break;
-                case Keys.Follow_SoundToPlay:
-                  if (text[1].Length > 0) Notifications.ConfigFollow.SoundToPlay = $"Resources\\{text[1].Trim()}";
-                  break;
-                case Keys.Follow_VideoToPlay:
-                  if (text[1].Length > 0) Notifications.ConfigFollow.VideoToPlay = $"Resources\\{text[1].Trim()}";
-                  break;
-
-                case Keys.Subscription_Enable:
-                  if (bool.TryParse(text[1], out result)) Notifications.ConfigSubscription.Enable = result;
-                  break;
-                case Keys.Subscription_ChatMessage:
-                  Notifications.ConfigSubscription.ChatMessage = text[1].Trim();
-                  break;
-                case Keys.Subscription_TextToDisplay:
-                  Notifications.ConfigSubscription.TextToDisplay = text[1].Trim();
-                  break;
-                case Keys.Subscription_TextPosition:
-                  if (Enum.TryParse(typeof(Notifications.TextPosition), text[1].Trim(), out position)) Notifications.ConfigSubscription.TextPosition = (Notifications.TextPosition)position;
-                  break;
-                case Keys.Subscription_TextToSpeech:
-                  Notifications.ConfigSubscription.TextToSpeech = text[1].Trim();
-                  break;
-                case Keys.Subscription_SoundToPlay:
-                  if (text[1].Length > 0) Notifications.ConfigSubscription.SoundToPlay = $"Resources\\{text[1].Trim()}";
-                  break;
-                case Keys.Subscription_VideoToPlay:
-                  if (text[1].Length > 0) Notifications.ConfigSubscription.VideoToPlay = $"Resources\\{text[1].Trim()}";
-                  break;
-
-                case Keys.SubscriptionExt_Enable:
-                  if (bool.TryParse(text[1], out result)) Notifications.ConfigSubscriptionExt.Enable = result;
-                  break;
-                case Keys.SubscriptionExt_ChatMessage:
-                  Notifications.ConfigSubscriptionExt.ChatMessage = text[1].Trim();
-                  break;
-                case Keys.SubscriptionExt_TextToDisplay:
-                  Notifications.ConfigSubscriptionExt.TextToDisplay = text[1].Trim();
-                  break;
-                case Keys.SubscriptionExt_TextPosition:
-                  if (Enum.TryParse(typeof(Notifications.TextPosition), text[1].Trim(), out position)) Notifications.ConfigSubscriptionExt.TextPosition = (Notifications.TextPosition)position;
-                  break;
-                case Keys.SubscriptionExt_TextToSpeech:
-                  Notifications.ConfigSubscriptionExt.TextToSpeech = text[1].Trim();
-                  break;
-                case Keys.SubscriptionExt_SoundToPlay:
-                  if (text[1].Length > 0) Notifications.ConfigSubscriptionExt.SoundToPlay = $"Resources\\{text[1].Trim()}";
-                  break;
-                case Keys.SubscriptionExt_VideoToPlay:
-                  if (text[1].Length > 0) Notifications.ConfigSubscriptionExt.VideoToPlay = $"Resources\\{text[1].Trim()}";
-                  break;
-
-                case Keys.SubscriptionGift_Enable:
-                  if (bool.TryParse(text[1], out result)) Notifications.ConfigSubscriptionGift.Enable = result;
-                  break;
-                case Keys.SubscriptionGift_ChatMessage:
-                  Notifications.ConfigSubscriptionGift.ChatMessage = text[1].Trim();
-                  break;
-                case Keys.SubscriptionGift_TextToDisplay:
-                  Notifications.ConfigSubscriptionGift.TextToDisplay = text[1].Trim();
-                  break;
-                case Keys.SubscriptionGift_TextPosition:
-                  if (Enum.TryParse(typeof(Notifications.TextPosition), text[1].Trim(), out position)) Notifications.ConfigSubscriptionGift.TextPosition = (Notifications.TextPosition)position;
-                  break;
-                case Keys.SubscriptionGift_TextToSpeech:
-                  Notifications.ConfigSubscriptionGift.TextToSpeech = text[1].Trim();
-                  break;
-                case Keys.SubscriptionGift_SoundToPlay:
-                  if (text[1].Length > 0) Notifications.ConfigSubscriptionGift.SoundToPlay = $"Resources\\{text[1].Trim()}";
-                  break;
-                case Keys.SubscriptionGift_VideoToPlay:
-                  if (text[1].Length > 0) Notifications.ConfigSubscriptionGift.VideoToPlay = $"Resources\\{text[1].Trim()}";
-                  break;
-
-                case Keys.SubscriptionGiftReceived_Enable:
-                  if (bool.TryParse(text[1], out result)) Notifications.ConfigSubscriptionGiftReceived.Enable = result;
-                  break;
-                case Keys.SubscriptionGiftReceived_ChatMessage:
-                  Notifications.ConfigSubscriptionGiftReceived.ChatMessage = text[1].Trim();
-                  break;
-                case Keys.SubscriptionGiftReceived_TextToDisplay:
-                  Notifications.ConfigSubscriptionGiftReceived.TextToDisplay = text[1].Trim();
-                  break;
-                case Keys.SubscriptionGiftReceived_TextPosition:
-                  if (Enum.TryParse(typeof(Notifications.TextPosition), text[1].Trim(), out position)) Notifications.ConfigSubscriptionGiftReceived.TextPosition = (Notifications.TextPosition)position;
-                  break;
-                case Keys.SubscriptionGiftReceived_TextToSpeech:
-                  Notifications.ConfigSubscriptionGiftReceived.TextToSpeech = text[1].Trim();
-                  break;
-                case Keys.SubscriptionGiftReceived_SoundToPlay:
-                  if (text[1].Length > 0) Notifications.ConfigSubscriptionGiftReceived.SoundToPlay = $"Resources\\{text[1].Trim()}";
-                  break;
-                case Keys.SubscriptionGiftReceived_VideoToPlay:
-                  if (text[1].Length > 0) Notifications.ConfigSubscriptionGiftReceived.VideoToPlay = $"Resources\\{text[1].Trim()}";
-                  break;
-
-                case Keys.Cheer_Enable:
-                  if (bool.TryParse(text[1], out result)) Notifications.ConfigCheer.Enable = result;
-                  break;
-                case Keys.Cheer_ChatMessage:
-                  Notifications.ConfigCheer.ChatMessage = text[1].Trim();
-                  break;
-                case Keys.Cheer_TextToDisplay:
-                  Notifications.ConfigCheer.TextToDisplay = text[1].Trim();
-                  break;
-                case Keys.Cheer_TextPosition:
-                  if (Enum.TryParse(typeof(Notifications.TextPosition), text[1].Trim(), out position)) Notifications.ConfigCheer.TextPosition = (Notifications.TextPosition)position;
-                  break;
-                case Keys.Cheer_TextToSpeech:
-                  Notifications.ConfigCheer.TextToSpeech = text[1].Trim();
-                  break;
-                case Keys.Cheer_SoundToPlay:
-                  if (text[1].Length > 0) Notifications.ConfigCheer.SoundToPlay = $"Resources\\{text[1].Trim()}";
-                  break;
-                case Keys.Cheer_VideoToPlay:
-                  if (text[1].Length > 0) Notifications.ConfigCheer.VideoToPlay = $"Resources\\{text[1].Trim()}";
-                  break;
-
-                case Keys.Raid_Enable:
-                  if (bool.TryParse(text[1], out result)) Notifications.ConfigRaid.Enable = result;
-                  break;
-                case Keys.Raid_ChatMessage:
-                  Notifications.ConfigRaid.ChatMessage = text[1].Trim();
-                  break;
-                case Keys.Raid_TextToDisplay:
-                  Notifications.ConfigRaid.TextToDisplay = text[1].Trim();
-                  break;
-                case Keys.Raid_TextPosition:
-                  if (Enum.TryParse(typeof(Notifications.TextPosition), text[1].Trim(), out position)) Notifications.ConfigRaid.TextPosition = (Notifications.TextPosition)position;
-                  break;
-                case Keys.Raid_TextToSpeech:
-                  Notifications.ConfigRaid.TextToSpeech = text[1].Trim();
-                  break;
-                case Keys.Raid_SoundToPlay:
-                  if (text[1].Length > 0) Notifications.ConfigRaid.SoundToPlay = $"Resources\\{text[1].Trim()}";
-                  break;
-                case Keys.Raid_VideoToPlay:
-                  if (text[1].Length > 0) Notifications.ConfigRaid.VideoToPlay = $"Resources\\{text[1].Trim()}";
-                  break;
-                case Keys.Raid_MinimumRaiders:
-                  if (int.TryParse(text[1], out temp2) && temp2 > 0) Notifications.ConfigRaid.MinimumRaiders = temp2;
-                  break;
-                case Keys.Raid_DoShoutout:
-                  if (bool.TryParse(text[1], out result)) Notifications.ConfigRaid.DoShoutout = result;
-                  break;
-
-                case Keys.ChannelRedemption_ID:
-                  if (text[1].Length > 0)
-                  {
-                    temp = text[1].Trim();
-                    redemption = null;
-                    for (int i = 0; i < Notifications.ChannelRedemptions.Count; i++)
-                    {
-                      if (Notifications.ChannelRedemptions[i].ID.Equals(temp))
-                      {
-                        redemption = Notifications.ChannelRedemptions[i];
-                        break;
-                      }
-                    }
-                    if (redemption is null)
-                    {
-                      redemption = new() { ID = temp };
-                      Notifications.ChannelRedemptions.Add(redemption);
-                    }
-                  }
-                  break;
-                case Keys.ChannelRedemption_KeyAction:
-                  if (text[1].Length == 0) continue;
-                  if (redemption is null)
-                  {
-                    MainWindow.ConsoleWarning($">> Bad config line {lineIndex}. Missing previous ID filed declaration!");
-                    continue;
-                  }
-                  keys = text[1].Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
-                  foreach (string k in keys)
-                  {
-                    if (Enum.TryParse(typeof(Key), k, out position)) redemption.KeysToPress.Add((Key)position);
-                    else MainWindow.ConsoleWarning($">> Keycode: {k} not recognized in line {lineIndex} in Config.ini file.");
-                  }
-                  break;
-                case Keys.ChannelRedemption_KeyActionType:
-                  if (text[1].Length == 0) continue;
-                  if (redemption is null)
-                  {
-                    MainWindow.ConsoleWarning($">> Bad config line {lineIndex}. Missing previous ID filed declaration!");
-                    continue;
-                  }
-                  if (Enum.TryParse(typeof(KeyActionType), text[1].Trim(), out position)) redemption.KeysToPressType = (KeyActionType)position;
-                  break;
-                case Keys.ChannelRedemption_KeyActionAfterTime:
-                  if (text[1].Length == 0) continue;
-                  if (redemption is null)
-                  {
-                    MainWindow.ConsoleWarning($">> Bad config line {lineIndex}. Missing previous ID filed declaration!");
-                    continue;
-                  }
-                  keys = text[1].Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
-                  if (int.TryParse(keys[0], out temp2)) redemption.TimeToPressSecondAction = temp2;
-                  else MainWindow.ConsoleWarning($">> Action time {keys[0]} not recognized in line {lineIndex} in Config.ini file.");
-                  keys[0] = string.Empty;
-                  foreach (string k in keys)
-                  {
-                    if (k?.Length == 0) continue;
-                    if (Enum.TryParse(typeof(Key), k, out position)) redemption.KeysToPressAfterTime.Add((Key)position);
-                    else MainWindow.ConsoleWarning($">> Keycode: {k} not recognized in line {lineIndex} in Config.ini file.");
-                  }
-                  break;
-                case Keys.ChannelRedemption_KeyActionAfterTimeType:
-                  if (text[1].Length == 0) continue;
-                  if (redemption is null)
-                  {
-                    MainWindow.ConsoleWarning($">> Bad config line {lineIndex}. Missing previous ID filed declaration!");
-                    continue;
-                  }
-                  if (Enum.TryParse(typeof(KeyActionType), text[1].Trim(), out position)) redemption.KeysToPressAfterTimeType = (KeyActionType)position;
-                  break;
-                case Keys.ChannelRedemption_ChatMessage:
-                  if (text[1].Length == 0) continue;
-                  if (redemption is null)
-                  {
-                    MainWindow.ConsoleWarning($">> Bad config line {lineIndex}. Missing previous ID filed declaration!");
-                    continue;
-                  }
-                  redemption.Config.ChatMessage = text[1].Trim();
-                  break;
-                case Keys.ChannelRedemption_TextToDisplay:
-                  if (text[1].Length == 0) continue;
-                  if (redemption is null)
-                  {
-                    MainWindow.ConsoleWarning($">> Bad config line {lineIndex}. Missing previous ID filed declaration!");
-                    continue;
-                  }
-                  redemption.Config.TextToDisplay = text[1].Trim();
-                  break;
-                case Keys.ChannelRedemption_TextPosition:
-                  if (text[1].Length == 0) continue;
-                  if (redemption is null)
-                  {
-                    MainWindow.ConsoleWarning($">> Bad config line {lineIndex}. Missing previous ID filed declaration!");
-                    continue;
-                  }
-                  if (Enum.TryParse(typeof(Notifications.TextPosition), text[1].Trim(), out position)) redemption.Config.TextPosition = (Notifications.TextPosition)position;
-                  break;
-                case Keys.ChannelRedemption_TextToSpeech:
-                  if (text[1].Length == 0) continue;
-                  if (redemption is null)
-                  {
-                    MainWindow.ConsoleWarning($">> Bad config line {lineIndex}. Missing previous ID filed declaration!");
-                    continue;
-                  }
-                  redemption.Config.TextToSpeech = text[1].Trim();
-                  break;
-                case Keys.ChannelRedemption_SoundToPlay:
-                  if (text[1].Length == 0) continue;
-                  if (redemption is null)
-                  {
-                    MainWindow.ConsoleWarning($">> Bad config line {lineIndex}. Missing previous ID filed declaration!");
-                    continue;
-                  }
-                  if (text[1].Length > 0) redemption.Config.SoundToPlay = $"Resources\\{text[1].Trim()}";
-                  break;
-                case Keys.ChannelRedemption_VideoToPlay:
-                  if (text[1].Length == 0) continue;
-                  if (redemption is null)
-                  {
-                    MainWindow.ConsoleWarning($">> Bad config line {lineIndex}. Missing previous ID filed declaration!");
-                    continue;
-                  }
-                  if (text[1].Length > 0) redemption.Config.VideoToPlay = $"Resources\\{text[1].Trim()}";
-                  break;
-
-                case Keys.msg:
-                  // If there are '=' symbols in the message the previous splitting would brake it
-                  string msg = line.Substring(line.IndexOf('=') + 1).Trim();
-                  if (msg.Length > 0) Chat.PeriodicMessages.Add(msg);
-                  break;
-
-                case Keys.ChannelPoints_RandomVideo:
-                  Data[(Keys)key] = text[1].Trim();
-                  break;
-
-                case Keys.AlwaysReadTTSFromThem:
-                  Chatter.AlwaysReadTTSFromThem.AddRange(text[1].Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
-                  break;
-
-                case Keys.OverpoweredInFight:
-                  Chatter.OverpoweredInFight.AddRange(text[1].Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
-                  break;
-
-                default:
-                  if (Data.ContainsKey((Keys)key)) { Data[(Keys)key] = text[1].Trim(); }
-                  else MainWindow.ConsoleWarning($">> Not recognized key '{text[0]}' on line {lineIndex} in Config.ini file.");
-                  break;
-              }
-            }
-            else { MainWindow.ConsoleWarning($">> Not recognized key '{text[0]}' on line {lineIndex} in Config.ini file."); }
+            text[0] = line[..indexOf].Trim();
+            text[1] = line[(indexOf + 1)..].Trim();
+            indexOf = text[1].IndexOf(';');
+            if (indexOf >= 0) text[1] = text[1][..indexOf].Trim();
           }
+          object key;
+          if (Enum.TryParse(typeof(Keys), text[0], out key))
+          {
+            switch ((Keys)key)
+            {
+              case Keys.ChannelName:
+                Data[(Keys)key] = text[1].Trim().ToLower();
+                break;
+
+              case Keys.ConsoleVisible:
+                if (bool.TryParse(text[1], out result)) ConsoleVisible = result;
+                break;
+
+              case Keys.PeriodicMessageTimeInterval:
+                if (TimeSpan.TryParse(text[1], out TimeSpan timeSpan))
+                {
+                  if (timeSpan.TotalSeconds > 0) Chat.PeriodicMessageInterval = timeSpan;
+                }
+                break;
+
+              case Keys.StartVideoEnabled:
+                if (bool.TryParse(text[1], out result)) StartVideoEnabled = result;
+                break;
+
+              case Keys.Follow_Enable:
+                if (bool.TryParse(text[1], out result)) Notifications.ConfigFollow.Enable = result;
+                break;
+              case Keys.Follow_ChatMessage:
+                Notifications.ConfigFollow.ChatMessage = text[1].Trim();
+                break;
+              case Keys.Follow_TextToDisplay:
+                Notifications.ConfigFollow.TextToDisplay = text[1].Trim();
+                break;
+              case Keys.Follow_TextPosition:
+                if (Enum.TryParse(typeof(Notifications.TextPosition), text[1].Trim(), out position)) Notifications.ConfigFollow.TextPosition = (Notifications.TextPosition)position;
+                break;
+              case Keys.Follow_TextToSpeech:
+                Notifications.ConfigFollow.TextToSpeech = text[1].Trim();
+                break;
+              case Keys.Follow_SoundToPlay:
+                if (text[1].Length > 0) Notifications.ConfigFollow.SoundToPlay = $"Resources\\{text[1].Trim()}";
+                break;
+              case Keys.Follow_VideoToPlay:
+                if (text[1].Length > 0) Notifications.ConfigFollow.VideoToPlay = $"Resources\\{text[1].Trim()}";
+                break;
+
+              case Keys.Subscription_Enable:
+                if (bool.TryParse(text[1], out result)) Notifications.ConfigSubscription.Enable = result;
+                break;
+              case Keys.Subscription_ChatMessage:
+                Notifications.ConfigSubscription.ChatMessage = text[1].Trim();
+                break;
+              case Keys.Subscription_TextToDisplay:
+                Notifications.ConfigSubscription.TextToDisplay = text[1].Trim();
+                break;
+              case Keys.Subscription_TextPosition:
+                if (Enum.TryParse(typeof(Notifications.TextPosition), text[1].Trim(), out position)) Notifications.ConfigSubscription.TextPosition = (Notifications.TextPosition)position;
+                break;
+              case Keys.Subscription_TextToSpeech:
+                Notifications.ConfigSubscription.TextToSpeech = text[1].Trim();
+                break;
+              case Keys.Subscription_SoundToPlay:
+                if (text[1].Length > 0) Notifications.ConfigSubscription.SoundToPlay = $"Resources\\{text[1].Trim()}";
+                break;
+              case Keys.Subscription_VideoToPlay:
+                if (text[1].Length > 0) Notifications.ConfigSubscription.VideoToPlay = $"Resources\\{text[1].Trim()}";
+                break;
+
+              case Keys.SubscriptionExt_Enable:
+                if (bool.TryParse(text[1], out result)) Notifications.ConfigSubscriptionExt.Enable = result;
+                break;
+              case Keys.SubscriptionExt_ChatMessage:
+                Notifications.ConfigSubscriptionExt.ChatMessage = text[1].Trim();
+                break;
+              case Keys.SubscriptionExt_TextToDisplay:
+                Notifications.ConfigSubscriptionExt.TextToDisplay = text[1].Trim();
+                break;
+              case Keys.SubscriptionExt_TextPosition:
+                if (Enum.TryParse(typeof(Notifications.TextPosition), text[1].Trim(), out position)) Notifications.ConfigSubscriptionExt.TextPosition = (Notifications.TextPosition)position;
+                break;
+              case Keys.SubscriptionExt_TextToSpeech:
+                Notifications.ConfigSubscriptionExt.TextToSpeech = text[1].Trim();
+                break;
+              case Keys.SubscriptionExt_SoundToPlay:
+                if (text[1].Length > 0) Notifications.ConfigSubscriptionExt.SoundToPlay = $"Resources\\{text[1].Trim()}";
+                break;
+              case Keys.SubscriptionExt_VideoToPlay:
+                if (text[1].Length > 0) Notifications.ConfigSubscriptionExt.VideoToPlay = $"Resources\\{text[1].Trim()}";
+                break;
+
+              case Keys.SubscriptionGift_Enable:
+                if (bool.TryParse(text[1], out result)) Notifications.ConfigSubscriptionGift.Enable = result;
+                break;
+              case Keys.SubscriptionGift_ChatMessage:
+                Notifications.ConfigSubscriptionGift.ChatMessage = text[1].Trim();
+                break;
+              case Keys.SubscriptionGift_TextToDisplay:
+                Notifications.ConfigSubscriptionGift.TextToDisplay = text[1].Trim();
+                break;
+              case Keys.SubscriptionGift_TextPosition:
+                if (Enum.TryParse(typeof(Notifications.TextPosition), text[1].Trim(), out position)) Notifications.ConfigSubscriptionGift.TextPosition = (Notifications.TextPosition)position;
+                break;
+              case Keys.SubscriptionGift_TextToSpeech:
+                Notifications.ConfigSubscriptionGift.TextToSpeech = text[1].Trim();
+                break;
+              case Keys.SubscriptionGift_SoundToPlay:
+                if (text[1].Length > 0) Notifications.ConfigSubscriptionGift.SoundToPlay = $"Resources\\{text[1].Trim()}";
+                break;
+              case Keys.SubscriptionGift_VideoToPlay:
+                if (text[1].Length > 0) Notifications.ConfigSubscriptionGift.VideoToPlay = $"Resources\\{text[1].Trim()}";
+                break;
+
+              case Keys.SubscriptionGiftReceived_Enable:
+                if (bool.TryParse(text[1], out result)) Notifications.ConfigSubscriptionGiftReceived.Enable = result;
+                break;
+              case Keys.SubscriptionGiftReceived_ChatMessage:
+                Notifications.ConfigSubscriptionGiftReceived.ChatMessage = text[1].Trim();
+                break;
+              case Keys.SubscriptionGiftReceived_TextToDisplay:
+                Notifications.ConfigSubscriptionGiftReceived.TextToDisplay = text[1].Trim();
+                break;
+              case Keys.SubscriptionGiftReceived_TextPosition:
+                if (Enum.TryParse(typeof(Notifications.TextPosition), text[1].Trim(), out position)) Notifications.ConfigSubscriptionGiftReceived.TextPosition = (Notifications.TextPosition)position;
+                break;
+              case Keys.SubscriptionGiftReceived_TextToSpeech:
+                Notifications.ConfigSubscriptionGiftReceived.TextToSpeech = text[1].Trim();
+                break;
+              case Keys.SubscriptionGiftReceived_SoundToPlay:
+                if (text[1].Length > 0) Notifications.ConfigSubscriptionGiftReceived.SoundToPlay = $"Resources\\{text[1].Trim()}";
+                break;
+              case Keys.SubscriptionGiftReceived_VideoToPlay:
+                if (text[1].Length > 0) Notifications.ConfigSubscriptionGiftReceived.VideoToPlay = $"Resources\\{text[1].Trim()}";
+                break;
+
+              case Keys.Cheer_Enable:
+                if (bool.TryParse(text[1], out result)) Notifications.ConfigCheer.Enable = result;
+                break;
+              case Keys.Cheer_ChatMessage:
+                Notifications.ConfigCheer.ChatMessage = text[1].Trim();
+                break;
+              case Keys.Cheer_TextToDisplay:
+                Notifications.ConfigCheer.TextToDisplay = text[1].Trim();
+                break;
+              case Keys.Cheer_TextPosition:
+                if (Enum.TryParse(typeof(Notifications.TextPosition), text[1].Trim(), out position)) Notifications.ConfigCheer.TextPosition = (Notifications.TextPosition)position;
+                break;
+              case Keys.Cheer_TextToSpeech:
+                Notifications.ConfigCheer.TextToSpeech = text[1].Trim();
+                break;
+              case Keys.Cheer_SoundToPlay:
+                if (text[1].Length > 0) Notifications.ConfigCheer.SoundToPlay = $"Resources\\{text[1].Trim()}";
+                break;
+              case Keys.Cheer_VideoToPlay:
+                if (text[1].Length > 0) Notifications.ConfigCheer.VideoToPlay = $"Resources\\{text[1].Trim()}";
+                break;
+
+              case Keys.Raid_Enable:
+                if (bool.TryParse(text[1], out result)) Notifications.ConfigRaid.Enable = result;
+                break;
+              case Keys.Raid_ChatMessage:
+                Notifications.ConfigRaid.ChatMessage = text[1].Trim();
+                break;
+              case Keys.Raid_TextToDisplay:
+                Notifications.ConfigRaid.TextToDisplay = text[1].Trim();
+                break;
+              case Keys.Raid_TextPosition:
+                if (Enum.TryParse(typeof(Notifications.TextPosition), text[1].Trim(), out position)) Notifications.ConfigRaid.TextPosition = (Notifications.TextPosition)position;
+                break;
+              case Keys.Raid_TextToSpeech:
+                Notifications.ConfigRaid.TextToSpeech = text[1].Trim();
+                break;
+              case Keys.Raid_SoundToPlay:
+                if (text[1].Length > 0) Notifications.ConfigRaid.SoundToPlay = $"Resources\\{text[1].Trim()}";
+                break;
+              case Keys.Raid_VideoToPlay:
+                if (text[1].Length > 0) Notifications.ConfigRaid.VideoToPlay = $"Resources\\{text[1].Trim()}";
+                break;
+              case Keys.Raid_MinimumRaiders:
+                if (int.TryParse(text[1], out temp2) && temp2 > 0) Notifications.ConfigRaid.MinimumRaiders = temp2;
+                break;
+              case Keys.Raid_DoShoutout:
+                if (bool.TryParse(text[1], out result)) Notifications.ConfigRaid.DoShoutout = result;
+                break;
+
+              case Keys.ChannelRedemption_ID:
+                if (text[1].Length > 0)
+                {
+                  temp = text[1].Trim();
+                  redemption = null;
+                  for (int i = 0; i < Notifications.ChannelRedemptions.Count; i++)
+                  {
+                    if (Notifications.ChannelRedemptions[i].ID.Equals(temp))
+                    {
+                      redemption = Notifications.ChannelRedemptions[i];
+                      break;
+                    }
+                  }
+                  if (redemption is null)
+                  {
+                    redemption = new() { ID = temp };
+                    Notifications.ChannelRedemptions.Add(redemption);
+                  }
+                }
+                break;
+              case Keys.ChannelRedemption_KeyAction:
+                if (text[1].Length == 0) continue;
+                if (redemption is null)
+                {
+                  MainWindow.ConsoleWarning($">> Bad config line {lineIndex}. Missing previous ID filed declaration!");
+                  continue;
+                }
+                keys = text[1].Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+                foreach (string k in keys)
+                {
+                  if (Enum.TryParse(typeof(Key), k, out position)) redemption.KeysToPress.Add((Key)position);
+                  else MainWindow.ConsoleWarning($">> Keycode: {k} not recognized in line {lineIndex} in Config.ini file.");
+                }
+                break;
+              case Keys.ChannelRedemption_KeyActionType:
+                if (text[1].Length == 0) continue;
+                if (redemption is null)
+                {
+                  MainWindow.ConsoleWarning($">> Bad config line {lineIndex}. Missing previous ID filed declaration!");
+                  continue;
+                }
+                if (Enum.TryParse(typeof(KeyActionType), text[1].Trim(), out position)) redemption.KeysToPressType = (KeyActionType)position;
+                break;
+              case Keys.ChannelRedemption_KeyActionAfterTime:
+                if (text[1].Length == 0) continue;
+                if (redemption is null)
+                {
+                  MainWindow.ConsoleWarning($">> Bad config line {lineIndex}. Missing previous ID filed declaration!");
+                  continue;
+                }
+                keys = text[1].Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+                if (int.TryParse(keys[0], out temp2)) redemption.TimeToPressSecondAction = temp2;
+                else MainWindow.ConsoleWarning($">> Action time {keys[0]} not recognized in line {lineIndex} in Config.ini file.");
+                keys[0] = string.Empty;
+                foreach (string k in keys)
+                {
+                  if (k?.Length == 0) continue;
+                  if (Enum.TryParse(typeof(Key), k, out position)) redemption.KeysToPressAfterTime.Add((Key)position);
+                  else MainWindow.ConsoleWarning($">> Keycode: {k} not recognized in line {lineIndex} in Config.ini file.");
+                }
+                break;
+              case Keys.ChannelRedemption_KeyActionAfterTimeType:
+                if (text[1].Length == 0) continue;
+                if (redemption is null)
+                {
+                  MainWindow.ConsoleWarning($">> Bad config line {lineIndex}. Missing previous ID filed declaration!");
+                  continue;
+                }
+                if (Enum.TryParse(typeof(KeyActionType), text[1].Trim(), out position)) redemption.KeysToPressAfterTimeType = (KeyActionType)position;
+                break;
+              case Keys.ChannelRedemption_ChatMessage:
+                if (text[1].Length == 0) continue;
+                if (redemption is null)
+                {
+                  MainWindow.ConsoleWarning($">> Bad config line {lineIndex}. Missing previous ID filed declaration!");
+                  continue;
+                }
+                redemption.Config.ChatMessage = text[1].Trim();
+                break;
+              case Keys.ChannelRedemption_TextToDisplay:
+                if (text[1].Length == 0) continue;
+                if (redemption is null)
+                {
+                  MainWindow.ConsoleWarning($">> Bad config line {lineIndex}. Missing previous ID filed declaration!");
+                  continue;
+                }
+                redemption.Config.TextToDisplay = text[1].Trim();
+                break;
+              case Keys.ChannelRedemption_TextPosition:
+                if (text[1].Length == 0) continue;
+                if (redemption is null)
+                {
+                  MainWindow.ConsoleWarning($">> Bad config line {lineIndex}. Missing previous ID filed declaration!");
+                  continue;
+                }
+                if (Enum.TryParse(typeof(Notifications.TextPosition), text[1].Trim(), out position)) redemption.Config.TextPosition = (Notifications.TextPosition)position;
+                break;
+              case Keys.ChannelRedemption_TextToSpeech:
+                if (text[1].Length == 0) continue;
+                if (redemption is null)
+                {
+                  MainWindow.ConsoleWarning($">> Bad config line {lineIndex}. Missing previous ID filed declaration!");
+                  continue;
+                }
+                redemption.Config.TextToSpeech = text[1].Trim();
+                break;
+              case Keys.ChannelRedemption_SoundToPlay:
+                if (text[1].Length == 0) continue;
+                if (redemption is null)
+                {
+                  MainWindow.ConsoleWarning($">> Bad config line {lineIndex}. Missing previous ID filed declaration!");
+                  continue;
+                }
+                if (text[1].Length > 0) redemption.Config.SoundToPlay = $"Resources\\{text[1].Trim()}";
+                break;
+              case Keys.ChannelRedemption_VideoToPlay:
+                if (text[1].Length == 0) continue;
+                if (redemption is null)
+                {
+                  MainWindow.ConsoleWarning($">> Bad config line {lineIndex}. Missing previous ID filed declaration!");
+                  continue;
+                }
+                if (text[1].Length > 0) redemption.Config.VideoToPlay = $"Resources\\{text[1].Trim()}";
+                break;
+
+              case Keys.msg:
+                // If there are '=' symbols in the message the previous splitting would brake it
+                string msg = line.Substring(line.IndexOf('=') + 1).Trim();
+                if (msg.Length > 0) Chat.PeriodicMessages.Add(msg);
+                break;
+
+              case Keys.ChannelPoints_RandomVideo:
+                Data[(Keys)key] = text[1].Trim();
+                break;
+
+              case Keys.AlwaysReadTTSFromThem:
+                Chatter.AlwaysReadTTSFromThem.AddRange(text[1].Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
+                break;
+
+              case Keys.OverpoweredInFight:
+                Chatter.OverpoweredInFight.AddRange(text[1].Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
+                break;
+
+              default:
+                if (Data.ContainsKey((Keys)key)) { Data[(Keys)key] = text[1].Trim(); }
+                else MainWindow.ConsoleWarning($">> Not recognized key '{text[0]}' on line {lineIndex} in Config.ini file.");
+                break;
+            }
+          }
+          else { MainWindow.ConsoleWarning($">> Not recognized key '{text[0]}' on line {lineIndex} in Config.ini file."); }
         }
 
         // Check if all needed data was read
@@ -499,6 +505,8 @@ namespace AbevBot
         writer.WriteLine(string.Concat(Keys.ConsoleVisible.ToString(), " = false"));
         writer.WriteLine("; Periodic messages time interval (HH:MM:SS format -> 1 hour: 1:00:00, 1 minute 0:01:00, 1 second: 0:00:01). Default: empty - 10 minutes");
         writer.WriteLine(string.Concat(Keys.PeriodicMessageTimeInterval.ToString(), " = "));
+        writer.WriteLine("; Starting video when the bot is run. Default: true");
+        writer.WriteLine(string.Concat(Keys.StartVideoEnabled.ToString(), " = true"));
         writer.WriteLine("; Comma separated list of user names from which TTS messages will ALWAYS be read (even when !tts chat is turned off)");
         writer.WriteLine(string.Concat(Keys.AlwaysReadTTSFromThem.ToString(), " = AbevBot, Abev08"));
         writer.WriteLine("; Comma separated list of user names that will be overpowered in !fight minigame");
@@ -518,6 +526,7 @@ namespace AbevBot
         writer.WriteLine("; {3} - subscription streak, for example subscribed for 10 months in a row (only in extended subscription message)");
         writer.WriteLine("; {4} - gifted subscription count, cheered bits count, raiders count");
         writer.WriteLine("; {5} - cumulative subscription months (only in extended subscription message)");
+        writer.WriteLine("; {6} - comma separated list of user names that received gift subscription");
         writer.WriteLine("; {7} - attached message");
         writer.WriteLine("; Using index out of supported range WILL CRASH THE BOT!");
         writer.WriteLine();
@@ -553,7 +562,7 @@ namespace AbevBot
         writer.WriteLine(string.Concat(Keys.SubscriptionGift_ChatMessage.ToString(), " = "));
         writer.WriteLine(string.Concat(Keys.SubscriptionGift_TextToDisplay.ToString(), " = Thank you {0} for {4} subs!\\n{7}"));
         writer.WriteLine(string.Concat(Keys.SubscriptionGift_TextPosition.ToString(), " = BOTTOM"));
-        writer.WriteLine(string.Concat(Keys.SubscriptionGift_TextToSpeech.ToString(), " = Thank you {0} for gifting {4} tier {1} subs! {7}"));
+        writer.WriteLine(string.Concat(Keys.SubscriptionGift_TextToSpeech.ToString(), " = Thank you {0} for gifting {4} tier {1} subs to {6}! {7}"));
         writer.WriteLine(string.Concat(Keys.SubscriptionGift_SoundToPlay.ToString(), " = "));
         writer.WriteLine(string.Concat(Keys.SubscriptionGift_VideoToPlay.ToString(), " = peepoHey.mp4"));
         writer.WriteLine();
@@ -604,11 +613,11 @@ namespace AbevBot
         writer.WriteLine("; The keys needs to be written in according to: https://learn.microsoft.com/en-us/dotnet/api/system.windows.input.key");
         writer.WriteLine("; For example to open task manager the combination would be: LeftCtrl, LeftShift, Escape.");
         writer.WriteLine("; Key action type describes what key action should perform: PRESS (presses the keys at once), TYPE (presses the keys one after another like during the typing). Default: PRESS.");
-        writer.WriteLine(string.Concat(Keys.ChannelRedemption_ID.ToString(), " = "));
-        writer.WriteLine(string.Concat(Keys.ChannelRedemption_KeyAction.ToString(), " = "));
-        writer.WriteLine(string.Concat(Keys.ChannelRedemption_KeyActionType.ToString(), " = "));
-        writer.WriteLine(string.Concat(Keys.ChannelRedemption_KeyActionAfterTime.ToString(), " = "));
-        writer.WriteLine(string.Concat(Keys.ChannelRedemption_KeyActionAfterTimeType.ToString(), " = "));
+        writer.WriteLine(string.Concat(Keys.ChannelRedemption_ID.ToString(), " = 123456789"));
+        writer.WriteLine(string.Concat(Keys.ChannelRedemption_KeyAction.ToString(), " = LeftCtrl, LeftShift, Escape"));
+        writer.WriteLine(string.Concat(Keys.ChannelRedemption_KeyActionType.ToString(), " = PRESS"));
+        writer.WriteLine(string.Concat(Keys.ChannelRedemption_KeyActionAfterTime.ToString(), " = 1000, LeftCtrl, LeftShift, Escape"));
+        writer.WriteLine(string.Concat(Keys.ChannelRedemption_KeyActionAfterTimeType.ToString(), " = PRESS"));
         writer.WriteLine(string.Concat(Keys.ChannelRedemption_ChatMessage.ToString(), " = "));
         writer.WriteLine(string.Concat(Keys.ChannelRedemption_TextToDisplay.ToString(), " = "));
         writer.WriteLine(string.Concat(Keys.ChannelRedemption_TextPosition.ToString(), " = "));

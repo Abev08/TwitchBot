@@ -147,7 +147,7 @@ namespace AbevBot
                 if (payload?.Event?.IsGift == true)
                 {
                   MainWindow.ConsoleWarning($">> {payload?.Event?.UserName} received a gift subscription.");
-                  Notifications.CreateReceiveGiftSubscriptionNotification(payload?.Event?.UserName);
+                  Notifications.CreateReceiveGiftSubscriptionNotification(payload?.Event?.UserName, payload?.Subscription?.CreatedAt);
                 }
                 else
                 {
@@ -164,7 +164,8 @@ namespace AbevBot
                 Notifications.CreateGiftSubscriptionNotification(
                   payload?.Event?.IsAnonymous == true ? null : payload?.Event?.UserName, payload?.Event?.Tier,
                   (int)payload?.Event?.TotalGifted,
-                  payload?.Event?.Message?.Text);
+                  payload?.Event?.Message?.Text,
+                  payload?.Subscription?.CreatedAt);
                 // MainWindow.ConsoleWriteLine(message);
               }
               else if (messageDeserialized?.Metadata?.SubscriptionType?.Equals("channel.subscription.message") == true)

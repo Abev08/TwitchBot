@@ -102,8 +102,16 @@ namespace AbevBot
         }
         catch (Exception ex) { ConsoleWarning($">> {ex.Message}"); }
 
-        VideoPlayer.Source = new Uri(new FileInfo("Resources/peepoHey.mp4").FullName);
-        VideoPlayer.Play();
+        if (Config.StartVideoEnabled)
+        {
+          Notifications.AddNotification(new Notification()
+          {
+            // VideoPath = "Resources/peepoHey.mp4",
+            // VideoVolume = Config.VolumeVideos,
+            VideoPath = "Resources/bot.mp4",
+            VideoVolume = 0.05f,
+          });
+        }
       };
 
       // Don't allow minimizing the window
@@ -274,8 +282,13 @@ namespace AbevBot
 
     private void VideoTest(object sender, RoutedEventArgs e)
     {
-      VideoPlayer.Source = new Uri(new FileInfo("Resources/peepoHey.mp4").FullName);
-      VideoPlayer.Play();
+      Notifications.AddNotification(new Notification()
+      {
+        // VideoPath = "Resources/peepoHey.mp4",
+        // VideoVolume = Config.VolumeVideos,
+        VideoPath = "Resources/bot.mp4",
+        VideoVolume = 0.05f,
+      });
     }
 
     private void TTSTest(object sender, RoutedEventArgs e)
@@ -298,7 +311,7 @@ namespace AbevBot
           break;
 
         case "Subscription Gifted":
-          Notifications.CreateGiftSubscriptionNotification("Chatter", "1", 7, "This is a test");
+          Notifications.CreateGiftSubscriptionNotification("Chatter", "1", 7, "This is a test", null);
           break;
 
         case "Subscription Ext. Msg":

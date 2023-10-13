@@ -213,7 +213,7 @@ namespace AbevBot
 
     private static void GetLadder()
     {
-      SortedList<int, string> ladder = new(GambaLadderComparer);
+      List<(int, string)> ladder = new();
 
       var chatter = Chatter.GetChatters().GetEnumerator();
       Chatter c;
@@ -222,11 +222,21 @@ namespace AbevBot
         c = chatter.Current.Value;
         if (c.Gamba.Wins != 0 || c.Gamba.Looses != 0)
         {
-          ladder.Add(c.Gamba.Points, c.Name);
+          ladder.Add((c.Gamba.Points, c.Name));
         }
       }
 
-      if (ladder.Count == 0) return;
+      if (ladder.Count == 0)
+      {
+        Chat.AddMessageToQueue("GAMBA ladder -> empty... No gamblers in chat peepoHappy");
+        return;
+      }
+
+      ladder.Sort((a, b) =>
+      {
+        if (a.Item1 == b.Item1) return b.Item2.CompareTo(a.Item2);
+        return b.Item1.CompareTo(a.Item1);
+      });
 
       StringBuilder sb = new();
       sb.Append("GAMBA ladder -> ");
@@ -239,7 +249,7 @@ namespace AbevBot
         if (index > MAXLADDERENTRIES) break;
         if (!first) sb.Append(" | ");
 
-        sb.Append(ladderEntry.Current.Value).Append(": ").Append(ladderEntry.Current.Key);
+        sb.Append(ladderEntry.Current.Item2).Append(": ").Append(ladderEntry.Current.Item1);
 
         first = false;
         index++;

@@ -15,7 +15,7 @@ namespace AbevBot
 
     private static void StartAddRudePoint(string userName, string message, int point)
     {
-      string rudeChatter = message.Trim();
+      string rudeChatter = message?.Trim();
       if (rudeChatter.StartsWith('@')) { rudeChatter = rudeChatter[1..]; }
 
       if (string.IsNullOrWhiteSpace(rudeChatter))
@@ -46,7 +46,7 @@ namespace AbevBot
 
     private static void GetRudeLadder()
     {
-      SortedList<int, string> ladder = new(MinigameGamba.GambaLadderComparer);
+      List<(int, string)> ladder = new();
 
       var chatter = Chatter.GetChatters().GetEnumerator();
       Chatter c;
@@ -55,11 +55,21 @@ namespace AbevBot
         c = chatter.Current.Value;
         if (c.RudePoints != 0)
         {
-          ladder.Add(c.RudePoints, c.Name);
+          ladder.Add((c.RudePoints, c.Name));
         }
       }
 
-      if (ladder.Count == 0) return;
+      if (ladder.Count == 0)
+      {
+        Chat.AddMessageToQueue("Rude points ladder -> empty... Nobody has been rude peepoHappy");
+        return;
+      }
+
+      ladder.Sort((a, b) =>
+      {
+        if (a.Item1 == b.Item1) return b.Item2.CompareTo(a.Item2);
+        return b.Item1.CompareTo(a.Item1);
+      });
 
       StringBuilder sb = new();
       sb.Append("Rude points ladder -> ");
@@ -72,7 +82,7 @@ namespace AbevBot
         if (index > MAXLADDERENTRIES) break;
         if (!first) sb.Append(" | ");
 
-        sb.Append(ladderEntry.Current.Value).Append(": ").Append(ladderEntry.Current.Key);
+        sb.Append(ladderEntry.Current.Item2).Append(": ").Append(ladderEntry.Current.Item1);
 
         first = false;
         index++;

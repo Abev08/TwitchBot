@@ -132,6 +132,11 @@ namespace AbevBot
     public static Chatter GetChatterByName(string userName)
     {
       if (Chatters is null || Chatters.Count == 0) LoadChattersFile();
+      if (userName is null || userName.Length == 0)
+      {
+        MainWindow.ConsoleWarning($">> Provided empty user name!");
+        return null;
+      }
 
       string name = userName.Trim().ToLower();
       var chatter = Chatters.GetEnumerator();

@@ -248,7 +248,7 @@ namespace AbevBot
                   }
                   else if (message[1][1..].StartsWith("!point")) // Check if the message starts with !point key
                   {
-                    if (userBadge.Equals("STR")) MinigameBackseat.AddBackseatPoint(message[1][7..], 1); // 7.. - without ":!point"
+                    if (userBadge.Equals("STR") || message[1].Length == 7) MinigameBackseat.AddBackseatPoint(message[1][7..], 1); // 7.. - without ":!point"
                     else AddMessageToQueue($"@{userName} That's for the streamer, you shouldn't be using it Madge");
                   }
                   else if (message[1][1..].StartsWith("!unpoint")) // Check if the message starts with !unpoint key
@@ -611,45 +611,46 @@ namespace AbevBot
 
       // Read the file
       uint responseCount = 0;
-      using (StreamReader reader = new(messagesFile.FullName))
+
+      string line;
+      string[] text = new string[2];
+      int lineIndex = 0, separatorIndex;
+      // FileShare.ReadWrite needs to be used because it have to allow other processes to write into the file
+      using FileStream fileStream = new(messagesFile.FullName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+      using StreamReader reader = new(fileStream);
+      while ((line = reader.ReadLine()) != null)
       {
-        string line;
-        string[] text = new string[2];
-        int lineIndex = 0, separatorIndex;
-        while ((line = reader.ReadLine()) != null)
+        lineIndex++;
+        if (string.IsNullOrWhiteSpace(line)) continue;
+        separatorIndex = line.IndexOf(';');
+        if (separatorIndex < 0)
         {
-          lineIndex++;
-          if (string.IsNullOrWhiteSpace(line)) continue;
-          separatorIndex = line.IndexOf(';');
-          if (separatorIndex < 0)
-          {
-            MainWindow.ConsoleWarning($">> Broken response message in line {lineIndex}.");
-            continue;
-          }
-
-          text[0] = line.Substring(0, separatorIndex).Trim();
-          text[1] = line.Substring(separatorIndex + 1).Trim();
-
-          if (text[0].StartsWith("//")) { continue; } // Commented out line - skip it
-          else if ((text[0] == "key") && (text[1] == "message")) { continue; } // This is the header, skip it
-          else
-          {
-            // Try to add response message
-            if (reload)
-            {
-              if (ResponseMessages.ContainsKey(text[0])) { ResponseMessages[text[0]] = (text[1].Trim(), DateTime.MinValue); }
-              else { ResponseMessages.Add(text[0], (text[1].Trim(), DateTime.MinValue)); }
-            }
-            else if (ResponseMessages.TryAdd(text[0], (text[1].Trim(), new DateTime())))
-            {
-              MainWindow.ConsoleWarning($">> Added respoonse to \"{text[0]}\" key.");
-              responseCount++;
-            }
-            else MainWindow.ConsoleWarning($">> Redefiniton of \"{text[0]}\" key in line {lineIndex}."); // TryAdd returned false - probably a duplicate
-          }
+          MainWindow.ConsoleWarning($">> Broken response message in line {lineIndex}.");
+          continue;
         }
-        if (!reload) MainWindow.ConsoleWarning($">> Loaded {responseCount} automated response messages.");
+
+        text[0] = line.Substring(0, separatorIndex).Trim();
+        text[1] = line.Substring(separatorIndex + 1).Trim();
+
+        if (text[0].StartsWith("//")) { continue; } // Commented out line - skip it
+        else if ((text[0] == "key") && (text[1] == "message")) { continue; } // This is the header, skip it
+        else
+        {
+          // Try to add response message
+          if (reload)
+          {
+            if (ResponseMessages.ContainsKey(text[0])) { ResponseMessages[text[0]] = (text[1].Trim(), DateTime.MinValue); }
+            else { ResponseMessages.Add(text[0], (text[1].Trim(), DateTime.MinValue)); }
+          }
+          else if (ResponseMessages.TryAdd(text[0], (text[1].Trim(), new DateTime())))
+          {
+            MainWindow.ConsoleWarning($">> Added respoonse to \"{text[0]}\" key.");
+            responseCount++;
+          }
+          else MainWindow.ConsoleWarning($">> Redefiniton of \"{text[0]}\" key in line {lineIndex}."); // TryAdd returned false - probably a duplicate
+        }
       }
+      if (!reload) MainWindow.ConsoleWarning($">> Loaded {responseCount} automated response messages.");
 
       RespMsgFileTimestamp = messagesFile.LastWriteTime;
     }

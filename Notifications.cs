@@ -34,6 +34,8 @@ namespace AbevBot
     public static NotificationsConfig ConfigRaid { get; set; } = new();
     private static readonly string[] NotificationData = new string[8];
     public static readonly List<ChannelRedemption> ChannelRedemptions = new();
+    private static readonly List<(DateTime time, string name)> GiftedSubs = new();
+    private static readonly TimeSpan GiftSubMaxTimeout = new(0, 0, 10);
 
     public enum TextPosition { TOP, MIDDLE, BOTTOM }
 
@@ -159,9 +161,31 @@ namespace AbevBot
     }
 
     /// <summary> Creates and adds to queue Received Gifted Subscription notification. </summary>
-    public static void CreateGiftSubscriptionNotification(string userName, string tier, int count, string message)
+    public static void CreateGiftSubscriptionNotification(string userName, string tier, int count, string message, string timeStamp)
     {
       if (!ConfigSubscriptionGift.Enable) return;
+
+      // Check the gift sub list
+      if (DateTime.TryParse(timeStamp, out DateTime time))
+      {
+        for (int i = GiftedSubs.Count - 1; i >= 0; i--)
+        {
+          if (GiftedSubs[i].time - time >= GiftSubMaxTimeout)
+          {
+            GiftedSubs.RemoveAt(i);
+          }
+        }
+      }
+
+      StringBuilder sb = new();
+      if (GiftedSubs.Count > 0)
+      {
+        for (int i = 0; i < GiftedSubs.Count; i++)
+        {
+          sb.Append(GiftedSubs[i].name);
+          if (i != GiftedSubs.Count - 1) sb.Append(", ");
+        }
+      }
 
       string chatter;
       if (string.IsNullOrWhiteSpace(userName)) chatter = "Anonymous";
@@ -171,15 +195,24 @@ namespace AbevBot
       NotificationData[0] = chatter;
       NotificationData[1] = tier[..1];
       NotificationData[4] = count.ToString();
+      NotificationData[6] = sb.ToString();
       NotificationData[7] = message;
 
       Chat.AddMessageToQueue(string.Format(ConfigSubscriptionGift.ChatMessage, NotificationData));
       AddNotification(new Notification(ConfigSubscriptionGift, NotificationData));
+
+      GiftedSubs.Clear();
     }
 
     /// <summary> Creates and adds to queue Gifted Subscription notification. </summary>
-    public static void CreateReceiveGiftSubscriptionNotification(string userName)
+    public static void CreateReceiveGiftSubscriptionNotification(string userName, string timeStamp)
     {
+      // Add gifted sub to the list
+      if (userName?.Length > 0 && DateTime.TryParse(timeStamp, out DateTime time))
+      {
+        GiftedSubs.Add((time, userName));
+      }
+
       if (!ConfigSubscriptionGiftReceived.Enable) return;
 
       string chatter;
