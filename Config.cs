@@ -343,7 +343,7 @@ namespace AbevBot
                   continue;
                 }
                 keys = text[1].Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
-                if (int.TryParse(keys[0], out temp2)) redemption.TimeToPressSecondAction = temp2;
+                if (int.TryParse(keys[0], out temp2)) redemption.TimeToPressSecondAction = TimeSpan.FromMilliseconds(temp2);
                 else MainWindow.ConsoleWarning($">> Action time {keys[0]} not recognized in line {lineIndex} in Config.ini file.");
                 keys[0] = string.Empty;
                 foreach (string k in keys)

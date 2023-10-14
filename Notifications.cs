@@ -252,10 +252,7 @@ namespace AbevBot
       {
 
       }
-      else if (Config.Data[Config.Keys.ChannelPoints_RandomVideo].Equals(id))
-      {
-        CreateRandomVideoNotification();
-      }
+      else if (Config.Data[Config.Keys.ChannelPoints_RandomVideo].Equals(id)) { CreateRandomVideoNotification(); }
       else
       {
         // Look throught channel redemptions list
@@ -265,46 +262,10 @@ namespace AbevBot
           {
             // Create notification
             Array.Clear(NotificationData);
+
             Chat.AddMessageToQueue(redemption.Config.ChatMessage);
-            AddNotification(new Notification(redemption.Config, NotificationData));
-
-            // Press keys
-            if (redemption.KeysToPressType == KeyActionType.PRESS)
-            {
-              if (redemption.KeysToPress.Count > 0)
-              {
-                for (int i = 0; i < redemption.KeysToPress.Count; i++) Simulation.Keyboard.Press(redemption.KeysToPress[i]);
-                for (int i = redemption.KeysToPress.Count - 1; i >= 0; i--) Simulation.Keyboard.Release(redemption.KeysToPress[i]);
-              }
-            }
-            else if (redemption.KeysToPressType == KeyActionType.TYPE)
-            {
-              for (int i = 0; i < redemption.KeysToPress.Count; i++) Simulation.Keyboard.Type(redemption.KeysToPress[i]);
-            }
-
-            if (redemption.KeysToPressAfterTime.Count > 0)
-            {
-              Task.Run(async () =>
-              {
-                await Task.Delay(redemption.TimeToPressSecondAction);
-
-                // Press keys
-                if (redemption.KeysToPressAfterTimeType == KeyActionType.PRESS)
-                {
-                  if (redemption.KeysToPressAfterTime.Count > 0)
-                  {
-                    for (int i = 0; i < redemption.KeysToPressAfterTime.Count; i++) Simulation.Keyboard.Press(redemption.KeysToPressAfterTime[i]);
-                    for (int i = redemption.KeysToPressAfterTime.Count - 1; i >= 0; i--) Simulation.Keyboard.Release(redemption.KeysToPressAfterTime[i]);
-                  }
-                }
-                else if (redemption.KeysToPressAfterTimeType == KeyActionType.TYPE)
-                {
-                  for (int i = 0; i < redemption.KeysToPressAfterTime.Count; i++) Simulation.Keyboard.Type(redemption.KeysToPressAfterTime[i]);
-                }
-              });
-            }
-
-            return;
+            AddNotification(new Notification(redemption.Config, NotificationData, redemption));
+            break;
           }
         }
       }
@@ -492,7 +453,7 @@ namespace AbevBot
     public NotificationsConfig Config { get; set; } = new();
     public List<Key> KeysToPress { get; set; } = new();
     public KeyActionType KeysToPressType { get; set; } = KeyActionType.PRESS;
-    public int TimeToPressSecondAction { get; set; } = 0;
+    public TimeSpan TimeToPressSecondAction { get; set; } = new TimeSpan();
     public List<Key> KeysToPressAfterTime { get; set; } = new();
     public KeyActionType KeysToPressAfterTimeType { get; set; } = KeyActionType.PRESS;
   }

@@ -72,7 +72,7 @@ namespace AbevBot
       bool first = true;
       while (ladderEntry.MoveNext())
       {
-        if (index > MAXLADDERENTRIES) break;
+        if (index >= MAXLADDERENTRIES) break;
         if (!first) sb.Append(" | ");
 
         sb.Append(ladderEntry.Current.Item2).Append(": ").Append(ladderEntry.Current.Item1);

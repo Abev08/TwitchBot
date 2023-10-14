@@ -8,7 +8,7 @@ namespace AbevBot
   public class Notification
   {
     private static readonly TimeSpan MinimumNotificationTime = TimeSpan.FromSeconds(3);
-    private static readonly TimeSpan MaximumNotificationTime = TimeSpan.FromSeconds(45);
+    private static readonly TimeSpan MaximumNotificationTime = TimeSpan.FromSeconds(120);
 
     public bool Started { get; private set; }
     private DateTime StartTime { get; set; }
@@ -28,10 +28,12 @@ namespace AbevBot
     private bool TTSPlayed;
     private readonly List<WaveOut> AudioToPlay = new();
     private bool AudioStarted;
+    private ChannelRedemption Redemption;
+    private bool KeysPressed, Keys2Pressed;
 
     public Notification() { }
 
-    public Notification(NotificationsConfig config, string[] data)
+    public Notification(NotificationsConfig config, string[] data, ChannelRedemption redemption = null)
     {
       TextToDisplay = string.Format(config.TextToDisplay, data).Replace("\\n", Environment.NewLine);
       TextToDisplayPosition = config.TextPosition;
@@ -41,6 +43,7 @@ namespace AbevBot
       SoundVolume = Config.VolumeSounds;
       VideoPath = config.VideoToPlay;
       VideoVolume = Config.VolumeVideos;
+      Redemption = redemption;
     }
 
     /// <summary> Initializes required things and starts the notification </summary>
@@ -54,6 +57,8 @@ namespace AbevBot
       VideoEnded = VideoPath is null || VideoPath.Length == 0;
       SoundPlayed = SoundPath is null || SoundPath.Length == 0;
       TTSPlayed = TextToRead is null || TextToRead.Length == 0;
+      KeysPressed = Redemption is null || Redemption.KeysToPress.Count == 0;
+      Keys2Pressed = Redemption is null || Redemption.KeysToPressAfterTime.Count == 0;
 
       if (!TTSPlayed)
       {
@@ -151,6 +156,43 @@ namespace AbevBot
         return true;
       }
 
+      // Press keys
+      if (Redemption != null)
+      {
+        if (!KeysPressed)
+        {
+          KeysPressed = true;
+          if (Redemption.KeysToPressType == KeyActionType.PRESS)
+          {
+            for (int i = 0; i < Redemption.KeysToPress.Count; i++) Simulation.Keyboard.Press(Redemption.KeysToPress[i]);
+            for (int i = Redemption.KeysToPress.Count - 1; i >= 0; i--) Simulation.Keyboard.Release(Redemption.KeysToPress[i]);
+          }
+          else if (Redemption.KeysToPressType == KeyActionType.TYPE)
+          {
+            for (int i = 0; i < Redemption.KeysToPress.Count; i++) Simulation.Keyboard.Type(Redemption.KeysToPress[i]);
+          }
+        }
+
+        if (!Keys2Pressed)
+        {
+          if (DateTime.Now - StartTime >= Redemption.TimeToPressSecondAction)
+          {
+            Keys2Pressed = true;
+
+            // Press keys
+            if (Redemption.KeysToPressAfterTimeType == KeyActionType.PRESS)
+            {
+              for (int i = 0; i < Redemption.KeysToPressAfterTime.Count; i++) Simulation.Keyboard.Press(Redemption.KeysToPressAfterTime[i]);
+              for (int i = Redemption.KeysToPressAfterTime.Count - 1; i >= 0; i--) Simulation.Keyboard.Release(Redemption.KeysToPressAfterTime[i]);
+            }
+            else if (Redemption.KeysToPressAfterTimeType == KeyActionType.TYPE)
+            {
+              for (int i = 0; i < Redemption.KeysToPressAfterTime.Count; i++) Simulation.Keyboard.Type(Redemption.KeysToPressAfterTime[i]);
+            }
+          }
+        }
+      }
+
       // Display text
       if (!TextDisplayed && !Notifications.NotificationsPaused && !Notifications.SkipNotification)
       {
@@ -230,6 +272,9 @@ namespace AbevBot
         if (AudioToPlay.Count > 0) return false;
       }
 
+      // Check if keys was pressed
+      if (!KeysPressed || !Keys2Pressed) return false;
+
       // The notification is over, clear after it
       if (!Notifications.SkipNotification && (DateTime.Now - StartTime < MinimumNotificationTime)) return false;
       MainWindow.I.ClearTextDisplayed(); // Clear displayed text, again just to be sure
@@ -247,11 +292,14 @@ namespace AbevBot
       string text = _text;
       string maybeSample;
       int index = -1, nextIndex;
+      bool maybeUpSample, maybeDownSample;
       List<ISampleProvider> newAudio = new();
 
       while (text.Length > 0)
       {
         index = text.IndexOf('-', index + 1);
+        maybeUpSample = false;
+        maybeDownSample = false;
         if (index >= 0)
         {
           nextIndex = text.IndexOf(" ", index); // Space index (end of word after '-' symbol)
@@ -275,6 +323,42 @@ namespace AbevBot
               else { text = text[nextIndex..]; }
 
               index = -1;
+            }
+            else
+            {
+              // Maybe it was -upsample or -downsample?
+              if (maybeSample.StartsWith("up"))
+              {
+                maybeUpSample = true;
+                maybeSample = maybeSample[2..]; // 2 == "up".Length
+              }
+              else if (maybeSample.StartsWith("down"))
+              {
+                maybeDownSample = true;
+                maybeSample = maybeSample[4..]; // 2 == "down".Length
+              }
+
+              if (maybeUpSample || maybeDownSample)
+              {
+                // Check again if sample without "up" / "down" prefix exist
+                if (sampleSounds.ContainsKey(maybeSample.Trim().ToLower()))
+                {
+                  // Add text before the sample to be read
+                  if (supplier.Equals("StreamElements")) { Audio.AddToSampleProviderList(StreamElements.GetTTS(text[..index].Trim(), voice), ref newAudio); }
+                  else if (supplier.Equals("TikTok")) { Audio.AddToSampleProviderList(TikTok.GetTTS(text[..index].Trim(), voice), ref newAudio); }
+                  else { MainWindow.ConsoleWarning($">> TTS supplier {supplier} not recognized!"); }
+
+                  // Add sample sound
+                  if (maybeUpSample) { Audio.AddToSampleProviderList(Audio.GetUpOrDownSample(sampleSounds[maybeSample], false), ref newAudio); }
+                  else if (maybeDownSample) { Audio.AddToSampleProviderList(Audio.GetUpOrDownSample(sampleSounds[maybeSample], true), ref newAudio); }
+
+                  // Remove already parsed text
+                  if (nextIndex == -1) { text = string.Empty; } // Already reached the end
+                  else { text = text[nextIndex..]; }
+
+                  index = -1;
+                }
+              }
             }
           }
         }
