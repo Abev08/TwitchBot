@@ -380,6 +380,8 @@ namespace AbevBot
       chkEnableGambaAnimations.IsChecked = MinigameGamba.GambaAnimationsEnabled;
       chkEnableFight.IsChecked = MinigameFight.Enabled;
       chkEnableWelcomeMessages.IsChecked = Notifications.WelcomeMessagesEnabled;
+      chkEnableSongSkip.IsChecked = Spotify.SkipEnabled;
+      chkEnableSongRequest.IsChecked = Spotify.RequestEnabled;
     }
 
     public void GambaAnimationStart(FileInfo videoPath, string userName, int points, int pointsResult)
