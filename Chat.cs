@@ -27,6 +27,7 @@ namespace AbevBot
     private static readonly List<string> MessageQueue = new();
     private static readonly HttpClient Client = new();
     private static DateTime RespMsgFileTimestamp;
+    private static readonly List<SkipSongChatter> SkipSong = new();
 
     public static void Start()
     {
@@ -61,6 +62,7 @@ namespace AbevBot
       int zeroBytesReceivedCounter = 0, currentIndex, nextIndex, bytesReceived, messageStartOffset = 0, temp2;
       string userBadge, userName, customRewardID, temp;
       long userID;
+      bool temp3;
       List<string> messages = new();
       /// <summary> message[0] - header, message[1] - body </summary>
       string[] message = new string[2];
@@ -309,6 +311,66 @@ namespace AbevBot
                       AddMessageToQueue($"@{chatter.Name} {temp}");
                     }
                     else { AddMessageToQueue($"@{chatter.Name} there are no sounds to use peepoSad"); }
+                  }
+                  else if (message[1][1..].StartsWith("!currentsong")) // Check if the message starts with !currentsong key
+                  {
+                    if (Spotify.Working) { AddMessageToQueue($"@{chatter.Name} {Spotify.GetCurrentlyPlayingTrack()}"); }
+                    else { AddMessageToQueue($"@{chatter.Name} the Spotify connection is not working peepoSad"); }
+                  }
+                  else if (message[1][1..].StartsWith("!previoussong")) // Check if the message starts with !previoussong key
+                  {
+                    if (Spotify.Working) { AddMessageToQueue($"@{chatter.Name} {Spotify.GetRecentlyPlayingTracks()}"); }
+                    else { AddMessageToQueue($"@{chatter.Name} the Spotify connection is not working peepoSad"); }
+                  }
+                  else if (message[1][1..].StartsWith("!songrequest")) // Check if the message starts with !songrequest key
+                  {
+                    if (!Spotify.RequestEnabled) { AddMessageToQueue($"@{chatter.Name} song requests are disabled peepoSad"); }
+                    else if (message[1].Length <= 13) { AddMessageToQueue($"@{chatter.Name} maybe provide a link to the song? WeirdDude"); }
+                    else if (Spotify.Working) { SongRequest(userName, message[1][13..]); }  // 13.. - without ":!songrequest"
+                    else { AddMessageToQueue($"@{chatter.Name} the Spotify connection is not working peepoSad"); }
+                  }
+                  else if (message[1][1..].StartsWith("!sr")) // Check if the message starts with !sr key
+                  {
+                    if (!Spotify.RequestEnabled) { AddMessageToQueue($"@{chatter.Name} song requests are disabled peepoSad"); }
+                    else if (message[1].Length <= 4) { AddMessageToQueue($"@{chatter.Name} maybe provide a link to the song? WeirdDude"); }
+                    else if (Spotify.Working) { SongRequest(userName, message[1][4..]); }  // 4.. - without ":!sr"
+                    else { AddMessageToQueue($"@{chatter.Name} the Spotify connection is not working peepoSad"); }
+                  }
+                  else if (message[1][1..].StartsWith("!skipsong")) // Check if the message starts with !skipsong key
+                  {
+                    if (!Spotify.SkipEnabled) { AddMessageToQueue($"@{chatter.Name} song skips are disabled peepoSad"); }
+                    else
+                    {
+                      temp3 = false; // Handled
+                      DateTime minTime = DateTime.Now - TimeSpan.FromMinutes(2); // Time to check if skip request was old
+                      for (int j = SkipSong.Count - 1; j >= 0; j--)
+                      {
+                        if (SkipSong[j].ChatterID == userID)
+                        {
+                          SkipSong[j].TimeRequested = DateTime.Now;
+                          temp3 = true;
+                        }
+
+                        if (SkipSong[j].TimeRequested < minTime) SkipSong.RemoveAt(j);
+                      }
+                      if (!temp3) SkipSong.Add(new() { ChatterID = userID, TimeRequested = DateTime.Now });
+
+                      // 5 Users requested to skip the song, skip it
+                      if (SkipSong.Count >= Spotify.REQUIREDSKIPS)
+                      {
+                        AddMessageToQueue($"Song skip requested from @{userName}. Enough skips were requested. Skipping the song!");
+                        SkipSong.Clear();
+                        Spotify.SkipSong();
+                      }
+                      else
+                      {
+                        AddMessageToQueue(string.Concat(
+                          "Song skip requested from @", userName, ". ",
+                          Spotify.REQUIREDSKIPS - SkipSong.Count, " more skips",
+                          " required to skip the song."
+                        ));
+                      }
+                    }
                   }
                   else if (ResponseMessages.Count > 0) // Check if message starts with key to get automatic response
                   {
@@ -687,7 +749,8 @@ namespace AbevBot
       request.Headers.Add("Authorization", $"Bearer {Secret.Data[Secret.Keys.OAuthToken]}");
       request.Headers.Add("Client-Id", Secret.Data[Secret.Keys.CustomerID]);
 
-      GetChattersResponse response = GetChattersResponse.Deserialize(Client.Send(request).Content.ReadAsStringAsync().Result);
+      string resp = Client.Send(request).Content.ReadAsStringAsync().Result;
+      GetChattersResponse response = GetChattersResponse.Deserialize(resp);
       if (response?.Data?.Length > 0)
       {
         for (int i = 0; i < response.Data.Length; i++)
@@ -765,6 +828,7 @@ namespace AbevBot
       sb.Append("!hug, ");
       if (Notifications.AreSoundsAvailable()) sb.Append("!sounds, ");
       if (Notifications.WelcomeMessagesEnabled) sb.Append("!welcomemessage <empty/message>, ");
+      if (Spotify.Working) sb.Append("!currentsong, !previoussong, !songrequest, !sr, !skipsong, ");
 
       foreach (string key in ResponseMessages.Keys)
       {
@@ -789,6 +853,38 @@ namespace AbevBot
       request.Headers.Add("Client-Id", Secret.Data[Secret.Keys.CustomerID]);
 
       Client.Send(request); // We don't really need the result, just assume that it worked
+    }
+
+    public static void SongRequest(string userName, string message)
+    {
+      int index = message.IndexOf("spotify.com/track");
+      if (index < 0)
+      {
+        AddMessageToQueue($"@{userName} the link is not recognized, only spotify links are supported");
+        return;
+      }
+
+      index += 18; // "spotify.com/track/".Length;
+      string uri = message[index..].Trim();
+      index = uri.IndexOf('?');
+      if (index > 0) uri = uri[..index];
+      index = uri.IndexOf(" ");
+      if (index > 0) uri = uri[..index];
+
+      if (uri.Length == 0)
+      {
+        AddMessageToQueue($"@{userName} the link is not recognized, only spotify links are supported");
+        return;
+      }
+
+      if (Spotify.AddTrackToQueue(uri))
+      {
+        AddMessageToQueue($"@{userName} track added to the queue peepoHappy");
+      }
+      else
+      {
+        AddMessageToQueue($"@{userName} something went wrong when adding the track to the queue peepoSad");
+      }
     }
   }
 }

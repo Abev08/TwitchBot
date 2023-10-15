@@ -255,7 +255,9 @@ namespace AbevBot
 
       // Ask for speech without specifying the voice, error message will contain all available voices
       using HttpRequestMessage request = new(HttpMethod.Get, "https://api.streamelements.com/kappa/v2/speech?voice=");
-      StreamElementsResponse response = StreamElementsResponse.Deserialize(Notifications.Client.Send(request).Content.ReadAsStringAsync().Result);
+
+      string resp = Notifications.Client.Send(request).Content.ReadAsStringAsync().Result;
+      StreamElementsResponse response = StreamElementsResponse.Deserialize(resp);
       if (response?.Message?.Length > 0)
       {
         int startIndex = response.Message.IndexOf("must be one of");

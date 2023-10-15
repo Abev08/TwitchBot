@@ -334,7 +334,9 @@ namespace AbevBot
 
       using HttpRequestMessage request = new(HttpMethod.Post, "https://glot.io/api/snippets");
       request.Content = new StringContent(paste.ToJsonString(), Encoding.UTF8, "application/json");
-      GlotResponse response = GlotResponse.Deserialize(Client.Send(request).Content.ReadAsStringAsync().Result);
+
+      string resp = Client.Send(request).Content.ReadAsStringAsync().Result;
+      GlotResponse response = GlotResponse.Deserialize(resp);
       if (response?.Url?.Length > 0)
       {
         VoicesLink = response.Url.Replace("api/", ""); // Remove "api/" part

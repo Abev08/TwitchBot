@@ -30,6 +30,7 @@
   <!-- Copy config and runtime files to output directory -->
   <ItemGroup>
     <None Include="Secrets.ini" Condition="Exists('Secrets.ini')" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="Secrets_example.ini" Condition="Exists('Secrets_example.ini')" CopyToOutputDirectory="PreserveNewest" />
     <None Include="Config.ini" Condition="Exists('Config.ini')" CopyToOutputDirectory="PreserveNewest" />
     <None Include="Config_example.ini" Condition="Exists('Config_example.ini')" CopyToOutputDirectory="PreserveNewest" />
     <None Include=".db" Condition="Exists('.db')" CopyToOutputDirectory="PreserveNewest" />

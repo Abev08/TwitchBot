@@ -180,7 +180,8 @@ namespace AbevBot
       request.Headers.Add("User-Agent", "com.zhiliaoapp.musically/2022600030 (Linux; U; Android 7.1.2; es_ES; SM-G988N; Build/NRD90M;tt-ok/3.12.13.1)");
       request.Headers.Add("Cookie", $"sessionid={Secret.Data[Secret.Keys.TikTokSessionID]}");
 
-      result = TikTokTTSResponse.Deserialize(Notifications.Client.Send(request).Content.ReadAsStringAsync().Result);
+      string resp = Notifications.Client.Send(request).Content.ReadAsStringAsync().Result;
+      result = TikTokTTSResponse.Deserialize(resp);
       if (result?.StatusCode != 0)
       {
         MainWindow.ConsoleWarning($">> TikTok TTS request status: {result?.StatusCode}, error: {result?.StatusMessage}");

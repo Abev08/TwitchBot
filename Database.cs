@@ -1,4 +1,3 @@
-using System;
 using System.Data;
 using System.Data.SQLite;
 using System.Globalization;
@@ -14,7 +13,12 @@ namespace AbevBot
       Version,
       TwitchOAuth, TwitchOAuthRefresh,
       VolumeTTS, VolumeSounds, VolumeVideos,
-      EnabledChatTTS, EnabledGamba, EnabledGambaLife, EnabledGambaAnimations, EnabledFight, EnabledWelcomeMessages
+      EnabledChatTTS,
+      EnabledGamba, EnabledGambaLife, EnabledGambaAnimations,
+      EnabledFight,
+      EnabledWelcomeMessages,
+      EnabledSpotifySkip, EnabledSpotifyRequest,
+      SpotifyOAuth, SpotifyOAuthRefresh
     }
 
     private const string DATABASEVERSION = "1.0";
@@ -65,6 +69,8 @@ namespace AbevBot
       // Get tokens
       Secret.Data[Secret.Keys.OAuthToken] = GetValueOrCreateFromConfig(Keys.TwitchOAuth, string.Empty);
       Secret.Data[Secret.Keys.OAuthRefreshToken] = GetValueOrCreateFromConfig(Keys.TwitchOAuthRefresh, string.Empty);
+      Secret.Data[Secret.Keys.SpotifyOAuthToken] = GetValueOrCreateFromConfig(Keys.SpotifyOAuth, string.Empty);
+      Secret.Data[Secret.Keys.SpotifyOAuthRefreshToken] = GetValueOrCreateFromConfig(Keys.SpotifyOAuthRefresh, string.Empty);
 
       // Get sound slider values
       Config.VolumeTTS = float.Parse(GetValueOrCreateFromConfig(Keys.VolumeTTS, "0,4"), new NumberFormatInfo() { NumberDecimalSeparator = "," });
@@ -79,6 +85,8 @@ namespace AbevBot
       MinigameGamba.GambaAnimationsEnabled = bool.Parse(GetValueOrCreateFromConfig(Keys.EnabledGambaAnimations, "True"));
       MinigameFight.Enabled = bool.Parse(GetValueOrCreateFromConfig(Keys.EnabledFight, "True"));
       Notifications.WelcomeMessagesEnabled = bool.Parse(GetValueOrCreateFromConfig(Keys.EnabledWelcomeMessages, "True"));
+      Spotify.SkipEnabled = bool.Parse(GetValueOrCreateFromConfig(Keys.EnabledSpotifySkip, "True"));
+      Spotify.RequestEnabled = bool.Parse(GetValueOrCreateFromConfig(Keys.EnabledSpotifyRequest, "True"));
       MainWindow.I.SetEnabledStatus();
 
       Connection.Close();

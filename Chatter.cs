@@ -198,4 +198,10 @@ namespace AbevBot
       }
     }
   }
+
+  public class SkipSongChatter
+  {
+    public long ChatterID { get; set; }
+    public DateTime TimeRequested { get; set; }
+  }
 }

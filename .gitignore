@@ -5,6 +5,7 @@
 
 # Do not add user specyfic files
 Secrets.ini
+Secrets_example.ini
 Config.ini
 Config_example.ini
 ResponseMessages.csv

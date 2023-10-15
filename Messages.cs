@@ -578,5 +578,258 @@ namespace AbevBot
     public string? Speaker { get; set; }
   }
 
+  public class SpotifyAccessTokenResponse
+  {
+    [JsonPropertyName("access_token")]
+    public string? Token { get; set; }
+    [JsonPropertyName("expires_in")]
+    public int? ExpiresIn { get; set; }
+    [JsonPropertyName("refresh_token")]
+    public string? RefreshToken { get; set; }
+    [JsonPropertyName("scope")]
+    public string? Scope { get; set; }
+    [JsonPropertyName("token_type")]
+    public string? TokenType { get; set; }
+
+    public static SpotifyAccessTokenResponse Deserialize(string message)
+    {
+      SpotifyAccessTokenResponse? ret = JsonSerializer.Deserialize<SpotifyAccessTokenResponse>(message);
+      if (ret is null) throw new JsonException("Couldn't parse access token response.");
+
+      return ret;
+    }
+
+    public override string ToString()
+    {
+      return string.Concat(">> Got ", TokenType, " token that expires in ", ExpiresIn, " seconds (", ExpiresIn / 3600f, " hours).");
+    }
+  }
+
+  public class SpotifyCurrentlyPlayingResponse
+  {
+    [JsonPropertyName("timestamp")]
+    public long? Timestamp { get; set; }
+    [JsonPropertyName("context")]
+    public SpotifyCurrentlyPlayingContext? Context { get; set; }
+    [JsonPropertyName("progress_ms")]
+    public int? ProgressMS { get; set; }
+    [JsonPropertyName("item")]
+    public SpotifyCurrentlyPlayingItem? Item { get; set; }
+    [JsonPropertyName("currently_playing_type")]
+    public string? Type { get; set; }
+    [JsonPropertyName("actions")]
+    public SpotifyCurrentlyPlayingActions? Actions { get; set; }
+    [JsonPropertyName("is_playing")]
+    public bool? IsPlaying { get; set; }
+
+    public static SpotifyCurrentlyPlayingResponse Deserialize(string message)
+    {
+      SpotifyCurrentlyPlayingResponse? ret = JsonSerializer.Deserialize<SpotifyCurrentlyPlayingResponse>(message);
+      if (ret is null) throw new JsonException("Couldn't parse currently playing response.");
+
+      return ret;
+    }
+  }
+
+  public class SpotifyCurrentlyPlayingContext
+  {
+    [JsonPropertyName("external_urls")]
+    public SpotifyCurrentlyPlayingContextExternalUrls? ExternalUrls { get; set; }
+    [JsonPropertyName("href")]
+    public string? Href { get; set; }
+    [JsonPropertyName("type")]
+    public string? Type { get; set; }
+    [JsonPropertyName("uri")]
+    public string? Uri { get; set; }
+  }
+
+  public class SpotifyCurrentlyPlayingItem
+  {
+    [JsonPropertyName("album")]
+    public SpotifyCurrentlyPlayingItemAlbum? Album { get; set; }
+    [JsonPropertyName("artists")]
+    public SpotifyCurrentlyPlayingItemArtist[]? Artists { get; set; }
+    [JsonPropertyName("available_markets")]
+    public string[]? Markets { get; set; }
+    [JsonPropertyName("disc_number")]
+    public int? DiscNumber { get; set; }
+    [JsonPropertyName("duration_ms")]
+    public long? DurationMS { get; set; }
+    [JsonPropertyName("explicit")]
+    public bool? Explicit { get; set; }
+    [JsonPropertyName("external_ids")]
+    public SpotifyCurrentlyPlayingItemExternalIDs? ExternalIDs { get; set; }
+    [JsonPropertyName("external_urls")]
+    public SpotifyCurrentlyPlayingItemExternalUrls? ExternalURLs { get; set; }
+    [JsonPropertyName("href")]
+    public string? Href { get; set; }
+    [JsonPropertyName("id")]
+    public string? ID { get; set; }
+    [JsonPropertyName("is_local")]
+    public bool? IsLocal { get; set; }
+    [JsonPropertyName("name")]
+    public string? Name { get; set; }
+    [JsonPropertyName("popularity")]
+    public int? Popularity { get; set; }
+    [JsonPropertyName("preview_url")]
+    public string? PreviewUrl { get; set; }
+    [JsonPropertyName("track_number")]
+    public int? TrackNumber { get; set; }
+    [JsonPropertyName("type")]
+    public string? Type { get; set; }
+    [JsonPropertyName("uri")]
+    public string? Uri { get; set; }
+  }
+
+  public class SpotifyCurrentlyPlayingItemAlbum
+  {
+    [JsonPropertyName("album_type")]
+    public string? AlbumType { get; set; }
+    [JsonPropertyName("artists")]
+    public SpotifyCurrentlyPlayingItemArtist[]? Artists { get; set; }
+    [JsonPropertyName("available_markets")]
+    public string[]? Markets { get; set; }
+    [JsonPropertyName("external_urls")]
+    public SpotifyCurrentlyPlayingItemExternalUrls? ExternalURLs { get; set; }
+    [JsonPropertyName("href")]
+    public string? Href { get; set; }
+    [JsonPropertyName("id")]
+    public string? ID { get; set; }
+    [JsonPropertyName("images")]
+    public SpotifyCurrentlyPlayingItemImages[]? Images { get; set; }
+    [JsonPropertyName("name")]
+    public string? Name { get; set; }
+    [JsonPropertyName("release_date")]
+    public string? ReleaseDate { get; set; }
+    [JsonPropertyName("release_date_precision")]
+    public string? ReleaseDatePrecision { get; set; }
+    [JsonPropertyName("total_tracks")]
+    public int? TotalTracks { get; set; }
+    [JsonPropertyName("type")]
+    public string? Type { get; set; }
+    [JsonPropertyName("uri")]
+    public string? URI { get; set; }
+  }
+
+  public class SpotifyCurrentlyPlayingItemArtist
+  {
+    [JsonPropertyName("external_urls")]
+    public SpotifyCurrentlyPlayingItemExternalUrls? ExternalURLs { get; set; }
+    [JsonPropertyName("href")]
+    public string? Href { get; set; }
+    [JsonPropertyName("id")]
+    public string? ID { get; set; }
+    [JsonPropertyName("name")]
+    public string? Name { get; set; }
+    [JsonPropertyName("type")]
+    public string? Type { get; set; }
+    [JsonPropertyName("uri")]
+    public string? URI { get; set; }
+  }
+
+  public class SpotifyCurrentlyPlayingItemExternalIDs
+  {
+    [JsonPropertyName("isrc")]
+    public string? ISRC { get; set; }
+  }
+
+  public class SpotifyCurrentlyPlayingItemExternalUrls
+  {
+    [JsonPropertyName("spotify")]
+    public string? Spotify { get; set; }
+  }
+
+  public class SpotifyCurrentlyPlayingItemImages
+  {
+    [JsonPropertyName("url")]
+    public string? Url { get; set; }
+    [JsonPropertyName("height")]
+    public int? Height { get; set; }
+    [JsonPropertyName("width")]
+    public int? Width { get; set; }
+  }
+
+  public class SpotifyCurrentlyPlayingActions
+  {
+    [JsonPropertyName("disallows")]
+    public SpotifyCurrentlyPlayingActionsDisallows? Disallows { get; set; }
+  }
+
+  public class SpotifyCurrentlyPlayingActionsDisallows
+  {
+    [JsonPropertyName("resuming")]
+    public bool? Resuming { get; set; }
+  }
+
+  public class SpotifyCurrentlyPlayingContextExternalUrls
+  {
+    [JsonPropertyName("spotify")]
+    public string? Spotify { get; set; }
+  }
+
+  public class SpotifyRecentlyPlayed
+  {
+    [JsonPropertyName("items")]
+    public SpotifyRecentlyPlayedItem[]? Items { get; set; }
+    [JsonPropertyName("next")]
+    public string? Next { get; set; }
+    [JsonPropertyName("cursors")]
+    public SpotifyRecentlyPlayedCursors? Cursors { get; set; }
+    [JsonPropertyName("limit")]
+    public int? Limit { get; set; }
+    [JsonPropertyName("href")]
+    public string? Href { get; set; }
+
+    public static SpotifyRecentlyPlayed Deserialize(string message)
+    {
+      SpotifyRecentlyPlayed? ret = JsonSerializer.Deserialize<SpotifyRecentlyPlayed>(message);
+      if (ret is null) throw new JsonException("Couldn't parse recently played response.");
+
+      return ret;
+    }
+  }
+
+  public class SpotifyRecentlyPlayedItem
+  {
+    [JsonPropertyName("track")]
+    public SpotifyCurrentlyPlayingItem? Track { get; set; }
+    [JsonPropertyName("played_at")]
+    public string? PlayedAt { get; set; }
+    [JsonPropertyName("context")]
+    public object? Context { get; set; }
+  }
+
+  public class SpotifyRecentlyPlayedCursors
+  {
+    [JsonPropertyName("after")]
+    public string? After { get; set; }
+    [JsonPropertyName("before")]
+    public string? Before { get; set; }
+  }
+
+  public class SpotifyResponse
+  {
+    [JsonPropertyName("error")]
+    public SpotifyResponseError? Error { get; set; }
+
+    public static SpotifyResponse Deserialize(string message)
+    {
+      SpotifyResponse? ret = JsonSerializer.Deserialize<SpotifyResponse>(message);
+      if (ret is null) throw new JsonException("Couldn't parse Spotify response.");
+
+      return ret;
+    }
+  }
+
+  public class SpotifyResponseError
+  {
+    [JsonPropertyName("status")]
+    public int? Status { get; set; }
+    [JsonPropertyName("message")]
+    public string? Message { get; set; }
+    [JsonPropertyName("reason")]
+    public string? Reason { get; set; }
+  }
+
 #nullable restore
 }

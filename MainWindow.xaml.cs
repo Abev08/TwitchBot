@@ -124,6 +124,7 @@ namespace AbevBot
       RefreshTimer = new((e) =>
       {
         AccessTokens.RefreshAccessToken();
+        AccessTokens.RefreshSpotifyAccessToken();
 
         Chatter.UpdateChattersFile();
 
@@ -272,6 +273,18 @@ namespace AbevBot
     {
       Notifications.WelcomeMessagesEnabled = ((CheckBox)sender).IsChecked == true;
       if (FinishedLoading) await Database.UpdateValueInConfig(Database.Keys.EnabledWelcomeMessages, Notifications.WelcomeMessagesEnabled);
+    }
+
+    private async void ChkSkip_CheckChanged(object sender, RoutedEventArgs e)
+    {
+      Spotify.SkipEnabled = ((CheckBox)sender).IsChecked == true;
+      if (FinishedLoading) await Database.UpdateValueInConfig(Database.Keys.EnabledSpotifySkip, Spotify.SkipEnabled);
+    }
+
+    private async void ChkRequest_CheckChanged(object sender, RoutedEventArgs e)
+    {
+      Spotify.RequestEnabled = ((CheckBox)sender).IsChecked == true;
+      if (FinishedLoading) await Database.UpdateValueInConfig(Database.Keys.EnabledSpotifyRequest, Spotify.RequestEnabled);
     }
 
     private void MainVideoEnded(object sender, RoutedEventArgs e)

@@ -276,7 +276,9 @@ namespace AbevBot
       request.Content = new StringContent(new SubscriptionMessage(type, version, Config.Data[Config.Keys.ChannelID], sessionID).ToJsonString(), Encoding.UTF8, "application/json");
       request.Headers.Add("Client-Id", Secret.Data[Secret.Keys.CustomerID]);
       request.Headers.Add("Authorization", $"Bearer {Secret.Data[Secret.Keys.OAuthToken]}");
-      ResponseMessage response = ResponseMessage.Deserialize(HttpClient.Send(request).Content.ReadAsStringAsync().Result);
+
+      string resp = HttpClient.Send(request).Content.ReadAsStringAsync().Result;
+      ResponseMessage response = ResponseMessage.Deserialize(resp);
       if (response.Error != null) { MainWindow.ConsoleWarning($">> Events bot subscription error: {response.Message}"); }
       else
       {
