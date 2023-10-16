@@ -312,11 +312,6 @@ namespace AbevBot
                     }
                     else { AddMessageToQueue($"@{chatter.Name} there are no sounds to use peepoSad"); }
                   }
-                  else if (message[1][1..].StartsWith("!currentsong")) // Check if the message starts with !currentsong key
-                  {
-                    if (Spotify.Working) { AddMessageToQueue($"@{chatter.Name} {Spotify.GetCurrentlyPlayingTrack()}"); }
-                    else { AddMessageToQueue($"@{chatter.Name} the Spotify connection is not working peepoSad"); }
-                  }
                   else if (message[1][1..].StartsWith("!previoussong")) // Check if the message starts with !previoussong key
                   {
                     if (Spotify.Working) { AddMessageToQueue($"@{chatter.Name} {Spotify.GetRecentlyPlayingTracks()}"); }
@@ -371,6 +366,11 @@ namespace AbevBot
                         ));
                       }
                     }
+                  }
+                  else if (message[1][1..].StartsWith("!song")) // Check if the message starts with !song key
+                  {
+                    if (Spotify.Working) { AddMessageToQueue($"@{chatter.Name} {Spotify.GetCurrentlyPlayingTrack()}"); }
+                    else { AddMessageToQueue($"@{chatter.Name} the Spotify connection is not working peepoSad"); }
                   }
                   else if (ResponseMessages.Count > 0) // Check if message starts with key to get automatic response
                   {
@@ -828,7 +828,12 @@ namespace AbevBot
       sb.Append("!hug, ");
       if (Notifications.AreSoundsAvailable()) sb.Append("!sounds, ");
       if (Notifications.WelcomeMessagesEnabled) sb.Append("!welcomemessage <empty/message>, ");
-      if (Spotify.Working) sb.Append("!currentsong, !previoussong, !songrequest, !sr, !skipsong, ");
+      if (Spotify.Working)
+      {
+        sb.Append("!song, !previoussong, ");
+        if (Spotify.RequestEnabled) sb.Append("!songrequest, !sr, ");
+        if (Spotify.SkipEnabled) sb.Append("!skipsong, ");
+      }
 
       foreach (string key in ResponseMessages.Keys)
       {
