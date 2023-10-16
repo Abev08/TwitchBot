@@ -862,14 +862,20 @@ namespace AbevBot
 
     public static void SongRequest(string userName, string message)
     {
-      int index = message.IndexOf("spotify.com/track");
+      int index = message.IndexOf("spotify.com");
+      if (index < 0)
+      {
+        AddMessageToQueue($"@{userName} the link is not recognized, only spotify links are supported");
+        return;
+      }
+      index = message.IndexOf("/track/");
       if (index < 0)
       {
         AddMessageToQueue($"@{userName} the link is not recognized, only spotify links are supported");
         return;
       }
 
-      index += 18; // "spotify.com/track/".Length;
+      index += 7; // "/track/".Length;
       string uri = message[index..].Trim();
       index = uri.IndexOf('?');
       if (index > 0) uri = uri[..index];
