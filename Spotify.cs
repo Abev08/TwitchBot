@@ -174,8 +174,9 @@ namespace AbevBot
     /// <returns> true if everything went ok, otherwise false. </returns>
     public static bool AddTrackToQueue(string songURI)
     {
-      using HttpRequestMessage request = new(HttpMethod.Post, "https://api.spotify.com/v1/me/player/queue");
-      request.Headers.Add("uri", $"spotify:track:{songURI}".Replace(":", "%3A"));
+      // using HttpRequestMessage request = new(HttpMethod.Post, "https://api.spotify.com/v1/me/player/queue");
+      // request.Headers.Add("uri", $"spotify:track:{songURI}".Replace(":", "%3A"));
+      using HttpRequestMessage request = new(HttpMethod.Post, $"https://api.spotify.com/v1/me/player/queue?uri=spotify%3Atrack%3A{songURI}");
       request.Headers.Add("Authorization", $"Bearer {Secret.Data[Secret.Keys.SpotifyOAuthToken]}");
       string resp = Notifications.Client.Send(request).Content.ReadAsStringAsync().Result;
       if (resp is null) return false; // Something went wrong
