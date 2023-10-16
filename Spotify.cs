@@ -101,9 +101,12 @@ namespace AbevBot
     /// <returns> String describing 3 recently playing tracks. </returns>
     public static string GetRecentlyPlayingTracks()
     {
-      using HttpRequestMessage request = new(HttpMethod.Get, "https://api.spotify.com/v1/me/player/recently-played");
-      request.Headers.Add("limit", "5");
-      request.Headers.Add("before", new DateTimeOffset(DateTime.Now).ToUnixTimeMilliseconds().ToString());
+      string uri = string.Concat(
+        "https://api.spotify.com/v1/me/player/recently-played",
+        "?limit=", 3,
+        "&before=", new DateTimeOffset(DateTime.Now).ToUnixTimeMilliseconds()
+      );
+      using HttpRequestMessage request = new(HttpMethod.Get, uri);
       request.Headers.Add("Authorization", $"Bearer {Secret.Data[Secret.Keys.SpotifyOAuthToken]}");
       string resp = Notifications.Client.Send(request).Content.ReadAsStringAsync().Result;
       if (resp is null) { MainWindow.ConsoleWarning(">> Spotify request for recent tracks failed."); }
@@ -174,17 +177,22 @@ namespace AbevBot
     /// <returns> true if everything went ok, otherwise false. </returns>
     public static bool AddTrackToQueue(string songURI)
     {
-      // using HttpRequestMessage request = new(HttpMethod.Post, "https://api.spotify.com/v1/me/player/queue");
-      // request.Headers.Add("uri", $"spotify:track:{songURI}".Replace(":", "%3A"));
-      using HttpRequestMessage request = new(HttpMethod.Post, $"https://api.spotify.com/v1/me/player/queue?uri=spotify%3Atrack%3A{songURI}");
+      string uri = string.Concat(
+        "https://api.spotify.com/v1/me/player/queue",
+        "?uri=spotify%3Atrack%3A", songURI
+      );
+      using HttpRequestMessage request = new(HttpMethod.Post, uri);
       request.Headers.Add("Authorization", $"Bearer {Secret.Data[Secret.Keys.SpotifyOAuthToken]}");
       string resp = Notifications.Client.Send(request).Content.ReadAsStringAsync().Result;
       if (resp is null) return false; // Something went wrong
-      SpotifyResponse response = SpotifyResponse.Deserialize(resp);
-      if (response is null || response.Error?.Status != 204)
+      if (resp.Length != 0)
       {
-        MainWindow.ConsoleWarning($">> Couldn't add track to Spotify queue. {response.Error?.Message}");
-        return false;
+        SpotifyResponse response = SpotifyResponse.Deserialize(resp);
+        if (response is null || response.Error?.Status != 204)
+        {
+          MainWindow.ConsoleWarning($">> Couldn't add track to Spotify queue. {response.Error?.Message}");
+          return false;
+        }
       }
 
       return true; // Everything went ok
