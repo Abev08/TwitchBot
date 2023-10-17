@@ -28,6 +28,7 @@ namespace AbevBot
     public string WelcomeMessage { get; set; } = string.Empty;
     [JsonIgnore]
     public DateTime LastChatted { get; set; } = DateTime.MinValue;
+    public DateTime LastSongRequest { get; set; } = DateTime.MinValue;
 
     /// <summary> Sets starting values for new chatter. </summary>
     private void InitChatter(long id)

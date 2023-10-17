@@ -101,7 +101,11 @@ namespace AbevBot
       }
 
       // Fight
-      Chat.AddMessageToQueue(string.Concat(fighter1.Name, " is fighting ", fighter2.Name, "... peepoBox"));
+      Chat.AddMessageToQueue(string.Concat(
+        fighter1.Name, " (", fighter1.Fight.Level, ")",
+        " is fighting ",
+        fighter2.Name, " (", fighter2.Fight.Level, ")",
+        " ... peepoBox"));
       fighter1.Fight.LastFight = fighter2.Fight.LastFight = DateTime.Now;
       int rounds = 0, dmg;
       while (fighter1.Fight.CurrentHp > 0 && fighter2.Fight.CurrentHp > 0)

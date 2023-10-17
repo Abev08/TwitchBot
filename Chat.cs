@@ -27,7 +27,7 @@ namespace AbevBot
     private static readonly List<string> MessageQueue = new();
     private static readonly HttpClient Client = new();
     private static DateTime RespMsgFileTimestamp;
-    private static readonly List<SkipSongChatter> SkipSong = new();
+    private static readonly List<SkipSongChatter> SkipSongChatters = new();
 
     public static void Start()
     {
@@ -62,7 +62,6 @@ namespace AbevBot
       int zeroBytesReceivedCounter = 0, currentIndex, nextIndex, bytesReceived, messageStartOffset = 0, temp2;
       string userBadge, userName, customRewardID, temp;
       long userID;
-      bool temp3;
       List<string> messages = new();
       /// <summary> message[0] - header, message[1] - body </summary>
       string[] message = new string[2];
@@ -319,53 +318,15 @@ namespace AbevBot
                   }
                   else if (message[1][1..].StartsWith("!songrequest")) // Check if the message starts with !songrequest key
                   {
-                    if (!Spotify.RequestEnabled) { AddMessageToQueue($"@{chatter.Name} song requests are disabled peepoSad"); }
-                    else if (message[1].Length <= 13) { AddMessageToQueue($"@{chatter.Name} maybe provide a link to the song? WeirdDude"); }
-                    else if (Spotify.Working) { SongRequest(userName, message[1][13..]); }  // 13.. - without ":!songrequest"
-                    else { AddMessageToQueue($"@{chatter.Name} the Spotify connection is not working peepoSad"); }
+                    SongRequest(chatter, message[1][13..]);  // 13.. - without ":!songrequest"
                   }
                   else if (message[1][1..].StartsWith("!sr")) // Check if the message starts with !sr key
                   {
-                    if (!Spotify.RequestEnabled) { AddMessageToQueue($"@{chatter.Name} song requests are disabled peepoSad"); }
-                    else if (message[1].Length <= 4) { AddMessageToQueue($"@{chatter.Name} maybe provide a link to the song? WeirdDude"); }
-                    else if (Spotify.Working) { SongRequest(userName, message[1][4..]); }  // 4.. - without ":!sr"
-                    else { AddMessageToQueue($"@{chatter.Name} the Spotify connection is not working peepoSad"); }
+                    SongRequest(chatter, message[1][4..]); // 4.. - without ":!sr"
                   }
                   else if (message[1][1..].StartsWith("!skipsong")) // Check if the message starts with !skipsong key
                   {
-                    if (!Spotify.SkipEnabled) { AddMessageToQueue($"@{chatter.Name} song skips are disabled peepoSad"); }
-                    else
-                    {
-                      temp3 = false; // Handled
-                      DateTime minTime = DateTime.Now - TimeSpan.FromMinutes(2); // Time to check if skip request was old
-                      for (int j = SkipSong.Count - 1; j >= 0; j--)
-                      {
-                        if (SkipSong[j].ChatterID == userID)
-                        {
-                          SkipSong[j].TimeRequested = DateTime.Now;
-                          temp3 = true;
-                        }
-
-                        if (SkipSong[j].TimeRequested < minTime) SkipSong.RemoveAt(j);
-                      }
-                      if (!temp3) SkipSong.Add(new() { ChatterID = userID, TimeRequested = DateTime.Now });
-
-                      // 5 Users requested to skip the song, skip it
-                      if (SkipSong.Count >= Spotify.REQUIREDSKIPS)
-                      {
-                        AddMessageToQueue($"Song skip requested from @{userName}. Enough skips were requested. Skipping the song!");
-                        SkipSong.Clear();
-                        Spotify.SkipSong();
-                      }
-                      else
-                      {
-                        AddMessageToQueue(string.Concat(
-                          "Song skip requested from @", userName, ". ",
-                          Spotify.REQUIREDSKIPS - SkipSong.Count, " more skips",
-                          " required to skip the song."
-                        ));
-                      }
-                    }
+                    SkipSong(chatter);
                   }
                   else if (message[1][1..].StartsWith("!song")) // Check if the message starts with !song key
                   {
@@ -860,18 +821,52 @@ namespace AbevBot
       Client.Send(request); // We don't really need the result, just assume that it worked
     }
 
-    public static void SongRequest(string userName, string message)
+    public static void SongRequest(Chatter chatter, string message, bool fromNotifications = false)
     {
+      if (!Spotify.Working)
+      {
+        AddMessageToQueue($"@{chatter?.Name} the Spotify connection is not working peepoSad");
+        return;
+      }
+      else if (!Spotify.RequestEnabled && !fromNotifications)
+      {
+        AddMessageToQueue($"@{chatter?.Name} song requests are disabled peepoSad");
+        return;
+      }
+      else if (message is null || message.Length == 0)
+      {
+        AddMessageToQueue($"@{chatter?.Name} maybe provide a link to the song? WeirdDude");
+        return;
+      }
+
+      // Check song request timeout
+      if (chatter != null && !fromNotifications)
+      {
+        TimeSpan tempTimeSpan = DateTime.Now - chatter.LastSongRequest;
+        if (tempTimeSpan < Spotify.SONGREQUESTTIMEOUT)
+        {
+          tempTimeSpan = Spotify.SONGREQUESTTIMEOUT - tempTimeSpan;
+          AddMessageToQueue(string.Concat(
+            "@", chatter.Name, " wait ",
+            tempTimeSpan.TotalSeconds < 60 ?
+              $"{Math.Ceiling(tempTimeSpan.TotalSeconds)} seconds" :
+              $"{Math.Ceiling(tempTimeSpan.TotalMinutes)} minutes",
+            " before requesting another song WeirdDude"
+          ));
+          return;
+        }
+      }
+
       int index = message.IndexOf("spotify.com");
       if (index < 0)
       {
-        AddMessageToQueue($"@{userName} the link is not recognized, only spotify links are supported");
+        AddMessageToQueue($"@{chatter?.Name} the link is not recognized, only spotify links are supported");
         return;
       }
       index = message.IndexOf("/track/");
       if (index < 0)
       {
-        AddMessageToQueue($"@{userName} the link is not recognized, only spotify links are supported");
+        AddMessageToQueue($"@{chatter?.Name} the link is not recognized, only spotify links are supported");
         return;
       }
 
@@ -884,17 +879,52 @@ namespace AbevBot
 
       if (uri.Length == 0)
       {
-        AddMessageToQueue($"@{userName} the link is not recognized, only spotify links are supported");
+        AddMessageToQueue($"@{chatter?.Name} the link is not recognized, only spotify links are supported");
         return;
       }
 
       if (Spotify.AddTrackToQueue(uri))
       {
-        AddMessageToQueue($"@{userName} track added to the queue peepoHappy");
+        if (!fromNotifications) chatter.LastSongRequest = DateTime.Now;
+        AddMessageToQueue($"@{chatter?.Name} track added to the queue peepoHappy");
+      }
+      else { AddMessageToQueue($"@{chatter?.Name} something went wrong when adding the track to the queue peepoSad"); }
+    }
+
+    public static void SkipSong(Chatter chatter)
+    {
+      if (!Spotify.SkipEnabled) { AddMessageToQueue($"@{chatter.Name} song skips are disabled peepoSad"); }
+
+      bool handled = false; // Handled
+      DateTime minTime = DateTime.Now - TimeSpan.FromMinutes(2); // Time to check if skip request was old
+      for (int j = SkipSongChatters.Count - 1; j >= 0; j--)
+      {
+        if (SkipSongChatters[j].ChatterID == chatter.ID)
+        {
+          SkipSongChatters[j].TimeRequested = DateTime.Now;
+          handled = true;
+        }
+
+        if (SkipSongChatters[j].TimeRequested < minTime) SkipSongChatters.RemoveAt(j);
+      }
+      if (!handled) SkipSongChatters.Add(new() { ChatterID = chatter.ID, TimeRequested = DateTime.Now });
+
+      // 5 Users requested to skip the song, skip it
+      if (SkipSongChatters.Count >= Spotify.REQUIREDSKIPS)
+      {
+        // AddMessageToQueue($"Song skip requested from @{chatter.Name}. Enough skips were requested. Skipping the song!");
+        AddMessageToQueue($"Enough !skipsong were requested. Skipping the song!");
+        SkipSongChatters.Clear();
+        Spotify.SkipSong();
       }
       else
       {
-        AddMessageToQueue($"@{userName} something went wrong when adding the track to the queue peepoSad");
+        // Caused too much spam
+        // AddMessageToQueue(string.Concat(
+        //   "Song skip requested from @", userName, ". ",
+        //   Spotify.REQUIREDSKIPS - SkipSong.Count, " more skips",
+        //   " required to skip the song."
+        // ));
       }
     }
   }

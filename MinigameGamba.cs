@@ -71,7 +71,7 @@ namespace AbevBot
 
         Task.Delay(2000).Wait();
 
-        if (Random.Shared.Next(0, 2) == 1)
+        if (Random.Shared.Next(0, 100) < 50)
         {
           // won
           Chat.AddMessageToQueue(string.Concat("@", chatter.Name, " this time fate was on your side monkaS"));
@@ -128,13 +128,13 @@ namespace AbevBot
       if (GambaAnimationsEnabled && AnimationVideosAvailable && DateTime.Now - LastAnimation >= ANIMATIONTIMEOUT)
       {
         LastAnimation = DateTime.Now;
-        bool won = Random.Shared.Next(0, 2) == 1;
+        bool won = Random.Shared.Next(0, 100) < 50;
         bool jackpot;
         int pointsReceived;
         FileInfo videoPath;
         if (won)
         {
-          jackpot = Random.Shared.Next(0, 100) == 0;
+          jackpot = Random.Shared.Next(0, 100) == 0; // 1% chance
           if (jackpot)
           {
             pointsReceived = pointsToRoll * 100;
@@ -164,12 +164,12 @@ namespace AbevBot
 
       Task.Delay(2000).Wait();
 
-      if (Random.Shared.Next(0, 2) == 1)
+      if (Random.Shared.Next(0, 100) < 50)
       {
         // won
         // Check for a jackpot 1% chance
         bool jackpot = false;
-        if (Random.Shared.Next(0, 100) == 0)
+        if (Random.Shared.Next(0, 100) == 0) // 1% chance
         {
           jackpot = true;
           pointsToRoll *= 100;

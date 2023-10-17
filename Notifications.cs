@@ -247,12 +247,9 @@ namespace AbevBot
     /// <summary> Creates and adds to queue Channel Points Redemption notification. </summary>
     public static void CreateRedemptionNotificaiton(string userName, string id, string message)
     {
-      // TODO: check id and do something
-      if (id.Equals(""))
-      {
-
-      }
-      else if (Config.Data[Config.Keys.ChannelPoints_RandomVideo].Equals(id)) { CreateRandomVideoNotification(); }
+      if (Config.Data[Config.Keys.ChannelRedemption_RandomVideo_ID].Equals(id)) { CreateRandomVideoNotification(); }
+      else if (Config.Data[Config.Keys.ChannelRedemption_SongRequest_ID].Equals(id)) { Chat.SongRequest(Chatter.GetChatterByName(userName), message, true); }
+      else if (Config.Data[Config.Keys.ChannelRedemption_SongSkip_ID].Equals(id)) { Spotify.SkipSong(); }
       else
       {
         // Look throught channel redemptions list

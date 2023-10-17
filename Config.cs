@@ -21,7 +21,7 @@ namespace AbevBot
       Cheer_Enable, Cheer_ChatMessage, Cheer_TextToDisplay, Cheer_TextPosition, Cheer_TextToSpeech, Cheer_SoundToPlay, Cheer_VideoToPlay,
       Raid_Enable, Raid_ChatMessage, Raid_TextToDisplay, Raid_TextPosition, Raid_TextToSpeech, Raid_SoundToPlay, Raid_VideoToPlay, Raid_MinimumRaiders, Raid_DoShoutout,
 
-      ChannelPoints_RandomVideo,
+      ChannelRedemption_RandomVideo_ID, ChannelRedemption_SongRequest_ID, ChannelRedemption_SongSkip_ID,
       ChannelRedemption_ID, ChannelRedemption_KeyAction, ChannelRedemption_KeyActionType, ChannelRedemption_KeyActionAfterTime, ChannelRedemption_KeyActionAfterTimeType, ChannelRedemption_ChatMessage, ChannelRedemption_TextToDisplay, ChannelRedemption_TextPosition, ChannelRedemption_TextToSpeech, ChannelRedemption_SoundToPlay, ChannelRedemption_VideoToPlay,
       msg
     };
@@ -423,7 +423,15 @@ namespace AbevBot
                 if (msg.Length > 0) Chat.PeriodicMessages.Add(msg);
                 break;
 
-              case Keys.ChannelPoints_RandomVideo:
+              case Keys.ChannelRedemption_RandomVideo_ID:
+                Data[(Keys)key] = text[1].Trim();
+                break;
+
+              case Keys.ChannelRedemption_SongRequest_ID:
+                Data[(Keys)key] = text[1].Trim();
+                break;
+
+              case Keys.ChannelRedemption_SongSkip_ID:
                 Data[(Keys)key] = text[1].Trim();
                 break;
 
@@ -542,7 +550,7 @@ namespace AbevBot
         writer.WriteLine("; ----- Subscription (notification message, always received when someone subscribes even when the subscriber doesn't want it to be public)");
         writer.WriteLine(string.Concat(Keys.Subscription_Enable.ToString(), " = false"));
         writer.WriteLine(string.Concat(Keys.Subscription_ChatMessage.ToString(), " = "));
-        writer.WriteLine(string.Concat(Keys.Subscription_TextToDisplay.ToString(), " = {0} just subscribed!\\n{7}"));
+        writer.WriteLine(string.Concat(Keys.Subscription_TextToDisplay.ToString(), " = {0} just subscribed!"));
         writer.WriteLine(string.Concat(Keys.Subscription_TextPosition.ToString(), " = BOTTOM"));
         writer.WriteLine(string.Concat(Keys.Subscription_TextToSpeech.ToString(), " = Thank you {0} for tier {1} sub! {7}"));
         writer.WriteLine(string.Concat(Keys.Subscription_SoundToPlay.ToString(), " = "));
@@ -551,7 +559,7 @@ namespace AbevBot
         writer.WriteLine("; ----- Subscription Extended Message (the subscriber shares that he subscribed)");
         writer.WriteLine(string.Concat(Keys.SubscriptionExt_Enable.ToString(), " = true"));
         writer.WriteLine(string.Concat(Keys.SubscriptionExt_ChatMessage.ToString(), " = "));
-        writer.WriteLine(string.Concat(Keys.SubscriptionExt_TextToDisplay.ToString(), " = {0} just subscribed!\\n{7}"));
+        writer.WriteLine(string.Concat(Keys.SubscriptionExt_TextToDisplay.ToString(), " = {0} just subscribed!"));
         writer.WriteLine(string.Concat(Keys.SubscriptionExt_TextPosition.ToString(), " = BOTTOM"));
         writer.WriteLine(string.Concat(Keys.SubscriptionExt_TextToSpeech.ToString(), " = Thank you {0} for {2} months in advance tier {1} sub! It is your {3} month in a row! {7}"));
         writer.WriteLine(string.Concat(Keys.SubscriptionExt_SoundToPlay.ToString(), " = "));
@@ -560,7 +568,7 @@ namespace AbevBot
         writer.WriteLine("; ----- Subscription gifted (the user is gifting subscriptions)");
         writer.WriteLine(string.Concat(Keys.SubscriptionGift_Enable.ToString(), " = true"));
         writer.WriteLine(string.Concat(Keys.SubscriptionGift_ChatMessage.ToString(), " = "));
-        writer.WriteLine(string.Concat(Keys.SubscriptionGift_TextToDisplay.ToString(), " = Thank you {0} for {4} subs!\\n{7}"));
+        writer.WriteLine(string.Concat(Keys.SubscriptionGift_TextToDisplay.ToString(), " = Thank you {0} for {4} subs!"));
         writer.WriteLine(string.Concat(Keys.SubscriptionGift_TextPosition.ToString(), " = BOTTOM"));
         writer.WriteLine(string.Concat(Keys.SubscriptionGift_TextToSpeech.ToString(), " = Thank you {0} for gifting {4} tier {1} subs to {6}! {7}"));
         writer.WriteLine(string.Concat(Keys.SubscriptionGift_SoundToPlay.ToString(), " = "));
@@ -578,7 +586,7 @@ namespace AbevBot
         writer.WriteLine("; ----- Bits cheer");
         writer.WriteLine(string.Concat(Keys.Cheer_Enable.ToString(), " = true"));
         writer.WriteLine(string.Concat(Keys.Cheer_ChatMessage.ToString(), " = "));
-        writer.WriteLine(string.Concat(Keys.Cheer_TextToDisplay.ToString(), " = Thank you {0} for {4} bits!\\n{7}"));
+        writer.WriteLine(string.Concat(Keys.Cheer_TextToDisplay.ToString(), " = Thank you {0} for {4} bits!"));
         writer.WriteLine(string.Concat(Keys.Cheer_TextPosition.ToString(), " = TOP"));
         writer.WriteLine(string.Concat(Keys.Cheer_TextToSpeech.ToString(), " = Thank you {0} for {4} bits! {7}"));
         writer.WriteLine(string.Concat(Keys.Cheer_SoundToPlay.ToString(), " = tone1.wav"));
@@ -600,7 +608,11 @@ namespace AbevBot
         writer.WriteLine();
         writer.WriteLine("; Channel points redemptions. Assign channel point redemption ID.");
         writer.WriteLine("; Plays random video from Resources/Videos folder.");
-        writer.WriteLine(string.Concat(Keys.ChannelPoints_RandomVideo.ToString(), " = "));
+        writer.WriteLine(string.Concat(Keys.ChannelRedemption_RandomVideo_ID.ToString(), " = "));
+        writer.WriteLine("; Adds provided song (Spotify link) to song queue.");
+        writer.WriteLine(string.Concat(Keys.ChannelRedemption_SongRequest_ID.ToString(), " = "));
+        writer.WriteLine("; Skips current Spotify song.");
+        writer.WriteLine(string.Concat(Keys.ChannelRedemption_SongSkip_ID.ToString(), " = "));
         writer.WriteLine();
         writer.WriteLine("; Custom channel points redemptions.");
         writer.WriteLine("; The configuration group has to start with ID filed.");
