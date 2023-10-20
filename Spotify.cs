@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Net.Http;
 using System.Text;
 
@@ -207,6 +208,22 @@ namespace AbevBot
       request.Headers.Add("Authorization", $"Bearer {Secret.Data[Secret.Keys.SpotifyOAuthToken]}");
       string resp = Notifications.Client.Send(request).Content.ReadAsStringAsync().Result;
       // Assume that it worked
+    }
+
+    /// <summary> Gets songs in the queue. </summary>
+    public static string GetSongQueue()
+    {
+      using HttpRequestMessage request = new(HttpMethod.Post, "https://api.spotify.com/v1/me/player/queue");
+      request.Headers.Add("Authorization", $"Bearer {Secret.Data[Secret.Keys.SpotifyOAuthToken]}");
+      string resp = Notifications.Client.Send(request).Content.ReadAsStringAsync().Result;
+
+      // For now log the message, I would need that for implementation
+      using StreamWriter writer = new("songqueue.txt", true);
+      writer.WriteLine(DateTime.Now);
+      writer.WriteLine(resp);
+      writer.WriteLine();
+
+      return "TODO: Implement me";
     }
   }
 }

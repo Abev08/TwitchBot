@@ -28,7 +28,7 @@ namespace AbevBot
     private bool TTSPlayed;
     private readonly List<WaveOut> AudioToPlay = new();
     private bool AudioStarted;
-    private ChannelRedemption Redemption;
+    private readonly ChannelRedemption Redemption;
     private bool KeysPressed, Keys2Pressed;
 
     public Notification() { }

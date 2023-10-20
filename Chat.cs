@@ -328,6 +328,11 @@ namespace AbevBot
                   {
                     SkipSong(chatter);
                   }
+                  else if (message[1][1..].StartsWith("!songqueue")) // Check if the message starts with !songqueue key
+                  {
+                    if (Spotify.Working) { AddMessageToQueue($"@{chatter.Name} {Spotify.GetSongQueue()}"); }
+                    else { AddMessageToQueue($"@{chatter.Name} the Spotify connection is not working peepoSad"); }
+                  }
                   else if (message[1][1..].StartsWith("!song")) // Check if the message starts with !song key
                   {
                     if (Spotify.Working) { AddMessageToQueue($"@{chatter.Name} {Spotify.GetCurrentlyPlayingTrack()}"); }
@@ -343,35 +348,7 @@ namespace AbevBot
                       // Check if the same message was send not long ago
                       if (DateTime.Now - dictionaryResponse.Item2 >= CooldownBetweenTheSameMessage)
                       {
-                        if (dictionaryResponse.Item1.Length <= MESSAGESENTMAXLEN) { AddMessageToQueue($"@{userName} {dictionaryResponse.Item1}"); }
-                        else
-                        {
-                          // Split the message into smaller messages
-                          List<string> msg = new() { dictionaryResponse.Item1 };
-                          int index = 0;
-                          while (msg[0].Length > MESSAGESENTMAXLEN)
-                          {
-                            // Find a good breaking point of the message - a space
-                            index = msg[0].LastIndexOf(" ", int.Min(MESSAGESENTMAXLEN, msg[0].Length));
-                            if (index <= 0)
-                            {
-                              MainWindow.ConsoleWarning(">> Something went wrong when splitting response message.");
-                              msg.Clear(); // Clear the messages - don't send anything
-                              break;
-                            }
-                            msg.Add(msg[0][..index].Trim());
-                            msg[0] = msg[0].Remove(0, index);
-                          }
-                          if (msg.Count > 0)
-                          {
-                            msg.Add(msg[0].Trim());
-                            msg[0] = string.Empty;
-                            foreach (string s in msg)
-                            {
-                              if (s.Length > 0) AddMessageToQueue($"@{userName} {s}");
-                            }
-                          }
-                        }
+                        AddMessageToQueue($"@{userName} {dictionaryResponse.Item1}");
                         ResponseMessages[temp] = (ResponseMessages[temp].Item1, DateTime.Now);
                       }
                       else { MainWindow.ConsoleWarning($">> Not sending response for \"{temp}\" key. Cooldown active."); }
@@ -694,9 +671,34 @@ namespace AbevBot
       if (!Started) return;
       if (string.IsNullOrWhiteSpace(message)) return;
 
+      List<string> messages = new();
+      if (message.Length <= MESSAGESENTMAXLEN) { messages.Add(message); }
+      else
+      {
+        // Split the message into smaller messages
+        messages.Add(message);
+        int index;
+        while (messages[0].Length > MESSAGESENTMAXLEN)
+        {
+          // Find a good breaking point of the message - a space
+          index = messages[0].LastIndexOf(" ", int.Min(MESSAGESENTMAXLEN, messages[0].Length));
+          if (index <= 0)
+          {
+            MainWindow.ConsoleWarning(">> Something went wrong when splitting response message.");
+            return; // Something broke, don't send anything
+          }
+          messages.Add(messages[0][..index].Trim());
+          messages[0] = messages[0].Remove(0, index);
+        }
+
+        messages[0] = messages[0].Trim();
+        if (messages[0].Length > 0) messages.Add(messages[0]);
+        messages.RemoveAt(0);
+      }
+
       lock (MessageQueue)
       {
-        MessageQueue.Add(message);
+        foreach (string s in messages) MessageQueue.Add(s);
       }
     }
 
