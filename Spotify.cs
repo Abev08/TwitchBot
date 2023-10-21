@@ -9,7 +9,7 @@ namespace AbevBot
   public static class Spotify
   {
     /// <summary> Timeout between song requests from the same chatter. </summary>
-    public static readonly TimeSpan SONGREQUESTTIMEOUT = TimeSpan.FromMinutes(10);
+    public static readonly TimeSpan SONGREQUESTTIMEOUT = TimeSpan.FromMinutes(2);
     /// <summary> Is connection to Spotify API working? </summary>
     public static bool Working { get; set; }
     /// <summary> Required !skipsong requests to skip the song. </summary>
@@ -213,7 +213,7 @@ namespace AbevBot
     /// <summary> Gets songs in the queue. </summary>
     public static string GetSongQueue()
     {
-      using HttpRequestMessage request = new(HttpMethod.Post, "https://api.spotify.com/v1/me/player/queue");
+      using HttpRequestMessage request = new(HttpMethod.Get, "https://api.spotify.com/v1/me/player/queue");
       request.Headers.Add("Authorization", $"Bearer {Secret.Data[Secret.Keys.SpotifyOAuthToken]}");
       string resp = Notifications.Client.Send(request).Content.ReadAsStringAsync().Result;
 
