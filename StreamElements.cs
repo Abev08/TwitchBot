@@ -237,6 +237,34 @@ namespace AbevBot
       return sb.ToString();
     }
 
+    /// <summary> Appends all available voices to provided StringBuilder. </summary>
+    /// <param name="sb">StringBuilder to append voices to.</param>
+    /// <param name="charactersPerLine">Insert line break after provided amout of characters (<= 0 - don't insert line breaks).</param>
+    public static void AppendVoices(ref StringBuilder sb, int charactersPerLine = -1)
+    {
+      var voice = Voices.GetEnumerator();
+      bool first = true;
+      int lineLength = 0;
+      while (voice.MoveNext())
+      {
+        if (!first)
+        {
+          sb.Append(", ");
+          lineLength += 2;
+        }
+        if (charactersPerLine > 0 && lineLength > charactersPerLine)
+        {
+          sb.AppendLine();
+          lineLength = 0;
+        }
+        sb.Append(voice.Current.Value);
+        lineLength += voice.Current.Value.Length;
+
+        first = false;
+      }
+      sb.AppendLine();
+    }
+
     public static Stream GetTTS(string text, string voice = "Brian")
     {
       if (text is null || text.Length == 0) return null;

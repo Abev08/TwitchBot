@@ -131,7 +131,7 @@ namespace AbevBot
                 if (payload?.Event?.UserName?.Length > 0)
                 {
                   Chatter c = Chatter.GetChatterByID(long.Parse(payload.Event.UserID), payload.Event.UserName);
-                  if (c.LastTimeFollowed != DateTime.Now.Date)
+                  if (c.LastTimeFollowed.Date != DateTime.Now.Date)
                   {
                     c.SetLastTimeFollowedToNow();
                     MainWindow.ConsoleWarning($">> New follow from {c.Name}.");
@@ -194,7 +194,7 @@ namespace AbevBot
                 // Received channel points redemption event
                 Payload payload = Payload.Deserialize(messageDeserialized?.Payload);
                 MainWindow.ConsoleWarning($">> {payload?.Event?.UserName} redeemed ID: {payload?.Event?.Reward?.ID} with channel points.");
-                Notifications.CreateRedemptionNotificaiton(payload?.Event?.UserName, payload?.Event?.Reward?.ID, null);
+                Notifications.CreateRedemptionNotificaiton(payload?.Event?.UserName, payload?.Event?.Reward?.ID, payload?.Event?.ID, payload?.Event?.Reward?.Prompt);
                 // MainWindow.ConsoleWriteLine(message);
               }
               else if (messageDeserialized?.Metadata?.SubscriptionType?.Equals("channel.ban") == true)

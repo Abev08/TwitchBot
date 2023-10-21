@@ -12,6 +12,7 @@ namespace AbevBot
       ChannelName, ChannelID,
       ConsoleVisible, PeriodicMessageTimeInterval, StartVideoEnabled,
       AlwaysReadTTSFromThem, OverpoweredInFight,
+      SongRequestTimeout,
 
       Follow_Enable, Follow_ChatMessage, Follow_TextToDisplay, Follow_TextPosition, Follow_TextToSpeech, Follow_SoundToPlay, Follow_VideoToPlay,
       Subscription_Enable, Subscription_ChatMessage, Subscription_TextToDisplay, Subscription_TextPosition, Subscription_TextToSpeech, Subscription_SoundToPlay, Subscription_VideoToPlay,
@@ -21,8 +22,8 @@ namespace AbevBot
       Cheer_Enable, Cheer_ChatMessage, Cheer_TextToDisplay, Cheer_TextPosition, Cheer_TextToSpeech, Cheer_SoundToPlay, Cheer_VideoToPlay,
       Raid_Enable, Raid_ChatMessage, Raid_TextToDisplay, Raid_TextPosition, Raid_TextToSpeech, Raid_SoundToPlay, Raid_VideoToPlay, Raid_MinimumRaiders, Raid_DoShoutout,
 
-      ChannelRedemption_RandomVideo_ID, ChannelRedemption_SongRequest_ID, ChannelRedemption_SongSkip_ID,
-      ChannelRedemption_ID, ChannelRedemption_KeyAction, ChannelRedemption_KeyActionType, ChannelRedemption_KeyActionAfterTime, ChannelRedemption_KeyActionAfterTimeType, ChannelRedemption_ChatMessage, ChannelRedemption_TextToDisplay, ChannelRedemption_TextPosition, ChannelRedemption_TextToSpeech, ChannelRedemption_SoundToPlay, ChannelRedemption_VideoToPlay,
+      ChannelRedemption_RandomVideo_ID, ChannelRedemption_RandomVideo_MarkAsFulfilled, ChannelRedemption_SongRequest_ID, ChannelRedemption_SongRequest_MarkAsFulfilled, ChannelRedemption_SongSkip_ID, ChannelRedemption_SongSkip_MarkAsFulfilled,
+      ChannelRedemption_ID, ChannelRedemption_KeyAction, ChannelRedemption_KeyActionType, ChannelRedemption_KeyActionAfterTime, ChannelRedemption_KeyActionAfterTimeType, ChannelRedemption_ChatMessage, ChannelRedemption_TextToDisplay, ChannelRedemption_TextPosition, ChannelRedemption_TextToSpeech, ChannelRedemption_SoundToPlay, ChannelRedemption_VideoToPlay, ChannelRedemption_MarkAsFulfilled,
       msg
     };
 
@@ -90,6 +91,7 @@ namespace AbevBot
         int temp2;
         ChannelRedemption redemption = null;
         string[] keys;
+        TimeSpan timeSpan;
 
         // FileShare.ReadWrite needs to be used because it have to allow other processes to write into the file
         using FileStream fileStream = new(configFile.FullName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
@@ -122,9 +124,16 @@ namespace AbevBot
                 break;
 
               case Keys.PeriodicMessageTimeInterval:
-                if (TimeSpan.TryParse(text[1], out TimeSpan timeSpan))
+                if (TimeSpan.TryParse(text[1], out timeSpan))
                 {
                   if (timeSpan.TotalSeconds > 0) Chat.PeriodicMessageInterval = timeSpan;
+                }
+                break;
+
+              case Keys.SongRequestTimeout:
+                if (TimeSpan.TryParse(text[1], out timeSpan))
+                {
+                  Spotify.SongRequestTimeout = timeSpan;
                 }
                 break;
 
@@ -416,6 +425,14 @@ namespace AbevBot
                 }
                 if (text[1].Length > 0) redemption.Config.VideoToPlay = $"Resources\\{text[1].Trim()}";
                 break;
+              case Keys.ChannelRedemption_MarkAsFulfilled:
+                if (redemption is null)
+                {
+                  MainWindow.ConsoleWarning($">> Bad config line {lineIndex}. Missing previous ID filed declaration!");
+                  continue;
+                }
+                if (bool.TryParse(text[1], out result)) redemption.MarkAsFulfilled = result;
+                break;
 
               case Keys.msg:
                 // If there are '=' symbols in the message the previous splitting would brake it
@@ -424,15 +441,15 @@ namespace AbevBot
                 break;
 
               case Keys.ChannelRedemption_RandomVideo_ID:
-                Data[(Keys)key] = text[1].Trim();
-                break;
-
               case Keys.ChannelRedemption_SongRequest_ID:
-                Data[(Keys)key] = text[1].Trim();
-                break;
-
               case Keys.ChannelRedemption_SongSkip_ID:
                 Data[(Keys)key] = text[1].Trim();
+                break;
+
+              case Keys.ChannelRedemption_RandomVideo_MarkAsFulfilled:
+              case Keys.ChannelRedemption_SongRequest_MarkAsFulfilled:
+              case Keys.ChannelRedemption_SongSkip_MarkAsFulfilled:
+                if (bool.TryParse(text[1], out result)) Data[(Keys)key] = result.ToString();
                 break;
 
               case Keys.AlwaysReadTTSFromThem:
@@ -519,6 +536,8 @@ namespace AbevBot
         writer.WriteLine(string.Concat(Keys.AlwaysReadTTSFromThem.ToString(), " = AbevBot, Abev08"));
         writer.WriteLine("; Comma separated list of user names that will be overpowered in !fight minigame");
         writer.WriteLine(string.Concat(Keys.OverpoweredInFight.ToString(), " = Abev08"));
+        writer.WriteLine("; Song request timeout from the same user (HH:MM:SS format -> 1 hour: 1:00:00, 1 minute 0:01:00, 1 second: 0:00:01). Default: empty - 2 minutes");
+        writer.WriteLine(string.Concat(Keys.SongRequestTimeout.ToString(), " = "));
 
         writer.WriteLine();
         writer.WriteLine();
@@ -609,10 +628,13 @@ namespace AbevBot
         writer.WriteLine("; Channel points redemptions. Assign channel point redemption ID.");
         writer.WriteLine("; Plays random video from Resources/Videos folder.");
         writer.WriteLine(string.Concat(Keys.ChannelRedemption_RandomVideo_ID.ToString(), " = "));
+        writer.WriteLine(string.Concat(Keys.ChannelRedemption_RandomVideo_MarkAsFulfilled.ToString(), " = false"));
         writer.WriteLine("; Adds provided song (Spotify link) to song queue.");
         writer.WriteLine(string.Concat(Keys.ChannelRedemption_SongRequest_ID.ToString(), " = "));
+        writer.WriteLine(string.Concat(Keys.ChannelRedemption_SongRequest_MarkAsFulfilled.ToString(), " = false"));
         writer.WriteLine("; Skips current Spotify song.");
         writer.WriteLine(string.Concat(Keys.ChannelRedemption_SongSkip_ID.ToString(), " = "));
+        writer.WriteLine(string.Concat(Keys.ChannelRedemption_SongSkip_MarkAsFulfilled.ToString(), " = false"));
         writer.WriteLine();
         writer.WriteLine("; Custom channel points redemptions.");
         writer.WriteLine("; The configuration group has to start with ID filed.");
@@ -636,6 +658,7 @@ namespace AbevBot
         writer.WriteLine(string.Concat(Keys.ChannelRedemption_TextToSpeech.ToString(), " = "));
         writer.WriteLine(string.Concat(Keys.ChannelRedemption_SoundToPlay.ToString(), " = "));
         writer.WriteLine(string.Concat(Keys.ChannelRedemption_VideoToPlay.ToString(), " = "));
+        writer.WriteLine(string.Concat(Keys.ChannelRedemption_MarkAsFulfilled.ToString(), " = false"));
 
         writer.WriteLine();
         writer.WriteLine();

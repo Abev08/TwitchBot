@@ -15,7 +15,7 @@ namespace AbevBot
     private static readonly Dictionary<long, Chatter> Chatters = new();
     public static readonly List<string> AlwaysReadTTSFromThem = new();
     public static readonly List<string> OverpoweredInFight = new();
-    public static readonly TimeSpan OfflineTimeout = new(0, 30, 0);
+    public static readonly TimeSpan OfflineTimeout = TimeSpan.FromMinutes(30);
 
     public long ID { get; set; }
     public string Name { get; set; }
@@ -86,7 +86,7 @@ namespace AbevBot
 
     public void SetLastTimeFollowedToNow()
     {
-      LastTimeFollowed = DateTime.Now.Date;
+      LastTimeFollowed = DateTime.Now;
       UpdateRequired = true;
     }
 
@@ -172,6 +172,16 @@ namespace AbevBot
       string data;
       lock (Chatters)
       {
+        // Clean up chatters when force update is active - the bot is being closed
+        if (forceUpdate)
+        {
+          var chatter = Chatters.GetEnumerator();
+          while (chatter.MoveNext())
+          {
+            if (!CheckIfChatterIsActive(chatter.Current.Value)) Chatters.Remove(chatter.Current.Value.ID);
+          }
+        }
+
         data = JsonSerializer.Serialize(Chatters, new JsonSerializerOptions() { WriteIndented = true });
       }
 
@@ -193,11 +203,57 @@ namespace AbevBot
           var chat = JsonSerializer.Deserialize<Dictionary<long, Chatter>>(data);
           foreach (var chatter in chat)
           {
-            Chatters.Add(chatter.Key, chatter.Value);
+            if (CheckIfChatterIsActive(chatter.Value)) Chatters.Add(chatter.Key, chatter.Value);
           }
         }
       }
     }
+
+    /// <summary> Checks several things to assess whether the chatter is active. </summary>
+    /// <param name="chatter">Chatter to be checked.</param>
+    /// <returns>true if chatter is active, otherwise false</returns>
+    private static bool CheckIfChatterIsActive(Chatter chatter)
+    {
+      if (chatter.Fight?.Level > 0) return true;
+      if (chatter.Gamba?.Wins != 0 || chatter.Gamba?.Looses != 0) return true;
+      if (chatter.RudePoints > 0) return true;
+      if (chatter.BackseatPoints > 0) return true;
+      if (chatter.WelcomeMessage?.Length > 0) return true;
+      // if (chatter.LastTimeFollowed != DateTime.MinValue) return true;
+
+      // All checks failed - the chatter is inactive and can be forgotten peepoSad
+      return false;
+    }
+
+    /// <summary><para> Looks through Chatters array to find every chatter that followed in less than 20 seconds. </para>
+    /// <para> Then bans find users for 10 hours, deletes them from Chatters array and deletes follow notifications. </para></summary>
+    public static void StopFollowBots()
+    {
+      MainWindow.ConsoleWarning(">> Stop follow bots clicked!");
+      TimeSpan followedLimit = TimeSpan.FromSeconds(20);
+      var now = DateTime.Now;
+
+      // First clean up notifications because it's faster than sending http messages for bans
+      Notifications.CleanFollowNotifications();
+
+      // Ban the chatters
+      LoadChattersFile();
+      lock (Chatters)
+      {
+        var chatter = Chatters.GetEnumerator();
+        while (chatter.MoveNext())
+        {
+          if (now - chatter.Current.Value.LastTimeFollowed <= followedLimit)
+          {
+            // Followed in last x seconds - BAN!
+            Chat.BanChatter("follow bot?", chatter.Current.Value, 36000); // 10 hours
+            Chatters.Remove(chatter.Current.Value.ID);
+          }
+        }
+      }
+    }
+
+    public override string ToString() { return Name; }
   }
 
   public class SkipSongChatter

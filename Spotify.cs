@@ -9,7 +9,7 @@ namespace AbevBot
   public static class Spotify
   {
     /// <summary> Timeout between song requests from the same chatter. </summary>
-    public static readonly TimeSpan SONGREQUESTTIMEOUT = TimeSpan.FromMinutes(2);
+    public static TimeSpan SongRequestTimeout { get; set; } = TimeSpan.FromMinutes(2);
     /// <summary> Is connection to Spotify API working? </summary>
     public static bool Working { get; set; }
     /// <summary> Required !skipsong requests to skip the song. </summary>

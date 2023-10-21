@@ -18,6 +18,28 @@ namespace AbevBot
     private static readonly HttpClient Client = new();
     /// <summary> Date and time when access token expiries. </summary>
     private static DateTime SpotifyOAuthTokenExpiration;
+    /// <summary> Twitch scope of permissions. https://dev.twitch.tv/docs/authentication/scopes </summary>
+    private static readonly string[] TwitchScopes = new[] {
+      "bits:read", // View Bits information for a channel
+      "channel:manage:redemptions", // Manage Channel Points custom rewards and their redemptions on a channel
+      "channel:read:redemptions", // View Channel Points custom rewards and their redemptions on a channel
+      "channel:read:subscriptions", // View a list of all subscribers to a channel and check if a user is subscribed to a channel
+      "chat:edit", // Send live stream chat messages
+      "chat:read", // View live stream chat messages
+      "moderator:manage:banned_users", // Ban and unban users
+      "moderator:manage:shoutouts", // Manage a broadcaster’s shoutouts
+      "moderator:read:chatters", // View the chatters in a broadcaster’s chat room
+      "moderator:read:followers", // Read the followers of a broadcaster
+      "whispers:edit", // Send whisper messages
+      "whispers:read", // View your whisper messages
+    };
+    /// <summary> Spotify scope of permissions. https://developer.spotify.com/documentation/web-api/concepts/scopes </summary>
+    private static readonly string[] SpotifyScopes = new[] {
+      "user-read-playback-state", // Read access to a user’s player state.
+      "user-modify-playback-state", // Write access to a user’s playback state.
+      "user-read-currently-playing", // Read access to a user’s currently playing content.
+      "user-read-recently-played" // Read access to a user’s recently playing content.
+    };
 
     /// <summary> Tries to get access token by: validating existing one or refreshing existing one or requesting new one. </summary>
     public static void GetAccessTokens()
@@ -87,27 +109,8 @@ namespace AbevBot
         "client_id=", Secret.Data[Secret.Keys.CustomerID],
         "&redirect_uri=http://localhost:3000",
         "&response_type=code",
-        // When asking for permissions the scope of permissions has to be determined
-        // if tried to follow to event without getting permissions for it, the follow returns an error
-        // https://dev.twitch.tv/docs/authentication/scopes/
-        "&scope=",
-          string.Concat(
-            // Chat bot scopes
-            "chat:read", // View live stream chat messages
-            "+chat:edit", // 	Send live stream chat messages
-            "+whispers:read", // View your whisper messages
-            "+whispers:edit", // 	Send whisper messages
-            "+bits:read", // View Bits information for a channel
-            "+moderator:manage:banned_users", // Ban chatters
-            "+moderator:manage:shoutouts", // Create and receive shoutout information
-
-            // Events bot scopes
-            "+channel:read:redemptions", // View Channel Points custom rewards and their redemptions on a channel
-            "+channel:read:subscriptions", // View a list of all subscribers to a channel and check if a user is subscribed to a channel
-            "+moderator:read:followers", // Read the followers of a broadcaster
-            "+moderator:read:chatters" // Read chatters
-          ).Replace(":", "%3A") // Change to url encoded
-        );
+        "&scope=", string.Join('+', TwitchScopes).Replace(":", "%3A") // Change to url encoded
+      );
 
       // Open the link for the user to complete authorization
       Process.Start(new ProcessStartInfo() { FileName = uri, UseShellExecute = true });
@@ -174,9 +177,13 @@ namespace AbevBot
       AccessTokenValidationResponse response = AccessTokenValidationResponse.Deserialize(resp);
       if (response?.ClientID?.Equals(Secret.Data[Secret.Keys.CustomerID]) == true && response?.ExpiresIn > 0)
       {
-        BotOAuthTokenExpiration = DateTime.Now + TimeSpan.FromSeconds(response.ExpiresIn.Value) - OAuthTokenExpirationSomething;
-        MainWindow.ConsoleWarning($">> Twitch OAuth token validation succeeded. Token expiries in {response.ExpiresIn.Value / 3600f} hours.");
-        return true;
+        if (response?.Scopes?.Length != TwitchScopes.Length) { MainWindow.ConsoleWarning(">> Current Twitch OAuth token is missing some scopes."); }
+        else
+        {
+          BotOAuthTokenExpiration = DateTime.Now + TimeSpan.FromSeconds(response.ExpiresIn.Value) - OAuthTokenExpirationSomething;
+          MainWindow.ConsoleWarning($">> Twitch OAuth token validation succeeded. Token expiries in {response.ExpiresIn.Value / 3600f} hours.");
+          return true;
+        }
       }
       else { MainWindow.ConsoleWarning(">> Twitch OAuth token validation failed."); }
 
@@ -233,16 +240,8 @@ namespace AbevBot
         "client_id=", Secret.Data[Secret.Keys.SpotifyClientID],
         "&redirect_uri=http://localhost:3000",
         "&response_type=code",
-        // When asking for permissions the scope of permissions has to be determined
-        // https://developer.spotify.com/documentation/web-api/concepts/scopes
-        "&scope=",
-          string.Concat(
-            "user-read-playback-state", // Read access to a user’s player state.
-            "+user-modify-playback-state", // Write access to a user’s playback state.
-            "+user-read-currently-playing", // Read access to a user’s currently playing content.
-            "+user-read-recently-played" // Read access to a user’s recently playing content.
-          ).Replace(":", "%3A") // Change to url encoded
-        );
+        "&scope=", string.Join('+', SpotifyScopes).Replace(":", "%3A") // Change to url encoded
+      );
 
       // Open the link for the user to complete authorization
       Process.Start(new ProcessStartInfo() { FileName = uri, UseShellExecute = true });

@@ -5,5 +5,17 @@
              Startup="ApplicationStartup">
   <Application.Resources>
     <FontFamily x:Key="OpenSans">pack://application:,,,/Fonts/#Open Sans</FontFamily>
+
+    <Style TargetType="Button">
+      <Setter Property="Padding" Value="3"/>
+    </Style>
+
+    <Style TargetType="CheckBox">
+      <Setter Property="Margin" Value="1"/>
+    </Style>
+
+    <Style TargetType="ComboBox">
+      <Setter Property="Padding" Value="4"/>
+    </Style>
   </Application.Resources>
 </Application>

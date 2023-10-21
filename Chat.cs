@@ -306,7 +306,7 @@ namespace AbevBot
                   {
                     if (Notifications.AreSoundsAvailable())
                     {
-                      temp = Notifications.GetSampleSoundsResponse();
+                      temp = Notifications.GetSampleSoundsPaste();
                       AddMessageToQueue($"@{chatter.Name} {temp}");
                     }
                     else { AddMessageToQueue($"@{chatter.Name} there are no sounds to use peepoSad"); }
@@ -755,14 +755,18 @@ namespace AbevBot
       Chatter c;
       if (id > 0) { c = Chatter.GetChatterByID(id, userName); }
       else { c = Chatter.GetChatterByName(userName); }
+      BanChatter(message, c, durSeconds);
+    }
 
-      if (c is null) return;
+    public static void BanChatter(string message, Chatter chatter, int durSeconds = 15)
+    {
+      if (chatter is null) return;
 
-      MainWindow.ConsoleWarning($"> Banning {c.Name} from chat for {durSeconds} seconds. {message}");
+      MainWindow.ConsoleWarning($"> Banning {chatter.Name} from chat for {durSeconds} seconds. {message}");
 
       string uri = $"https://api.twitch.tv/helix/moderation/bans?broadcaster_id={Config.Data[Config.Keys.ChannelID]}&moderator_id={Config.Data[Config.Keys.ChannelID]}";
       using HttpRequestMessage request = new(HttpMethod.Post, uri);
-      request.Content = new StringContent(new BanMessageRequest(c.ID, durSeconds, message).ToJsonString(), Encoding.UTF8, "application/json");
+      request.Content = new StringContent(new BanMessageRequest(chatter.ID, durSeconds, message).ToJsonString(), Encoding.UTF8, "application/json");
       request.Headers.Add("Authorization", $"Bearer {Secret.Data[Secret.Keys.OAuthToken]}");
       request.Headers.Add("Client-Id", Secret.Data[Secret.Keys.CustomerID]);
 
@@ -845,9 +849,9 @@ namespace AbevBot
       if (chatter != null && !fromNotifications)
       {
         TimeSpan tempTimeSpan = DateTime.Now - chatter.LastSongRequest;
-        if (tempTimeSpan < Spotify.SONGREQUESTTIMEOUT)
+        if (tempTimeSpan < Spotify.SongRequestTimeout)
         {
-          tempTimeSpan = Spotify.SONGREQUESTTIMEOUT - tempTimeSpan;
+          tempTimeSpan = Spotify.SongRequestTimeout - tempTimeSpan;
           AddMessageToQueue(string.Concat(
             "@", chatter.Name, " wait ",
             tempTimeSpan.TotalSeconds < 60 ?

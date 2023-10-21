@@ -15,7 +15,9 @@ namespace AbevBot
 
     private static void StartAddRudePoint(string userName, string message, int point)
     {
-      string rudeChatter = message?.Trim();
+      if (message is null) return;
+
+      string rudeChatter = message.Replace("\U000e0000", "").Trim(); // Removing ShadeEleven's "white space" characters :)
       if (rudeChatter.StartsWith('@')) { rudeChatter = rudeChatter[1..]; }
 
       if (string.IsNullOrWhiteSpace(rudeChatter))

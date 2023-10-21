@@ -154,16 +154,21 @@ namespace AbevBot
       Console.WriteLine(text);
     }
 
-    private void PauseNotifications(object sender, RoutedEventArgs e)
+    private void PauseNotificationsClicked(object sender, RoutedEventArgs e)
     {
       Notifications.NotificationsPaused ^= true;
       if (Notifications.NotificationsPaused) ((Button)sender).Background = Brushes.Red;
       else ((Button)sender).Background = btnSkip.Background;
     }
 
-    private void SkipNotification(object sender, RoutedEventArgs e)
+    private void SkipNotificationClicked(object sender, RoutedEventArgs e)
     {
       Notifications.SkipNotification = true;
+    }
+
+    private void StopFollowBotsClicked(object sender, RoutedEventArgs e)
+    {
+      Chatter.StopFollowBots();
     }
 
     public void SetTextDisplayed(string text, Notifications.TextPosition position)
@@ -311,7 +316,7 @@ namespace AbevBot
       Notifications.CreateTTSNotification(text);
     }
 
-    private void NotificationTest(object sender, RoutedEventArgs e)
+    private void NotificationTestClicked(object sender, RoutedEventArgs e)
     {
       switch (cbNotificationType.Text)
       {

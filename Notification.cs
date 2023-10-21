@@ -30,6 +30,8 @@ namespace AbevBot
     private bool AudioStarted;
     private readonly ChannelRedemption Redemption;
     private bool KeysPressed, Keys2Pressed;
+    public NotificationType Type { get; }
+    public Action ExtraActionAtStartup { get; set; }
 
     public Notification() { }
 
@@ -44,6 +46,7 @@ namespace AbevBot
       VideoPath = config.VideoToPlay;
       VideoVolume = Config.VolumeVideos;
       Redemption = redemption;
+      Type = config.Type;
     }
 
     /// <summary> Initializes required things and starts the notification </summary>
@@ -132,6 +135,8 @@ namespace AbevBot
       {
         AudioToPlay.Insert(0, Audio.GetSound(SoundPath, SoundVolume));
       }
+
+      if (ExtraActionAtStartup != null) ExtraActionAtStartup();
 
       StartTime = DateTime.Now;
     }

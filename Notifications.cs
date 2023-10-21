@@ -24,14 +24,15 @@ namespace AbevBot
     private static readonly Dictionary<string, FileInfo> SampleSounds = new();
     private static readonly List<FileInfo> RandomVideos = new();
     private static bool SoundsAvailable;
+    private static string s_soundsSamplePasteLink;
 
-    public static NotificationsConfig ConfigFollow { get; set; } = new();
-    public static NotificationsConfig ConfigSubscription { get; set; } = new();
-    public static NotificationsConfig ConfigSubscriptionExt { get; set; } = new();
-    public static NotificationsConfig ConfigSubscriptionGift { get; set; } = new();
-    public static NotificationsConfig ConfigSubscriptionGiftReceived { get; set; } = new();
-    public static NotificationsConfig ConfigCheer { get; set; } = new();
-    public static NotificationsConfig ConfigRaid { get; set; } = new();
+    public static NotificationsConfig ConfigFollow { get; set; } = new(NotificationType.FOLLOW);
+    public static NotificationsConfig ConfigSubscription { get; set; } = new(NotificationType.SUBSCRIPTION);
+    public static NotificationsConfig ConfigSubscriptionExt { get; set; } = new(NotificationType.SUBSCRIPTION);
+    public static NotificationsConfig ConfigSubscriptionGift { get; set; } = new(NotificationType.SUBSCRIPTIONGIFT);
+    public static NotificationsConfig ConfigSubscriptionGiftReceived { get; set; } = new(NotificationType.SUBSCRIPTION);
+    public static NotificationsConfig ConfigCheer { get; set; } = new(NotificationType.CHEER);
+    public static NotificationsConfig ConfigRaid { get; set; } = new(NotificationType.RAID);
     private static readonly string[] NotificationData = new string[8];
     public static readonly List<ChannelRedemption> ChannelRedemptions = new();
     private static readonly List<(DateTime time, string name)> GiftedSubs = new();
@@ -45,7 +46,8 @@ namespace AbevBot
       Started = true;
       MainWindow.ConsoleWarning(">> Starting notifications thread.");
 
-      CreateVoicesResponse();
+      CreateVoicesPaste();
+      // CreateVoicesResponse();
 
       NotificationsThread = new Thread(Update)
       {
@@ -245,23 +247,35 @@ namespace AbevBot
     }
 
     /// <summary> Creates and adds to queue Channel Points Redemption notification. </summary>
-    public static void CreateRedemptionNotificaiton(string userName, string id, string message)
+    public static void CreateRedemptionNotificaiton(string userName, string redemptionID, string messageID, string message)
     {
-      if (Config.Data[Config.Keys.ChannelRedemption_RandomVideo_ID].Equals(id)) { CreateRandomVideoNotification(); }
-      else if (Config.Data[Config.Keys.ChannelRedemption_SongRequest_ID].Equals(id)) { Chat.SongRequest(Chatter.GetChatterByName(userName), message, true); }
-      else if (Config.Data[Config.Keys.ChannelRedemption_SongSkip_ID].Equals(id)) { Spotify.SkipSong(); }
+      string msgID = messageID;
+      if (Config.Data[Config.Keys.ChannelRedemption_RandomVideo_ID].Equals(redemptionID)) { CreateRandomVideoNotification(msgID); }
+      else if (Config.Data[Config.Keys.ChannelRedemption_SongRequest_ID].Equals(redemptionID))
+      {
+        Chat.SongRequest(Chatter.GetChatterByName(userName), message, true);
+        if (Config.Data[Config.Keys.ChannelRedemption_SongRequest_MarkAsFulfilled].Equals("True")) MarkRedemptionAsFulfilled(redemptionID, msgID);
+      }
+      else if (Config.Data[Config.Keys.ChannelRedemption_SongSkip_ID].Equals(redemptionID))
+      {
+        Spotify.SkipSong();
+        if (Config.Data[Config.Keys.ChannelRedemption_SongSkip_MarkAsFulfilled].Equals("True")) MarkRedemptionAsFulfilled(redemptionID, msgID);
+      }
       else
       {
         // Look throught channel redemptions list
         foreach (var redemption in ChannelRedemptions)
         {
-          if (redemption.ID.Equals(id))
+          if (redemption.ID.Equals(redemptionID))
           {
             // Create notification
             Array.Clear(NotificationData);
 
             Chat.AddMessageToQueue(redemption.Config.ChatMessage);
-            AddNotification(new Notification(redemption.Config, NotificationData, redemption));
+            AddNotification(new Notification(redemption.Config, NotificationData, redemption)
+            {
+              ExtraActionAtStartup = () => { if (redemption.MarkAsFulfilled) MarkRedemptionAsFulfilled(redemption.ID, msgID); }
+            });
             break;
           }
         }
@@ -299,15 +313,23 @@ namespace AbevBot
     }
 
     /// <summary> Creates and adds to queue Random Video notification. </summary>
-    public static void CreateRandomVideoNotification()
+    public static void CreateRandomVideoNotification(string messageID)
     {
       var videos = GetRandomVideos();
       if (videos is null || videos.Count == 0) return;
+      string msgID = messageID;
 
       AddNotification(new Notification()
       {
         VideoPath = videos[Random.Shared.Next(0, videos.Count)].FullName,
-        VideoVolume = 0.8f
+        VideoVolume = 0.8f,
+        ExtraActionAtStartup = () =>
+        {
+          if (Config.Data[Config.Keys.ChannelRedemption_RandomVideo_MarkAsFulfilled].Equals("True"))
+          {
+            MarkRedemptionAsFulfilled(Config.Data[Config.Keys.ChannelRedemption_RandomVideo_ID], msgID);
+          }
+        }
       });
     }
 
@@ -321,10 +343,11 @@ namespace AbevBot
 
       StringBuilder sb = new();
       sb.AppendLine("StreamElements voices:");
-      sb.Append(StreamElements.GetVoices());
+      StreamElements.AppendVoices(ref sb, 70);
       sb.AppendLine();
-      sb.Append(TikTok.GetVoices());
       sb.AppendLine();
+      sb.AppendLine("TikTok voices:");
+      TikTok.AppendVoices(ref sb, 70);
 
       GlotPaste paste = new() { Language = "plaintext", Title = "TTS Voices" };
       paste.Files.Add(new GlotFile() { Name = "TTS Voices", Content = sb.ToString() });
@@ -361,6 +384,22 @@ namespace AbevBot
       else
       {
         MainWindow.ConsoleWarning(">> Couldn't add respoonse to \"!voices\" key - the key is already present in response messages.");
+      }
+    }
+
+    /// <summary> Removes all follow notifications from the queue. </summary>
+    public static void CleanFollowNotifications()
+    {
+      lock (NotificationQueue)
+      {
+        for (int i = NotificationQueue.Count - 1; i >= 0; i--)
+        {
+          if (NotificationQueue[i].Type == NotificationType.FOLLOW)
+          {
+            NotificationQueue.RemoveAt(i);
+          }
+        }
+        MainWindow.I.SetNotificationQueueCount(NotificationQueue.Count);
       }
     }
 
@@ -402,6 +441,51 @@ namespace AbevBot
       return result;
     }
 
+    /// <summary> Creates paste link with sound samples. </summary>
+    /// <returns>Link to the paste.</returns>
+    public static string GetSampleSoundsPaste()
+    {
+      if (s_soundsSamplePasteLink?.Length > 0) return s_soundsSamplePasteLink;
+
+      var samples = GetSampleSounds();
+      int lineLength = 0;
+      StringBuilder sb = new();
+      sb.AppendLine("Sound samples that can be used in TTS messages like: \"!tts -fart\".");
+      sb.AppendLine("Every sound sample can also be used with \"up\" or \"down\" prefix.");
+      foreach (var sample in samples)
+      {
+        sb.Append(sample.Key).Append(", ");
+        lineLength += sample.Key.Length + 2;
+        if (lineLength > 70)
+        {
+          sb.AppendLine();
+          lineLength = 0;
+        }
+      }
+
+      string result = sb.ToString().Trim();
+      if (result.EndsWith(',')) result = result[..^1];
+
+      GlotPaste paste = new() { Language = "plaintext", Title = "Sound samples" };
+      paste.Files.Add(new GlotFile() { Name = "Sound samples", Content = result });
+
+      using HttpRequestMessage request = new(HttpMethod.Post, "https://glot.io/api/snippets");
+      request.Content = new StringContent(paste.ToJsonString(), Encoding.UTF8, "application/json");
+
+      string resp = Client.Send(request).Content.ReadAsStringAsync().Result;
+      GlotResponse response = GlotResponse.Deserialize(resp);
+      if (response?.Url?.Length > 0)
+      {
+        s_soundsSamplePasteLink = response.Url.Replace("api/", ""); // Remove "api/" part
+        MainWindow.ConsoleWarning(">> Created respoonse link to \"!sounds\" key.");
+        return s_soundsSamplePasteLink;
+      }
+      else
+      {
+        return "something went wrong peepoSad";
+      }
+    }
+
     public static bool AreSoundsAvailable()
     {
       if (SampleSounds.Count == 0) GetSampleSounds();
@@ -431,7 +515,29 @@ namespace AbevBot
 
       return RandomVideos;
     }
+
+    /// <summary> Marks provided redemption from provided message ID as fulfilled. </summary>
+    /// <param name="redemptionID">Twitch redemption ID.</param>
+    /// <param name="messageID">Twitch message ID that created the redemption.</param>
+    public static void MarkRedemptionAsFulfilled(string redemptionID, string messageID)
+    {
+      string uri = string.Concat(
+        "https://api.twitch.tv/helix/channel_points/custom_rewards/redemptions",
+        "?broadcaster_id=", Config.Data[Config.Keys.ChannelID],
+        "&reward_id=", redemptionID,
+        "&id=", messageID
+      );
+      using HttpRequestMessage request = new(HttpMethod.Patch, uri);
+      request.Content = new StringContent("""{ "status": "FULFILLED" }""", Encoding.UTF8, "application/json");
+      request.Headers.Add("Authorization", $"Bearer {Secret.Data[Secret.Keys.OAuthToken]}");
+      request.Headers.Add("Client-Id", Secret.Data[Secret.Keys.CustomerID]);
+
+      string resp = Client.Send(request).Content.ReadAsStringAsync().Result;
+      // Assume that it worked
+    }
   }
+
+  public enum NotificationType { FOLLOW, SUBSCRIPTION, SUBSCRIPTIONGIFT, CHEER, RAID, REDEMPTION }
 
   public class NotificationsConfig
   {
@@ -444,17 +550,21 @@ namespace AbevBot
     public string VideoToPlay { get; set; } = string.Empty;
     public int MinimumRaiders { get; set; } = 10;
     public bool DoShoutout { get; set; }
+    public NotificationType Type { get; }
+
+    public NotificationsConfig(NotificationType type) { Type = type; }
   }
 
   public class ChannelRedemption
   {
     public string ID { get; set; }
-    public NotificationsConfig Config { get; set; } = new();
+    public NotificationsConfig Config { get; set; } = new(NotificationType.REDEMPTION);
     public List<Key> KeysToPress { get; set; } = new();
     public KeyActionType KeysToPressType { get; set; } = KeyActionType.PRESS;
     public TimeSpan TimeToPressSecondAction { get; set; } = new TimeSpan();
     public List<Key> KeysToPressAfterTime { get; set; } = new();
     public KeyActionType KeysToPressAfterTimeType { get; set; } = KeyActionType.PRESS;
+    public bool MarkAsFulfilled { get; set; }
   }
 
   public enum KeyActionType { PRESS, TYPE }
