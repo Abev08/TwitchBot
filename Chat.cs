@@ -40,6 +40,10 @@ namespace AbevBot
       {
         MainWindow.ConsoleWarning(">> Couldn't add !commands response. Maybe something already declared it?");
       }
+      if (!ResponseMessages.TryAdd("!lang", ("Please speak English in the chat, thank you ❤", DateTime.MinValue)))
+      {
+        MainWindow.ConsoleWarning(">> Couldn't add !lang response. Maybe something already declared it?");
+      }
 
       ChatReceiveThread = new Thread(Update)
       {
@@ -345,6 +349,21 @@ namespace AbevBot
                     temp = message[1].Substring(1, currentIndex).Trim();
                     if (ResponseMessages.TryGetValue(temp, out dictionaryResponse))
                     {
+                      // "!lang" response - "Please speak xxx in the chat...", only usable by the mods or the streamer
+                      if (temp.Equals("!lang"))
+                      {
+                        if (userBadge.Equals("MOD") || userBadge.Equals("STR"))
+                        {
+                          if (message[1].Trim().Length - 1 > currentIndex)
+                          {
+                            temp = message[1][currentIndex..].Trim();
+                            if (temp.StartsWith('@')) temp = temp[1..];
+                            AddMessageToQueue($"@{temp} {dictionaryResponse.Item1}");
+                          }
+                          else { AddMessageToQueue($"@{userName} {dictionaryResponse.Item1}"); }
+                        }
+                        continue;
+                      }
                       // Check if the same message was send not long ago
                       if (DateTime.Now - dictionaryResponse.Item2 >= CooldownBetweenTheSameMessage)
                       {

@@ -25,6 +25,8 @@ namespace AbevBot
     private static readonly List<FileInfo> RandomVideos = new();
     private static bool SoundsAvailable;
     private static string s_soundsSamplePasteLink;
+    /// <summary> Supported video formats by WPF MediaElement. </summary>
+    private static readonly string[] SupportedVideoFormats = new[] { ".avi", ".gif", ".mkv", ".mov", ".mp4", ".wmv" };
 
     public static NotificationsConfig ConfigFollow { get; set; } = new(NotificationType.FOLLOW);
     public static NotificationsConfig ConfigSubscription { get; set; } = new(NotificationType.SUBSCRIPTION);
@@ -322,7 +324,7 @@ namespace AbevBot
       AddNotification(new Notification()
       {
         VideoPath = videos[Random.Shared.Next(0, videos.Count)].FullName,
-        VideoVolume = 0.8f,
+        VideoVolume = Config.VolumeVideos,
         ExtraActionAtStartup = () =>
         {
           if (Config.Data[Config.Keys.ChannelRedemption_RandomVideo_MarkAsFulfilled].Equals("True"))
@@ -503,7 +505,7 @@ namespace AbevBot
         {
           foreach (FileInfo file in dir.GetFiles())
           {
-            if (file.Extension.Equals(".mp4"))
+            if (Array.IndexOf(SupportedVideoFormats, file.Extension) >= 0)
             {
               RandomVideos.Add(file);
             }

@@ -109,7 +109,7 @@ namespace AbevBot
             // VideoPath = "Resources/peepoHey.mp4",
             // VideoVolume = Config.VolumeVideos,
             VideoPath = "Resources/bot.mp4",
-            VideoVolume = 0.05f,
+            VideoVolume = Config.VolumeVideos,
           });
         }
       };
@@ -305,7 +305,7 @@ namespace AbevBot
         // VideoPath = "Resources/peepoHey.mp4",
         // VideoVolume = Config.VolumeVideos,
         VideoPath = "Resources/bot.mp4",
-        VideoVolume = 0.05f,
+        VideoVolume = Config.VolumeVideos,
       });
     }
 
