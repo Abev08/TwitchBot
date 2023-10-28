@@ -816,7 +816,7 @@ namespace AbevBot
       if (Notifications.WelcomeMessagesEnabled) sb.Append("!welcomemessage <empty/message>, ");
       if (Spotify.Working)
       {
-        sb.Append("!song, !previoussong, ");
+        sb.Append("!song, !previoussong, !songqueue, ");
         if (Spotify.RequestEnabled) sb.Append("!songrequest, !sr, ");
         if (Spotify.SkipEnabled) sb.Append("!skipsong, ");
       }

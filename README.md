@@ -35,7 +35,7 @@ Because WPF is used can be built only for Windows.
 
 - Implements chat interactions / commands:
   - Text To Speech (`!tts`),
-  - Spotify integration (`!song`, `!previoussong`, `!songrequest` (requires Spotify premium), `!sr` (requires Spotify premium), `!skipsong` (requires Spotify premium)), <p align="center"><img src="ReadmeImages/SpotifyCurrentsong.png" width=200 alt="Spotify currentsong"><img src="ReadmeImages/SpotifyPrevioussong.png" width=200 alt="Spotify previoussong"></p>
+  - Spotify integration (`!song`, `!previoussong`, `!songrequest` (requires Spotify premium), `!sr` (requires Spotify premium), `!skipsong` (requires Spotify premium), `!songqueue` (requires Spotify premium)), <p align="center"><img src="ReadmeImages/SpotifyCurrentsong.png" width=200 alt="Spotify currentsong"><img src="ReadmeImages/SpotifyPrevioussong.png" width=200 alt="Spotify previoussong"></p>
   - Gambling (`!gamba`), <p align="center"><img src="ReadmeImages/MinigameGamba.png" width=200 alt="Gamba minigame"></p>
   - Fighting (`!fight`), <p align="center"><img src="ReadmeImages/MinigameFight.png" width=200 alt="Gamba minigame"></p>
   - Backseat points (`!point`) - the streamer can reward the chatter for helping, <p align="center"><img src="ReadmeImages/MinigamePoint.png" width=200 alt="Gamba minigame"></p>

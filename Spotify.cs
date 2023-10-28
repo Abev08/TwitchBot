@@ -1,5 +1,4 @@
 using System;
-using System.IO;
 using System.Net.Http;
 using System.Text;
 
@@ -73,8 +72,7 @@ namespace AbevBot
         // Add track name
         if (response.Item?.Name?.Length > 0)
         {
-          sb.Append(response.Item.Name);
-          sb.Append(" ");
+          sb.Append(response.Item.Name).Append(' ');
         }
 
         // Add year
@@ -82,9 +80,7 @@ namespace AbevBot
         {
           if (DateTime.TryParse(response.Item?.Album?.ReleaseDate, out DateTime date))
           {
-            sb.Append("(");
-            sb.Append(date.Year);
-            sb.Append(") ");
+            sb.Append('(').Append(date.Year).Append(") ");
           }
         }
 
@@ -147,8 +143,7 @@ namespace AbevBot
           // Add track name
           if (response.Items[j].Track?.Name?.Length > 0)
           {
-            sb.Append(response.Items[j].Track.Name);
-            sb.Append(" ");
+            sb.Append(response.Items[j].Track.Name).Append(' ');
           }
 
           // Add year
@@ -156,9 +151,7 @@ namespace AbevBot
           {
             if (DateTime.TryParse(response.Items[j].Track.Album?.ReleaseDate, out DateTime date))
             {
-              sb.Append("(");
-              sb.Append(date.Year);
-              sb.Append(") ");
+              sb.Append('(').Append(date.Year).Append(") ");
             }
           }
 
@@ -217,13 +210,67 @@ namespace AbevBot
       request.Headers.Add("Authorization", $"Bearer {Secret.Data[Secret.Keys.SpotifyOAuthToken]}");
       string resp = Notifications.Client.Send(request).Content.ReadAsStringAsync().Result;
 
-      // For now log the message, I would need that for implementation
-      using StreamWriter writer = new("songqueue.txt", true);
-      writer.WriteLine(DateTime.Now);
-      writer.WriteLine(resp);
-      writer.WriteLine();
+      if (resp is null) return "Something went wrong peepoSad"; // Something went wrong
+      if (resp.Length != 0)
+      {
+        SpotifyQueueResponse response;
+        try { response = SpotifyQueueResponse.Deserialize(resp); }
+        catch (Exception ex)
+        {
+          MainWindow.ConsoleWarning(ex.Message);
+          return "Something went wrong peepoSad";
+        }
+        if (response.Queue is null || response.Queue.Length == 0) return "Nothing is queued";
 
-      return "TODO: Implement me";
+        int limit = 3;
+        if (response.Queue.Length < limit) limit = response.Queue.Length;
+
+        StringBuilder sb = new();
+        sb.Append("queued tracks: ");
+
+        for (int j = 0; j < limit; j++)
+        {
+          if (j == 0) sb.Append(j + 1).Append(". ");
+          else sb.Append(" | ").Append(j + 1).Append(". ");
+
+          // Add artists
+          if (response.Queue[j].Artists?.Length > 0)
+          {
+            for (int i = 0; i < response.Queue[j].Artists.Length; i++)
+            {
+              sb.Append(response.Queue[j].Artists[i].Name);
+              if (i != response.Queue[j].Artists.Length - 1) sb.Append(", ");
+            }
+
+            sb.Append(": ");
+          }
+
+          // Add track name
+          if (response.Queue[j].Name?.Length > 0)
+          {
+            sb.Append(response.Queue[j].Name).Append(' ');
+          }
+
+          // Add year
+          if (response.Queue[j].Album?.ReleaseDate?.Length > 0)
+          {
+            if (DateTime.TryParse(response.Queue[j].Album?.ReleaseDate, out DateTime date))
+            {
+              sb.Append('(').Append(date.Year).Append(") ");
+            }
+          }
+
+          // Add link
+          if (response.Queue[j].ExternalURLs?.Spotify?.Length > 0)
+          {
+            sb.Append(response.Queue[j].ExternalURLs.Spotify);
+          }
+        }
+
+        return sb.ToString();
+      }
+
+      return "Something went wrong peepoSad";
     }
   }
 }

@@ -831,5 +831,21 @@ namespace AbevBot
     public string? Reason { get; set; }
   }
 
+  public class SpotifyQueueResponse
+  {
+    [JsonPropertyName("currently_playing")]
+    public SpotifyCurrentlyPlayingItem? CurrentlyPlaying { get; set; }
+    [JsonPropertyName("queue")]
+    public SpotifyCurrentlyPlayingItem[]? Queue { get; set; }
+
+    public static SpotifyQueueResponse Deserialize(string message)
+    {
+      SpotifyQueueResponse? ret = JsonSerializer.Deserialize<SpotifyQueueResponse>(message);
+      if (ret is null) throw new JsonException("Couldn't parse queue response.");
+
+      return ret;
+    }
+  }
+
 #nullable restore
 }
