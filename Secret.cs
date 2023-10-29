@@ -1,7 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using AbevBot;
+
+namespace AbevBot;
 
 /// <summary> Secret configuration stuff. </summary>
 public static class Secret
@@ -30,7 +31,20 @@ public static class Secret
     /// <summary> Spotify OAuth token to authenticate the bot. </summary>
     SpotifyOAuthToken,
     /// <summary> Spotify OAuth refresh token to refresh OAuth token when it expiries. </summary>
-    SpotifyOAuthRefreshToken
+    SpotifyOAuthRefreshToken,
+
+    /// <summary> Discord app Client ID. </summary>
+    DiscrodClientID,
+    /// <summary> Discord app Client Secret. </summary>
+    DiscordClientSecret,
+    /// <summary> Discord app Bot Token. </summary>
+    DiscordBotToken,
+    /// <summary> Discord channel ID on which messages shoud be posted. </summary>
+    DiscordChannelID,
+    /// <summary> Discord OAuth token to authenticate the bot. </summary>
+    DiscordOAuthToken,
+    /// <summary> Discord OAuth refresh token to refresh OAuth token when it expiries. </summary>
+    DiscordOAuthRefreshToken
   }
 
   private const string FILENAME = "Secrets.ini";
@@ -177,6 +191,25 @@ public static class Secret
       writer.WriteLine(";  6. Go to your app settings and copy 'Client ID' and 'Client secret' into the fields below.");
       writer.WriteLine(string.Concat(Keys.SpotifyClientID.ToString(), " = "));
       writer.WriteLine(string.Concat(Keys.SpotifyClientSecret.ToString(), " = "));
+
+      writer.WriteLine();
+      writer.WriteLine("; ----- Discord");
+      writer.WriteLine("; The Discord integration is used to post 'Stream went online' messages.");
+      writer.WriteLine("; Steps:");
+      writer.WriteLine(";  1. Log in to: https://discord.com/login.");
+      writer.WriteLine(";  2. Go to: https://discord.com/developers/applications?new_application=true and name the new Discord app.");
+      writer.WriteLine(";  3. Click the 'OAuth2' button on the left.");
+      writer.WriteLine(";  4. Copy 'Client ID' and 'Client Secret' into the fields below.");
+      writer.WriteLine(";  5. In the 'Redirects' section, add new URI 'http://localhost:3000/' and save the changes.");
+      writer.WriteLine(";  6. Click the 'Bot' button on the left.");
+      writer.WriteLine(";  7. You can change the bot 'User Name'. This name will be displayed in bot's messages.");
+      writer.WriteLine(";  8. Click 'Reset Token' or 'View Token' (whichever option is available), then copy new token into field below.");
+      writer.WriteLine(";  9. In the Discord application, right click on the channel you want the bot to post messages to and copy channel link.");
+      writer.WriteLine(";     Channel ID is the last part of the link you copied - put it in the field below.");
+      writer.WriteLine(string.Concat(Keys.DiscrodClientID.ToString(), " = "));
+      writer.WriteLine(string.Concat(Keys.DiscordClientSecret.ToString(), " = "));
+      writer.WriteLine(string.Concat(Keys.DiscordBotToken.ToString(), " = "));
+      writer.WriteLine(string.Concat(Keys.DiscordChannelID.ToString(), " = "));
     }
 
     if (!example)

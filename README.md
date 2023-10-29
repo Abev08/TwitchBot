@@ -25,14 +25,14 @@ Because WPF is used can be built only for Windows.
   - Detects changes in chat emote-only mode,
   - Sends periodic messages configured in Config.ini file,
   - Can be run without broadcaster permissions.
-
+<br><br>
 - Subscribes to EventSub (Twitch events):
   - Subscribes to follow notification event,
   - Subscribes to subscriptions notifications events (there are multiple subscription types),
   - Subscribes to bits cheer event,
   - Subscribes to channel points custom rewards redemptions events,
   - Uses StreamElements api for TTS generation.
-
+<br><br>
 - Implements chat interactions / commands:
   - Text To Speech (`!tts`),
   - Spotify integration (`!song`, `!previoussong`, `!songrequest` (requires Spotify premium), `!sr` (requires Spotify premium), `!skipsong` (requires Spotify premium), `!songqueue` (requires Spotify premium)), <p align="center"><img src="ReadmeImages/SpotifyCurrentsong.png" width=200 alt="Spotify currentsong"><img src="ReadmeImages/SpotifyPrevioussong.png" width=200 alt="Spotify previoussong"></p>
@@ -42,7 +42,10 @@ Because WPF is used can be built only for Windows.
   - Rude points (`!rude`) - chatters can point a chatter for being rude, <p align="center"><img src="ReadmeImages/MinigameRude.png" width=200 alt="Gamba minigame"></p>
   - Vanish (`!vanish`) - self timeout for the chatter, also deletes chatter messages.
   - Hug (`!hug`) - just a friendly hug to other person.
-
+<br><br>
+- Discord integration:
+  - Sends message to the Discord channel when the stream goes live.
+<br><br>
 - Bot configuration is carried out in:
   - Secrets.ini (Twitch app data: customer ID, passwords, etc.),
   - Config.ini (channel name, bot notifications configuration, etc.),
