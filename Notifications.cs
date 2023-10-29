@@ -35,7 +35,7 @@ namespace AbevBot
     public static NotificationsConfig ConfigSubscriptionGiftReceived { get; set; } = new(NotificationType.SUBSCRIPTION);
     public static NotificationsConfig ConfigCheer { get; set; } = new(NotificationType.CHEER);
     public static NotificationsConfig ConfigRaid { get; set; } = new(NotificationType.RAID);
-    private static readonly string[] NotificationData = new string[8];
+    private static readonly string[] NotificationData = new string[14];
     public static readonly List<ChannelRedemption> ChannelRedemptions = new();
     private static readonly List<(DateTime time, string name)> GiftedSubs = new();
     private static readonly TimeSpan GiftSubMaxTimeout = new(0, 0, 10);
@@ -159,6 +159,9 @@ namespace AbevBot
       NotificationData[3] = streak.ToString();
       NotificationData[5] = cumulative.ToString();
       NotificationData[7] = message.Text; // TODO: Create message to read - remove emotes from the message using message.Emotes[], don't read them
+      NotificationData[10] = duration > 1 ? "s" : string.Empty;
+      NotificationData[11] = streak > 1 ? "s" : string.Empty;
+      NotificationData[13] = cumulative > 1 ? "s" : string.Empty;
 
       Chat.AddMessageToQueue(string.Format(ConfigSubscriptionExt.ChatMessage, NotificationData));
       AddNotification(new Notification(ConfigSubscriptionExt, NotificationData));
@@ -201,6 +204,7 @@ namespace AbevBot
       NotificationData[4] = count.ToString();
       NotificationData[6] = sb.ToString();
       NotificationData[7] = message;
+      NotificationData[12] = count > 1 ? "s" : string.Empty;
 
       Chat.AddMessageToQueue(string.Format(ConfigSubscriptionGift.ChatMessage, NotificationData));
       AddNotification(new Notification(ConfigSubscriptionGift, NotificationData));
@@ -243,6 +247,7 @@ namespace AbevBot
       NotificationData[0] = chatter;
       NotificationData[4] = count.ToString();
       NotificationData[7] = message;
+      NotificationData[12] = count > 1 ? "s" : string.Empty;
 
       Chat.AddMessageToQueue(string.Format(ConfigCheer.ChatMessage, NotificationData));
       AddNotification(new Notification(ConfigCheer, NotificationData));
@@ -308,6 +313,7 @@ namespace AbevBot
       Array.Clear(NotificationData);
       NotificationData[0] = chatter;
       NotificationData[4] = count.ToString();
+      NotificationData[12] = count > 1 ? "s" : string.Empty;
 
       Chat.AddMessageToQueue(string.Format(ConfigRaid.ChatMessage, NotificationData));
       if (ConfigRaid.DoShoutout) Chat.Shoutout(userID);
