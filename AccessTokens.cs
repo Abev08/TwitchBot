@@ -24,6 +24,7 @@ public static class AccessTokens
   private static readonly string[] TwitchScopes = new[] {
     "bits:read", // View Bits information for a channel
     "channel:manage:redemptions", // Manage Channel Points custom rewards and their redemptions on a channel
+    "channel:read:hype_train", // View Hype Train information for a channel
     "channel:read:redemptions", // View Channel Points custom rewards and their redemptions on a channel
     "channel:read:subscriptions", // View a list of all subscribers to a channel and check if a user is subscribed to a channel
     "chat:edit", // Send live stream chat messages
@@ -468,8 +469,17 @@ public static class AccessTokens
     request.Content.Headers.ContentType = MediaTypeHeaderValue.Parse("application/x-www-form-urlencoded");
 
     string resp = Client.Send(request).Content.ReadAsStringAsync().Result;
+    if (resp.StartsWith("{\"error"))
+    {
+      MainWindow.ConsoleWarning($">> Response contained an error! Discord integration won't work! Message:\n{resp}");
+      return false;
+    }
     AccessTokenResponse response = AccessTokenResponse.Deserialize(resp);
-    if (response is null || response.Token is null || response.RefreshToken is null) throw new Exception("Response was empty or didn't received access token!");
+    if (response is null || response.Token is null || response.RefreshToken is null)
+    {
+      MainWindow.ConsoleWarning(">> Response was empty or didn't received access token! Discord integration won't work!");
+      return false;
+    }
     MainWindow.ConsoleWarning(response.ToString());
     // Read information from received data
     Secret.Data[Secret.Keys.DiscordOAuthToken] = response.Token;

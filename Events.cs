@@ -80,6 +80,7 @@ public static class Events
           anySubscriptionSucceeded |= Subscribe("channel.subscription.message", "1", sessionID); // Channel got resubscription
           anySubscriptionSucceeded |= Subscribe("channel.cheer", "1", sessionID); // Channel got cheered
           anySubscriptionSucceeded |= Subscribe("channel.channel_points_custom_reward_redemption.add", "1", sessionID); // User redeemed channel points
+          anySubscriptionSucceeded |= Subscribe("channel.hype_train.progress", "1", sessionID); // A Hype Train makes progress on the specified channel
 
           if (!anySubscriptionSucceeded)
           {
@@ -199,6 +200,21 @@ public static class Events
                 DateTime end = DateTime.Parse(payload?.Event.EndsAt);
                 MainWindow.ConsoleWarning($">> {payload?.Event?.UserName} was banned for {end - start}. {payload?.Event?.Reason}.");
               }
+            }
+            else if (messageDeserialized?.Metadata?.SubscriptionType?.Equals("channel.hype_train.progress") == true)
+            {
+              // TODO: Delete after testing, temporary event messages logging
+              {
+                try
+                {
+                  System.IO.File.AppendAllText($"eventlog_{DateTime.Now:d}.log", $"{DateTime.Now:G}\r\n");
+                  System.IO.File.AppendAllText($"eventlog_{DateTime.Now:d}.log", message);
+                  System.IO.File.AppendAllText($"eventlog_{DateTime.Now:d}.log", "\r\n\r\n");
+                }
+                catch { }
+              }
+              // Received hype train progress event
+              //PayloadHypeTrain payload = PayloadHypeTrain.Deserialize(messageDeserialized?.Payload);
             }
             else
             {

@@ -221,6 +221,23 @@ public class PayloadCheer
   }
 }
 
+public class PayloadHypeTrain
+{
+  [JsonPropertyName("subscription")]
+  public Subscription? Subscription { get; set; }
+  [JsonPropertyName("event")]
+  public EventHypeTrain? Event { get; set; }
+
+  public static PayloadHypeTrain Deserialize(object o)
+  {
+    string? str = o.ToString();
+    PayloadHypeTrain? ret = JsonSerializer.Deserialize<PayloadHypeTrain>(str?.Length > 0 ? str : "");
+    if (ret is null) throw new JsonException("Couldn't parse access token validation response.");
+
+    return ret;
+  }
+}
+
 public class Session
 {
   [JsonPropertyName("id")]
@@ -402,6 +419,34 @@ public class EventCheer : Event
   public new string? Message { get; set; }
 }
 
+public class EventHypeTrain
+{
+  [JsonPropertyName("broadcaster_user_id")]
+  public string? BroadcasterUserID { get; set; }
+  [JsonPropertyName("broadcaster_user_login")]
+  public string? BroadcasterUserLogin { get; set; }
+  [JsonPropertyName("broadcaster_user_name")]
+  public string? BroadcasterUserName { get; set; }
+  [JsonPropertyName("expires_at")]
+  public string? ExpiresAt { get; set; }
+  [JsonPropertyName("goal")]
+  public int? Goal { get; set; }
+  [JsonPropertyName("id")]
+  public string? ID { get; set; }
+  [JsonPropertyName("last_contribution")]
+  public HypeTrainLastContribution? LastContribution { get; set; }
+  [JsonPropertyName("level")]
+  public int? Level { get; set; }
+  [JsonPropertyName("progress")]
+  public int? Progress { get; set; }
+  [JsonPropertyName("started_at")]
+  public string? StartedAt { get; set; }
+  [JsonPropertyName("top_contributions")]
+  public object? TopContributions { get; set; }
+  [JsonPropertyName("total")]
+  public int? Total { get; set; }
+}
+
 public class EventPayloadMessage
 {
   [JsonPropertyName("emotes")]
@@ -519,6 +564,20 @@ public class StatusResponseData
   public string? Title { get; set; }
   [JsonPropertyName("started_at")]
   public string? StartedAt { get; set; }
+}
+
+public class HypeTrainLastContribution
+{
+  [JsonPropertyName("total")]
+  public int? Total { get; set; }
+  [JsonPropertyName("type")]
+  public string? Type { get; set; }
+  [JsonPropertyName("user_id")]
+  public string? UserID { get; set; }
+  [JsonPropertyName("user_login")]
+  public string? UserLogin { get; set; }
+  [JsonPropertyName("user_name")]
+  public string? UserName { get; set; }
 }
 
 public class StreamElementsResponse
