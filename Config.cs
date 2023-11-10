@@ -635,17 +635,23 @@ public static class Config
       writer.WriteLine();
       writer.WriteLine();
       writer.WriteLine("; Channel points redemptions. Assign channel point redemption ID.");
-      writer.WriteLine("; Plays random video from Resources/Videos folder.");
+      writer.WriteLine("; If the bot receives a channel point redemption event message that is not recognized (not configured),");
+      writer.WriteLine("; the message will get printed to the bot's console window.");
+      writer.WriteLine("; You can search the message for the ID and configure propper notification for it.");
+      writer.WriteLine("; If the console window is not visible search for 'ConsoleVisible' field in this configuration file.");
+      writer.WriteLine("; ----- Plays random video from Resources/Videos folder.");
       writer.WriteLine(string.Concat(Keys.ChannelRedemption_RandomVideo_ID.ToString(), " = "));
       writer.WriteLine(string.Concat(Keys.ChannelRedemption_RandomVideo_MarkAsFulfilled.ToString(), " = false"));
-      writer.WriteLine("; Adds provided song (Spotify link) to song queue.");
+      writer.WriteLine();
+      writer.WriteLine("; ----- Adds provided song (Spotify link) to song queue.");
       writer.WriteLine(string.Concat(Keys.ChannelRedemption_SongRequest_ID.ToString(), " = "));
       writer.WriteLine(string.Concat(Keys.ChannelRedemption_SongRequest_MarkAsFulfilled.ToString(), " = false"));
-      writer.WriteLine("; Skips current Spotify song.");
+      writer.WriteLine();
+      writer.WriteLine("; ----- Skips current Spotify song.");
       writer.WriteLine(string.Concat(Keys.ChannelRedemption_SongSkip_ID.ToString(), " = "));
       writer.WriteLine(string.Concat(Keys.ChannelRedemption_SongSkip_MarkAsFulfilled.ToString(), " = false"));
       writer.WriteLine();
-      writer.WriteLine("; Custom channel points redemptions.");
+      writer.WriteLine("; ----- Custom channel points redemptions.");
       writer.WriteLine("; The configuration group has to start with ID filed.");
       writer.WriteLine("; Multiple groups are allowed. Just copy the group and start with ID field.");
       writer.WriteLine("; Other available fields after ID fileds are referencing last assigned ID field.");
@@ -673,6 +679,7 @@ public static class Config
       writer.WriteLine();
       writer.WriteLine("; Periodic messages (one message per line, each starting with \"msg = \"), can be left empty");
       writer.WriteLine("; Multiple messages are allowed.");
+      writer.WriteLine("; Time interval of sending periodic messages is configured in 'PeriodicMessageTimeInterval' field in this configuration file.");
       writer.WriteLine("; msg = Commented out periodic message (deactivated) peepoSad");
     }
 

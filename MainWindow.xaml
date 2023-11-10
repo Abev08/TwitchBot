@@ -68,9 +68,9 @@
       <!-- Pause and skip buttons -->
       <Border Padding="4,10,4,10" Margin="2,10,4,0" BorderThickness="1" BorderBrush="Black" CornerRadius="10">
         <StackPanel>
-          <Button x:Name="btnPause" Content="Toggle notifications pause" Click="PauseNotificationsClicked"/>
-          <Button x:Name="btnSkip" Content="Skip notification" Margin="0,10,0,0" Click="SkipNotificationClicked"/>
-          <TextBlock x:Name="tbNotificationsQueue" Text="Notifications in queue: 0" Margin="0,10,0,0" HorizontalAlignment="Center"/>
+          <Button x:Name="btnPause" Content="Toggle notifications pause" Click="PauseNotificationsClicked" ToolTip="Pauses playing notifications.&#x0a;The notifications will be queued."/>
+          <Button x:Name="btnSkip" Content="Skip notification" Margin="0,10,0,0" Click="SkipNotificationClicked" ToolTip="Skips the currently playing notification"/>
+          <TextBlock x:Name="tbNotificationsQueue" Text="Notifications in queue: 0" Margin="0,10,0,0" HorizontalAlignment="Center" ToolTip="Number of notifications in the queue"/>
           <Button x:Name="btnAntiFollowBot" Content="Stop follow bots" Margin="0,10,0,0" Click="StopFollowBotsClicked" Background="Orange" ToolTip="Bans every chatter that followed in last 20 seconds.&#x0a;Also cleans up follow notifications (other types are kept).&#x0a;The ban lasts 10 hours."/>
         </StackPanel>
       </Border>
@@ -78,11 +78,11 @@
       <!-- Enable checkboxes -->
       <Border Padding="4,10,4,10" Margin="2,10,4,0" BorderThickness="1" BorderBrush="Black" CornerRadius="10">
         <StackPanel>
-          <TextBlock x:Name="tbVolumeTTS" Text="TTS Volume: 40%" HorizontalAlignment="Center"/>
+          <TextBlock x:Name="tbVolumeTTS" Text="TTS Volume: 40%" HorizontalAlignment="Center" ToolTip="TTS notifications volume"/>
           <Slider x:Name="volumeTTS" Maximum="100" SmallChange="1" Value="40" ValueChanged="VolumeTTSChanged" IsSnapToTickEnabled="True" MouseWheel="VolumeChange"/>
-          <TextBlock x:Name="tbVolumeSounds" Text="Sounds Volume: 30%" HorizontalAlignment="Center"/>
+          <TextBlock x:Name="tbVolumeSounds" Text="Sounds Volume: 30%" HorizontalAlignment="Center" ToolTip="Sound notifications volume"/>
           <Slider x:Name="volumeSounds" Maximum="100" SmallChange="1" Value="30" ValueChanged="VolumeSoundsChanged" IsSnapToTickEnabled="True" MouseWheel="VolumeChange"/>
-          <TextBlock x:Name="tbVolumeVideos" Text="Videos Volume: 80%" HorizontalAlignment="Center"/>
+          <TextBlock x:Name="tbVolumeVideos" Text="Videos Volume: 80%" HorizontalAlignment="Center" ToolTip="Video notifications volume"/>
           <Slider x:Name="volumeVideos" Maximum="100" SmallChange="1" Value="80" ValueChanged="VolumeVideosChanged" IsSnapToTickEnabled="True" MouseWheel="VolumeChange"/>
 
           <CheckBox x:Name="chkEnableTTS" Content="!tts enabled (chat)" VerticalContentAlignment="Center" IsChecked="True" Checked="ChkTTS_CheckChanged" Unchecked="ChkTTS_CheckChanged" ToolTip="TTS commands in chat"/>
@@ -101,25 +101,25 @@
     <StackPanel Grid.Column="0" Orientation="Vertical" VerticalAlignment="Bottom">
       <Border Padding="4,10,4,10" Margin="2,0,4,10" BorderThickness="1" BorderBrush="Black" CornerRadius="10">
         <StackPanel>
-          <TextBox x:Name="tbTTSText" Height="35" Text="stitch: Test message" VerticalContentAlignment="Center" TextWrapping="WrapWithOverflow"/>
-          <Button x:Name="btnTestTTS" Content="Test TTS" Margin="0,10,0,0" Click="TTSTest"/>
-          <Button x:Name="btnTestVideo" Content="Test Video" Margin="0,10,0,0" Click="VideoTest"/>
-          <Button x:Name="btnTestGamba" Content="Test Gamba" Margin="0,10,0,0" Click="GambaTest"/>
+          <TextBox x:Name="tbTTSText" Height="35" Text="stitch: Test message" VerticalContentAlignment="Center" TextWrapping="WrapWithOverflow"  ToolTip="Text that will be read as TTS notification on 'Test TTS' button click"/>
+          <Button x:Name="btnTestTTS" Content="Test TTS" Margin="0,10,0,0" Click="TTSTest" ToolTip="Queues TTS notification using the text above"/>
+          <Button x:Name="btnTestVideo" Content="Test Video" Margin="0,10,0,0" Click="VideoTest" ToolTip="Queues video notification"/>
+          <Button x:Name="btnTestGamba" Content="Test Gamba" Margin="0,10,0,0" Click="GambaTest" ToolTip="Plays gamba animation"/>
         </StackPanel>
       </Border>
 
       <!-- Notifications test -->
       <Border Padding="4,10,4,10" Margin="2,0,4,10" BorderThickness="1" BorderBrush="Black" CornerRadius="10">
         <StackPanel>
-          <ComboBox x:Name="cbNotificationType" SelectedIndex="0" Margin="0,0,0,10">
-            <ComboBoxItem Content="Follow"/>
-            <ComboBoxItem Content="Subscription"/>
-            <ComboBoxItem Content="Subscription Gifted"/>
-            <ComboBoxItem Content="Subscription Ext. Msg"/>
-            <ComboBoxItem Content="Cheer"/>
-            <ComboBoxItem Content="Discord message"/>
+          <ComboBox x:Name="cbNotificationType" SelectedIndex="0" Margin="0,0,0,10" ToolTip="Type of event notification to be tested on 'Test Notification' button click">
+            <ComboBoxItem Content="Follow" ToolTip="Follow notification"/>
+            <ComboBoxItem Content="Subscription" ToolTip="Subscription notification (simple one, sent even when the user doesn't share the subscription)"/>
+            <ComboBoxItem Content="Subscription Gifted" ToolTip="Subsciption gift notifications (someone is gifting subs)"/>
+            <ComboBoxItem Content="Subscription Ext. Msg" ToolTip="The user is sharing the subscription"/>
+            <ComboBoxItem Content="Cheer" ToolTip="Cheer notification"/>
+            <ComboBoxItem Content="Discord message" ToolTip="Discord notification (the stream went online)"/>
           </ComboBox>
-          <Button x:Name="btnTestNotification" Content="Test Notification" Click="NotificationTestClicked"/>
+          <Button x:Name="btnTestNotification" Content="Test Notification" Click="NotificationTestClicked" ToolTip="Queues selected above test notification"/>
         </StackPanel>
       </Border>
     </StackPanel>
