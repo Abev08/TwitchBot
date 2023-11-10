@@ -6,7 +6,7 @@ To run the bot, .NET Desktop Runtime 7 (or newer) is required https://dotnet.mic
 The bot sourcecode is modular - the functionalities are divided among .cs files.<br>
 The bot uses Windows Presentation Foundation (WPF, an UI framework) to open bot's configuration window. The window should also be used as OBS input (the 'greenscreen' part of the window) for capturing displayed notifications.<br>
 Because WPF is used can be built only for Windows.
-<p style="max-width: 1200px; margin: auto;"><img src="ReadmeImages/Window.png" alt="Bot's window"></p>
+<p align="center"><img src="ReadmeImages/Window.png" alt="Bot's window"></p>
 
 To remove the 'greenscreen', chroma key filter for green and similarity value ~340 should be added to the OBS input.<br>
 The 'greenscreen' solution is not perfect and will affect the display of videos and clips that use the color green.
@@ -59,11 +59,11 @@ Both files are generated automatically when the bot is launched.
 
 3. Implements chat interactions / commands:
     - Text To Speech (`!tts`),
-    - Spotify integration (`!song`, `!previoussong`, `!songrequest` (requires Spotify premium), `!sr` (requires Spotify premium), `!skipsong` (requires Spotify premium), `!songqueue` (requires Spotify premium)), <p style="text-align: center;"><img src="ReadmeImages/SpotifyCurrentsong.png" width="300px" alt="Spotify currentsong"> <img src="ReadmeImages/SpotifyPrevioussong.png" width="300px" alt="Spotify previoussong"></p>
-    - Gambling (`!gamba`), <p style="text-align: center;"><img src="ReadmeImages/MinigameGamba.png" width="300px" alt="Gamba minigame"></p>
-    - Fighting (`!fight`), <p style="text-align: center;"><img src="ReadmeImages/MinigameFight.png" width="300px" alt="Fight minigame"></p>
-    - Backseat points (`!point`) - the streamer can reward the chatter for helping, <p style="text-align: center;"><img src="ReadmeImages/MinigamePoint.png" width="300px" alt="Backseat points minigame"></p>
-    - Rude points (`!rude`) - chatters can point a chatter for being rude, <p style="text-align: center;"><img src="ReadmeImages/MinigameRude.png" width="300px" alt="Rude minigame"></p>
+    - Spotify integration (`!song`, `!previoussong`, `!songrequest` (requires Spotify premium), `!sr` (requires Spotify premium), `!skipsong` (requires Spotify premium), `!songqueue` (requires Spotify premium)), <p align="center"><img src="ReadmeImages/SpotifyCurrentsong.png" width="300px" alt="Spotify currentsong"> <img src="ReadmeImages/SpotifyPrevioussong.png" width="300px" alt="Spotify previoussong"></p>
+    - Gambling (`!gamba`), <p align="center"><img src="ReadmeImages/MinigameGamba.png" width="300px" alt="Gamba minigame"></p>
+    - Fighting (`!fight`), <p align="center"><img src="ReadmeImages/MinigameFight.png" width="300px" alt="Fight minigame"></p>
+    - Backseat points (`!point`) - the streamer can reward the chatter for helping, <p align="center"><img src="ReadmeImages/MinigamePoint.png" width="300px" alt="Backseat points minigame"></p>
+    - Rude points (`!rude`) - chatters can point a chatter for being rude, <p align="center"><img src="ReadmeImages/MinigameRude.png" width="300px" alt="Rude minigame"></p>
     - Vanish (`!vanish`) - self timeout for the chatter, also deletes chatter messages.
     - Hug (`!hug`) - just a friendly hug to other person.
 
@@ -75,7 +75,7 @@ The file will be generated automatically the first time the bot is launched.
   - Bot's name (`Name`) - Name of the registered application on https://dev.twitch.tv/console/apps.
   - Bot's client ID (`CustomerID`) - Customer ID of the registered application on https://dev.twitch.tv/console/apps.
   - Bot's password (`Password`) - Customer password of the registered application on https://dev.twitch.tv/console/apps.
-<p style="text-align: center;"><img src="ReadmeImages/BotLogin.png" width="600px" alt="Bot's Nick, ClientID and Password"></p>
+<p align="center"><img src="ReadmeImages/BotLogin.png" width="600px" alt="Bot's Nick, ClientID and Password"></p>
 
 ## **Required information in Config.ini**
 The file will be generated automatically the first time the bot is launched.
