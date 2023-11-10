@@ -27,7 +27,9 @@ The steps required to configure the bot's functionalities are described in the c
 Additional options can be configured later and should not require more than 10 minutes per seciton.
 
 The bot uses SQL database file (`.db`) to save runtime bot data: OAuth tokens, bot control elements statuses, etc.<br>
-***DON'T SHARE THE `.db` FILE WITH ANYONE!***<br>
+> [!warning]
+> ***DON'T SHARE THE `.db` and `Secrets.ini` FILES WITH ANYONE!***
+
 Chatters data is stored in `.chatters` file.<br>
 Both files are generated automatically when the bot is launched.
 
