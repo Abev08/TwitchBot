@@ -469,7 +469,7 @@ public static class AccessTokens
     request.Content.Headers.ContentType = MediaTypeHeaderValue.Parse("application/x-www-form-urlencoded");
 
     string resp = Client.Send(request).Content.ReadAsStringAsync().Result;
-    if (resp.StartsWith("{\"error"))
+    if (string.IsNullOrEmpty(resp) || resp.StartsWith("{\"error"))
     {
       MainWindow.ConsoleWarning($">> Response contained an error! Discord integration won't work! Message:\n{resp}");
       return false;

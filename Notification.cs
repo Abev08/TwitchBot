@@ -39,7 +39,16 @@ namespace AbevBot
     {
       TextToDisplay = string.Format(config.TextToDisplay, data).Replace("\\n", Environment.NewLine);
       TextToDisplayPosition = config.TextPosition;
-      TextToRead = string.Format(config.TextToSpeech, data).Replace("\\n", Environment.NewLine).Replace("#", ""); // Remove '#' symbols - they are not allowed in TTS request messages
+      if (config.Type == NotificationType.CHEER)
+      {
+        // For bits check the minimum amount
+        if (int.TryParse(data[4], out int bits))
+        {
+          if (bits >= config.MinimumBits) TextToRead = string.Format(config.TextToSpeech, data).Replace("\\n", Environment.NewLine).Replace("#", ""); // Remove '#' symbols - they are not allowed in TTS request messages
+          else TextToRead = string.Empty;
+        }
+      }
+      else { TextToRead = string.Format(config.TextToSpeech, data).Replace("\\n", Environment.NewLine).Replace("#", ""); } // Remove '#' symbols - they are not allowed in TTS request messages
       TTSVolume = Config.VolumeTTS;
       SoundPath = config.SoundToPlay;
       SoundVolume = Config.VolumeSounds;

@@ -20,7 +20,7 @@ public static class Config
     SubscriptionExt_Enable, SubscriptionExt_ChatMessage, SubscriptionExt_TextToDisplay, SubscriptionExt_TextPosition, SubscriptionExt_TextToSpeech, SubscriptionExt_SoundToPlay, SubscriptionExt_VideoToPlay,
     SubscriptionGift_Enable, SubscriptionGift_ChatMessage, SubscriptionGift_TextToDisplay, SubscriptionGift_TextPosition, SubscriptionGift_TextToSpeech, SubscriptionGift_SoundToPlay, SubscriptionGift_VideoToPlay,
     SubscriptionGiftReceived_Enable, SubscriptionGiftReceived_ChatMessage, SubscriptionGiftReceived_TextToDisplay, SubscriptionGiftReceived_TextPosition, SubscriptionGiftReceived_TextToSpeech, SubscriptionGiftReceived_SoundToPlay, SubscriptionGiftReceived_VideoToPlay,
-    Cheer_Enable, Cheer_ChatMessage, Cheer_TextToDisplay, Cheer_TextPosition, Cheer_TextToSpeech, Cheer_SoundToPlay, Cheer_VideoToPlay,
+    Cheer_Enable, Cheer_ChatMessage, Cheer_TextToDisplay, Cheer_TextPosition, Cheer_TextToSpeech, Cheer_SoundToPlay, Cheer_VideoToPlay, Cheer_MinimumBitsForTTS,
     Raid_Enable, Raid_ChatMessage, Raid_TextToDisplay, Raid_TextPosition, Raid_TextToSpeech, Raid_SoundToPlay, Raid_VideoToPlay, Raid_MinimumRaiders, Raid_DoShoutout,
 
     ChannelRedemption_RandomVideo_ID, ChannelRedemption_RandomVideo_MarkAsFulfilled, ChannelRedemption_SongRequest_ID, ChannelRedemption_SongRequest_MarkAsFulfilled, ChannelRedemption_SongSkip_ID, ChannelRedemption_SongSkip_MarkAsFulfilled,
@@ -276,6 +276,9 @@ public static class Config
               break;
             case Keys.Cheer_VideoToPlay:
               if (text[1].Length > 0) Notifications.ConfigCheer.VideoToPlay = $"Resources\\{text[1].Trim()}";
+              break;
+            case Keys.Cheer_MinimumBitsForTTS:
+              if (text[1].Length > 0 && int.TryParse(text[1], out temp2)) Notifications.ConfigCheer.MinimumBits = temp2;
               break;
 
             case Keys.Raid_Enable:
@@ -619,6 +622,8 @@ public static class Config
       writer.WriteLine(string.Concat(Keys.Cheer_TextToSpeech.ToString(), " = Thank you {0} for {4} bit{12}! {7}"));
       writer.WriteLine(string.Concat(Keys.Cheer_SoundToPlay.ToString(), " = tone1.wav"));
       writer.WriteLine(string.Concat(Keys.Cheer_VideoToPlay.ToString(), " = "));
+      writer.WriteLine("; The minimum amount of bits thrown for the message to be read as TTS. Default: empty - 10");
+      writer.WriteLine(string.Concat(Keys.Cheer_MinimumBitsForTTS.ToString(), " = "));
       writer.WriteLine();
       writer.WriteLine("; ----- Raid (channel got raided)");
       writer.WriteLine(string.Concat(Keys.Raid_Enable.ToString(), " = true"));

@@ -557,6 +557,7 @@ namespace AbevBot
     public string SoundToPlay { get; set; } = string.Empty;
     public string VideoToPlay { get; set; } = string.Empty;
     public int MinimumRaiders { get; set; } = 10;
+    public int MinimumBits { get; set; } = 10;
     public bool DoShoutout { get; set; }
     public NotificationType Type { get; }
 
