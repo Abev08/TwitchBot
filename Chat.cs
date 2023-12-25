@@ -558,6 +558,7 @@ public static class Chat
       {
         MainWindow.ConsoleWarning($">> Chat bot connection error: {ex.Message}");
         ChatSocket = null;
+        Thread.Sleep(2000);
       }
       if (ChatSocket?.Connected == true)
       {

@@ -214,7 +214,9 @@ public static class AccessTokens
     using HttpRequestMessage request = new(HttpMethod.Get, "https://id.twitch.tv/oauth2/validate");
     request.Headers.Add("Authorization", $"OAuth {Secret.Data[Secret.Keys.OAuthToken]}");
 
-    string resp = Client.Send(request).Content.ReadAsStringAsync().Result;
+    string resp;
+    try { resp = Client.Send(request).Content.ReadAsStringAsync().Result; }
+    catch (HttpRequestException ex) { MainWindow.ConsoleWarning($">> Twitch OAuth token validation failed. {ex.Message}"); return false; }
     AccessTokenValidationResponse response = AccessTokenValidationResponse.Deserialize(resp);
     if (response?.ClientID?.Equals(Secret.Data[Secret.Keys.CustomerID]) == true && response?.ExpiresIn > 0)
     {
@@ -247,7 +249,9 @@ public static class AccessTokens
     ));
     request.Content.Headers.ContentType = MediaTypeHeaderValue.Parse("application/x-www-form-urlencoded");
 
-    string resp = Client.Send(request).Content.ReadAsStringAsync().Result;
+    string resp;
+    try { resp = Client.Send(request).Content.ReadAsStringAsync().Result; }
+    catch (HttpRequestException ex) { MainWindow.ConsoleWarning($">> Twitch OAuth token refresh failed. {ex.Message}"); return false; }
     AccessTokenResponse response = AccessTokenResponse.Deserialize(resp);
     if (response is null || response.Token is null || response.RefreshToken is null) throw new Exception("Response was empty or didn't received access token!");
     MainWindow.ConsoleWarning(response.ToString());

@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Net.Http;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
@@ -71,6 +72,19 @@ public partial class MainWindow : Window
       FreeConsole();
       return;
     }
+
+    // Check if internet connection is active, if not the bot hangs up here and waits for the connection to be active
+    do
+    {
+      try
+      {
+        var result = Notifications.Client.Send(new(HttpMethod.Head, "http://www.google.com"));
+        if (result.IsSuccessStatusCode) break;
+      }
+      catch { }
+      ConsoleWarning(">> Internet connection not active. Waiting 5 s and trying out again.");
+      Thread.Sleep(5000);
+    } while (true);
 
     AccessTokens.GetAccessTokens();
     Config.GetBroadcasterID();
