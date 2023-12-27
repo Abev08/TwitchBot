@@ -11,7 +11,7 @@ public static class Config
   public enum Keys
   {
     ChannelName, ChannelID,
-    ConsoleVisible, PeriodicMessageTimeInterval, StartVideoEnabled,
+    ConsoleVisible, PeriodicMessageTimeInterval, PeriodicMessageMinChatMessages, StartVideoEnabled,
     AlwaysReadTTSFromThem, OverpoweredInFight,
     SongRequestTimeout,
 
@@ -132,6 +132,13 @@ public static class Config
               if (TimeSpan.TryParse(text[1], out timeSpan))
               {
                 if (timeSpan.TotalSeconds > 0) Chat.PeriodicMessageInterval = timeSpan;
+              }
+              break;
+
+            case Keys.PeriodicMessageMinChatMessages:
+              if (int.TryParse(text[1], out temp2))
+              {
+                if (temp2 >= 0) Chat.PeriodicMessageMinChatMessages = temp2;
               }
               break;
 
@@ -538,6 +545,8 @@ public static class Config
       writer.WriteLine(string.Concat(Keys.ConsoleVisible.ToString(), " = false"));
       writer.WriteLine("; Periodic messages time interval (HH:MM:SS format -> 1 hour: 1:00:00, 1 minute 0:01:00, 1 second: 0:00:01). Default: empty - 10 minutes");
       writer.WriteLine(string.Concat(Keys.PeriodicMessageTimeInterval.ToString(), " = "));
+      writer.WriteLine("; Minimum number of chat messages between periodic messages. Default: empty - 10 messages. 0 - disabled");
+      writer.WriteLine(string.Concat(Keys.PeriodicMessageMinChatMessages.ToString(), " = "));
       writer.WriteLine("; Starting video when the bot is run. Default: true");
       writer.WriteLine(string.Concat(Keys.StartVideoEnabled.ToString(), " = true"));
       writer.WriteLine("; Comma separated list of user names from which TTS messages will ALWAYS be read (even when !tts chat is turned off)");
@@ -685,6 +694,7 @@ public static class Config
       writer.WriteLine("; Periodic messages (one message per line, each starting with \"msg = \"), can be left empty");
       writer.WriteLine("; Multiple messages are allowed.");
       writer.WriteLine("; Time interval of sending periodic messages is configured in 'PeriodicMessageTimeInterval' field in this configuration file.");
+      writer.WriteLine("; Periodic message is sent when time 'PeriodicMessageTimeInterval' from previous one has been exceeded and there have been at least 'PeriodicMessageMinChatMessages' chat messages.");
       writer.WriteLine("; msg = Commented out periodic message (deactivated) peepoSad");
     }
 

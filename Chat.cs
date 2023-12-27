@@ -24,10 +24,12 @@ public static class Chat
   private static int PeriodicMessageIndex = -1;
   private static DateTime LastPeriodicMessage = DateTime.Now;
   public static TimeSpan PeriodicMessageInterval = new(0, 10, 0);
+  public static int PeriodicMessageMinChatMessages = 10;
   private static readonly List<string> MessageQueue = new();
   private static readonly HttpClient Client = new();
   private static DateTime RespMsgFileTimestamp;
   private static readonly List<SkipSongChatter> SkipSongChatters = new();
+  private static int s_chatMessagesSinceLastPeriodicMessage;
 
   public static void Start()
   {
@@ -146,6 +148,7 @@ public static class Chat
               // Standard message without extra tags
               if (message[0].StartsWith(':') && message[0].EndsWith("PRIVMSG"))
               {
+                s_chatMessagesSinceLastPeriodicMessage++;
                 MainWindow.ConsoleWriteLine(string.Format(
                   "{0, 20}{1, 2}{2, -0}",
                   message[0].Substring(1, message[0].IndexOf('!') - 1) // Username
@@ -196,6 +199,8 @@ public static class Chat
                   ));
                   continue;
                 }
+
+                s_chatMessagesSinceLastPeriodicMessage++;
 
                 // Read chatter badges
                 currentIndex = message[0].IndexOf("badges=") + 7; // 7 == "badges=".Length
@@ -585,8 +590,9 @@ public static class Chat
             MessageQueue.RemoveAt(0);
           }
         }
-        else if ((PeriodicMessages.Count > 0) && (DateTime.Now - LastPeriodicMessage >= PeriodicMessageInterval))
+        else if ((PeriodicMessages.Count > 0) && (s_chatMessagesSinceLastPeriodicMessage >= PeriodicMessageMinChatMessages) && (DateTime.Now - LastPeriodicMessage >= PeriodicMessageInterval))
         {
+          s_chatMessagesSinceLastPeriodicMessage = 0;
           LastPeriodicMessage = DateTime.Now;
           PeriodicMessageIndex = (PeriodicMessageIndex + 1) % PeriodicMessages.Count;
           ChatSocket.Send(Encoding.UTF8.GetBytes($"PRIVMSG #{Config.Data[Config.Keys.ChannelName]} :{PeriodicMessages[PeriodicMessageIndex]}\r\n"));
