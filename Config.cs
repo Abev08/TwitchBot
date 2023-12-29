@@ -14,6 +14,8 @@ public static class Config
     ConsoleVisible, PeriodicMessageTimeInterval, PeriodicMessageMinChatMessages, StartVideoEnabled,
     AlwaysReadTTSFromThem, OverpoweredInFight,
     SongRequestTimeout,
+    DiscordMessageOnline,
+    HotkeyNotificationPause, HotkeyNotificationSkip,
 
     Follow_Enable, Follow_ChatMessage, Follow_TextToDisplay, Follow_TextPosition, Follow_TextToSpeech, Follow_SoundToPlay, Follow_VideoToPlay,
     Subscription_Enable, Subscription_ChatMessage, Subscription_TextToDisplay, Subscription_TextPosition, Subscription_TextToSpeech, Subscription_SoundToPlay, Subscription_VideoToPlay,
@@ -57,6 +59,8 @@ public static class Config
   public static DateTime BroadcasterLastOnlineCheck { get; set; }
   public static TimeSpan BroadcasterOnlineCheckInterval { get; } = TimeSpan.FromMinutes(3);
   public static TimeSpan BroadcasterOfflineTimeout { get; } = TimeSpan.FromMinutes(30);
+  public static readonly List<Key> HotkeysForPauseNotification = new();
+  public static readonly List<Key> HotkeysForSkipNotification = new();
 
   public static bool ParseConfigFile(bool reload = false)
   {
@@ -73,6 +77,8 @@ public static class Config
     Chatter.AlwaysReadTTSFromThem.Clear();
     Chatter.OverpoweredInFight.Clear();
     Notifications.ChannelRedemptions.Clear();
+    HotkeysForPauseNotification.Clear();
+    HotkeysForSkipNotification.Clear();
 
     // Create example Config.ini
     FileInfo configFile = new("Config_example.ini");
@@ -151,6 +157,28 @@ public static class Config
 
             case Keys.StartVideoEnabled:
               if (bool.TryParse(text[1], out result)) StartVideoEnabled = result;
+              break;
+
+            case Keys.DiscordMessageOnline:
+              Discrod.CustomOnlineMessage = text[1].Trim();
+              break;
+
+            case Keys.HotkeyNotificationPause:
+              keys = text[1].Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+              foreach (string k in keys)
+              {
+                if (Enum.TryParse(typeof(Key), k, out position)) HotkeysForPauseNotification.Add((Key)position);
+                else MainWindow.ConsoleWarning($">> Keycode: {k} not recognized in line {lineIndex} in Config.ini file.");
+              }
+              break;
+
+            case Keys.HotkeyNotificationSkip:
+              keys = text[1].Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+              foreach (string k in keys)
+              {
+                if (Enum.TryParse(typeof(Key), k, out position)) HotkeysForSkipNotification.Add((Key)position);
+                else MainWindow.ConsoleWarning($">> Keycode: {k} not recognized in line {lineIndex} in Config.ini file.");
+              }
               break;
 
             case Keys.Follow_Enable:
@@ -555,6 +583,16 @@ public static class Config
       writer.WriteLine(string.Concat(Keys.OverpoweredInFight.ToString(), " = Abev08"));
       writer.WriteLine("; Song request timeout from the same user (HH:MM:SS format -> 1 hour: 1:00:00, 1 minute 0:01:00, 1 second: 0:00:01). Default: empty - 2 minutes");
       writer.WriteLine(string.Concat(Keys.SongRequestTimeout.ToString(), " = "));
+      writer.WriteLine("; Discord message that will be sent when the stream goes online. Default: empty - \"Hello @everyone, stream just started https://twitch.tv/{ChannelName} !\"");
+      writer.WriteLine(string.Concat(Keys.DiscordMessageOnline.ToString(), " = "));
+
+      writer.WriteLine();
+      writer.WriteLine("; Hotkeys configuration");
+      writer.WriteLine("; Each hotkey is comma separated list of keyboard keys that should be pressed for hotkey action to be activated.");
+      writer.WriteLine("; The keys needs to be written in according to: https://learn.microsoft.com/en-us/dotnet/api/system.windows.input.key");
+      writer.WriteLine("; For each hotkey - default: empty - inactive");
+      writer.WriteLine(string.Concat(Keys.HotkeyNotificationPause.ToString(), " = "));
+      writer.WriteLine(string.Concat(Keys.HotkeyNotificationSkip.ToString(), " = "));
 
       writer.WriteLine();
       writer.WriteLine();

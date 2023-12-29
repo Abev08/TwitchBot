@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.Net.Http;
 using System.Runtime.InteropServices;
@@ -6,6 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
 
@@ -32,8 +34,6 @@ public partial class MainWindow : Window
   public static MainWindow I { get; private set; }
   public static bool VideoEnded { get; private set; }
   private static bool FinishedLoading;
-  /// <summary> Periodic timer calling for example refresh access token method. </summary>
-  private static Timer RefreshTimer;
 
   public MainWindow(string[] args = null)
   {
@@ -133,37 +133,104 @@ public partial class MainWindow : Window
       if (I.WindowState == WindowState.Minimized) I.WindowState = WindowState.Normal;
     };
 
-    // Start refresh timer, every 10 sec. check if access token should be refreshed, also do some periodic things
-    RefreshTimer = new((e) =>
+    // Start something like main background loop
+    new Thread(() =>
     {
-      // Check if any access token should be updated
-      if (AccessTokens.RefreshAccessToken()) AccessTokens.UpdateTokens();
-      if (AccessTokens.RefreshSpotifyAccessToken()) AccessTokens.UpdateSpotifyTokens();
-      if (AccessTokens.RefreshDiscordAccessToken()) AccessTokens.UpdateDiscordTokens();
-
-      Chatter.UpdateChattersFile();
-
-      Config.UpdateVolumes();
-
-      if (Config.IsConfigFileUpdated()) Config.ParseConfigFile(true);
-
-      if (Chat.IsRespMsgFileUpdated()) Chat.LoadResponseMessages(true);
-
-      // Check if broadcaster is online
-      if (DateTime.Now - Config.BroadcasterLastOnlineCheck >= Config.BroadcasterOnlineCheckInterval)
+      Stopwatch sw = Stopwatch.StartNew();
+      bool hotkeyPausePressed = false, hotkeySkipPressed = false;
+      bool shouldHotkeysBeChecked = Config.HotkeysForPauseNotification.Count > 0 || Config.HotkeysForSkipNotification.Count > 0;
+      bool hotkeyActive;
+      while (true)
       {
-        if (Config.GetBroadcasterStatus())
+        // every tick check for active hotkeys
+        if (shouldHotkeysBeChecked)
         {
-          if (DateTime.Now - Config.BroadcasterLastOnline >= Config.BroadcasterOfflineTimeout)
+          Dispatcher.Invoke(() =>
           {
-            Discrod.SendOnlineMessage();
-          }
-          Config.BroadcasterLastOnline = DateTime.Now;
-          Config.UpdateLastOnline();
+            // Hotkey pause
+            if (Config.HotkeysForPauseNotification.Count > 0)
+            {
+              hotkeyActive = true;
+              foreach (var k in Config.HotkeysForPauseNotification)
+              {
+                if (!Keyboard.IsKeyDown(k)) { hotkeyActive = false; }
+              }
+              if (hotkeyActive)
+              {
+                if (!hotkeyPausePressed)
+                {
+                  hotkeyPausePressed = true;
+                  PauseNotificationsClicked(btnPause, null);
+                  ConsoleWarning(">> Notification pause hotkey activated.");
+                }
+              }
+              else { hotkeyPausePressed = false; }
+            }
+
+            // Hotkey skip
+            if (Config.HotkeysForSkipNotification.Count > 0)
+            {
+              hotkeyActive = true;
+              foreach (var k in Config.HotkeysForSkipNotification)
+              {
+                if (!Keyboard.IsKeyDown(k)) { hotkeyActive = false; }
+              }
+              if (hotkeyActive)
+              {
+                if (!hotkeySkipPressed)
+                {
+                  hotkeySkipPressed = true;
+                  SkipNotificationClicked(btnSkip, null);
+                  ConsoleWarning(">> Notification skip hotkey activated.");
+                }
+              }
+              else { hotkeySkipPressed = false; }
+            }
+          });
         }
-        Config.BroadcasterLastOnlineCheck = DateTime.Now;
+
+        // every 10 sec. check if access token should be refreshed, also do some periodic things
+        if (sw.ElapsedMilliseconds >= 10000)
+        {
+          shouldHotkeysBeChecked = true || Config.HotkeysForPauseNotification.Count > 0 || Config.HotkeysForSkipNotification.Count > 0;
+
+          // Check if any access token should be updated
+          if (AccessTokens.RefreshAccessToken()) AccessTokens.UpdateTokens();
+          if (AccessTokens.RefreshSpotifyAccessToken()) AccessTokens.UpdateSpotifyTokens();
+          if (AccessTokens.RefreshDiscordAccessToken()) AccessTokens.UpdateDiscordTokens();
+
+          Chatter.UpdateChattersFile();
+
+          Config.UpdateVolumes();
+
+          if (Config.IsConfigFileUpdated()) Config.ParseConfigFile(true);
+
+          if (Chat.IsRespMsgFileUpdated()) Chat.LoadResponseMessages(true);
+
+          // Check if broadcaster is online
+          if (DateTime.Now - Config.BroadcasterLastOnlineCheck >= Config.BroadcasterOnlineCheckInterval)
+          {
+            if (Config.GetBroadcasterStatus())
+            {
+              if (DateTime.Now - Config.BroadcasterLastOnline >= Config.BroadcasterOfflineTimeout)
+              {
+                Discrod.SendOnlineMessage();
+              }
+              Config.BroadcasterLastOnline = DateTime.Now;
+              Config.UpdateLastOnline();
+            }
+            Config.BroadcasterLastOnlineCheck = DateTime.Now;
+          }
+          sw.Restart();
+        }
+
+        Thread.Sleep(100);
       }
-    }, null, TimeSpan.Zero, TimeSpan.FromSeconds(10));
+    })
+    {
+      Name = "MainLoop",
+      IsBackground = true,
+    }.Start();
 
     FinishedLoading = true;
   }
