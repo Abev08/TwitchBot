@@ -201,7 +201,8 @@ namespace AbevBot
       text = text.Replace(" ", "+");
       text = text.Replace("&", "and");
 
-      string url = $"https://api16-normal-v6.tiktokv.com/media/api/text/speech/invoke/?text_speaker={voice}&req_text={text}&speaker_map_type=0&aid=1233";
+      // string url = $"https://api16-normal-v6.tiktokv.com/media/api/text/speech/invoke/?text_speaker={voice}&req_text={text}&speaker_map_type=0&aid=1233";
+      string url = $"https://api16-normal-c-useast2a.tiktokv.com/media/api/text/speech/invoke/?text_speaker={voice}&req_text={text}&speaker_map_type=0&aid=1233";
 
       TikTokTTSResponse result;
       using HttpRequestMessage request = new(HttpMethod.Post, url);
