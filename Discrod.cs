@@ -17,7 +17,7 @@ public static class Discrod
     MainWindow.ConsoleWarning(">> Sending Discord Online message.");
 
     string message;
-    if (CustomOnlineMessage.Length > 0) message = CustomOnlineMessage;
+    if (CustomOnlineMessage?.Length > 0) message = CustomOnlineMessage;
     else message = $"Hello @everyone, stream just started https://twitch.tv/{Config.Data[Config.Keys.ChannelName]} !";
 
     using HttpRequestMessage request = new(HttpMethod.Post, $"https://discord.com/api/v10/channels/{Secret.Data[Secret.Keys.DiscordChannelID]}/messages");
