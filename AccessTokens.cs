@@ -478,7 +478,7 @@ public static class AccessTokens
       MainWindow.ConsoleWarning($">> Response contained an error! Discord integration won't work! Message:\n{resp}");
       return false;
     }
-    AccessTokenResponse response = AccessTokenResponse.Deserialize(resp);
+    var response = DiscordTokenResponse.Deserialize(resp);
     if (response is null || response.Token is null || response.RefreshToken is null)
     {
       MainWindow.ConsoleWarning(">> Response was empty or didn't received access token! Discord integration won't work!");
