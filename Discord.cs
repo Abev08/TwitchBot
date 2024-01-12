@@ -7,9 +7,12 @@ public static class Discord
 {
   /// <summary> Is connection to Discord API working? </summary>
   public static bool Working { get; set; }
+  /// <summary> Custom "stream went online" message that should be sent instead of default one. </summary>
   public static string CustomOnlineMessage { get; set; }
+  /// <summary> Last known stream title. </summary>
   public static string LastStreamTitle { get; set; }
 
+  /// <summary> Sends "stream went online" message to configured Discord channel. </summary>
   public static void SendOnlineMessage()
   {
     if (!Working) return;
