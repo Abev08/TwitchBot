@@ -583,7 +583,8 @@ public static class Config
       writer.WriteLine(string.Concat(Keys.OverpoweredInFight.ToString(), " = Abev08"));
       writer.WriteLine("; Song request timeout from the same user (HH:MM:SS format -> 1 hour: 1:00:00, 1 minute 0:01:00, 1 second: 0:00:01). Default: empty - 2 minutes");
       writer.WriteLine(string.Concat(Keys.SongRequestTimeout.ToString(), " = "));
-      writer.WriteLine("; Discord message that will be sent when the stream goes online. Default: empty - \"Hello @everyone, stream just started https://twitch.tv/{ChannelName} !\"");
+      writer.WriteLine("; Discord message that will be sent when the stream goes online. Default: empty - \"Hello @everyone, stream just started https://twitch.tv/{ChannelName} ! {title}\"");
+      writer.WriteLine("; The \"{title}\" part of the message will be replaced with current stream title and can be used in custom online message specified below.");
       writer.WriteLine(string.Concat(Keys.DiscordMessageOnline.ToString(), " = "));
 
       writer.WriteLine();
@@ -797,6 +798,11 @@ public static class Config
     request.Headers.Add("Client-Id", Secret.Data[Secret.Keys.CustomerID]);
 
     string resp = Notifications.Client.Send(request).Content.ReadAsStringAsync().Result;
+    if (resp is null || resp.Length == 0 || resp.StartsWith('<'))
+    {
+      MainWindow.ConsoleWarning(">> Couldn't acquire stream status.");
+      return false;
+    }
     var response = StatusResponse.Deserialize(resp);
     if (response is null || response.Data is null || response.Data.Length == 0)
     {
@@ -807,7 +813,11 @@ public static class Config
     {
       foreach (var data in response.Data)
       {
-        if (data.ID.Equals(Config.Data[Config.Keys.ChannelID])) return data.IsLive == true;
+        if (data.ID.Equals(Config.Data[Config.Keys.ChannelID]))
+        {
+          Discrod.LastStreamTitle = data.Title;
+          return data.IsLive == true;
+        }
       }
     }
 
