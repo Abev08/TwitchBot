@@ -252,6 +252,7 @@ public static class AccessTokens
     string resp;
     try { resp = Client.Send(request).Content.ReadAsStringAsync().Result; }
     catch (HttpRequestException ex) { MainWindow.ConsoleWarning($">> Twitch OAuth token refresh failed. {ex.Message}"); return false; }
+    if (resp is null || resp.Length == 0) { MainWindow.ConsoleWarning($">> Twitch OAuth token refresh failed. Response was null!"); return false; }
     AccessTokenResponse response = AccessTokenResponse.Deserialize(resp);
     if (response is null || response.Token is null || response.RefreshToken is null) throw new Exception("Response was empty or didn't received access token!");
     MainWindow.ConsoleWarning(response.ToString());
