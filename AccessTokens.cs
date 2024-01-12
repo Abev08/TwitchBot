@@ -189,9 +189,10 @@ public static class AccessTokens
       request.Content.Headers.ContentType = MediaTypeHeaderValue.Parse("application/x-www-form-urlencoded");
 
       string resp = Client.Send(request).Content.ReadAsStringAsync().Result;
-      AccessTokenResponse response = AccessTokenResponse.Deserialize(resp);
+      var response = AccessTokenResponse.Deserialize(resp);
       if (response is null || response.Token is null || response.RefreshToken is null)
       {
+        // Something went really wrong, we were requesting new token with fresh authentication and the response was corrupted
         throw new Exception("Response was empty or didn't received access token!\nProbably ClientID or ClientPassowrd doesn't match!");
       }
       MainWindow.ConsoleWarning(response.ToString());
@@ -202,7 +203,7 @@ public static class AccessTokens
     }
     else
     {
-      // Something went wrong
+      // Something went really wrong, request url didn't had "?code=" part
       throw new Exception("Something went wrong! Response url didn't include code part!");
     }
   }
@@ -217,7 +218,7 @@ public static class AccessTokens
     string resp;
     try { resp = Client.Send(request).Content.ReadAsStringAsync().Result; }
     catch (HttpRequestException ex) { MainWindow.ConsoleWarning($">> Twitch OAuth token validation failed. {ex.Message}"); return false; }
-    AccessTokenValidationResponse response = AccessTokenValidationResponse.Deserialize(resp);
+    var response = AccessTokenValidationResponse.Deserialize(resp);
     if (response?.ClientID?.Equals(Secret.Data[Secret.Keys.CustomerID]) == true && response?.ExpiresIn > 0)
     {
       if (response?.Scopes?.Length != TwitchScopes.Length) { MainWindow.ConsoleWarning(">> Current Twitch OAuth token is missing some scopes."); }
@@ -252,9 +253,12 @@ public static class AccessTokens
     string resp;
     try { resp = Client.Send(request).Content.ReadAsStringAsync().Result; }
     catch (HttpRequestException ex) { MainWindow.ConsoleWarning($">> Twitch OAuth token refresh failed. {ex.Message}"); return false; }
-    if (resp is null || resp.Length == 0) { MainWindow.ConsoleWarning($">> Twitch OAuth token refresh failed. Response was null!"); return false; }
-    AccessTokenResponse response = AccessTokenResponse.Deserialize(resp);
-    if (response is null || response.Token is null || response.RefreshToken is null) throw new Exception("Response was empty or didn't received access token!");
+    var response = AccessTokenResponse.Deserialize(resp);
+    if (response is null || response.Token is null || response.RefreshToken is null)
+    {
+      MainWindow.ConsoleWarning(">> Twitch OAuth token refresh failed. Response was empty or didn't received access token!");
+      return false;
+    }
     MainWindow.ConsoleWarning(response.ToString());
     // Read information from received data
     Secret.Data[Secret.Keys.OAuthToken] = response.Token;
@@ -433,9 +437,8 @@ public static class AccessTokens
       var response = DiscordTokenResponse.Deserialize(resp);
       if (response is null || response.Token is null || response.RefreshToken is null)
       {
-        throw new Exception("Response was empty or didn't received access token!\nProbably ClientID or ClientPassowrd doesn't match!");
+        MainWindow.ConsoleWarning(">> Discord OAuth token request failed. Response was empty or didn't received access token!\nProbably ClientID or ClientPassowrd doesn't match!");
       }
-      MainWindow.ConsoleWarning(response.ToString());
       // Read information from received data
       Secret.Data[Secret.Keys.DiscordOAuthToken] = response.Token;
       Secret.Data[Secret.Keys.DiscordOAuthRefreshToken] = response.RefreshToken;
@@ -444,7 +447,7 @@ public static class AccessTokens
     else
     {
       // Something went wrong
-      throw new Exception("Something went wrong! Response url didn't include code part!");
+      MainWindow.ConsoleWarning(">> Discord OAuth token request failed. Response url didn't include code part!");
     }
   }
 

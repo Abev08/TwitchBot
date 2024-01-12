@@ -115,8 +115,10 @@ public class AccessTokenResponse
   [JsonPropertyName("token_type")]
   public string? TokenType { get; set; }
 
-  public static AccessTokenResponse Deserialize(string message)
+  public static AccessTokenResponse? Deserialize(string message)
   {
+    if (message is null || message.Length == 0) return null;
+
     AccessTokenResponse? ret = JsonSerializer.Deserialize<AccessTokenResponse>(message);
     if (ret is null) throw new JsonException("Couldn't parse access token response.");
 
@@ -142,8 +144,10 @@ public class AccessTokenValidationResponse
   [JsonPropertyName("expires_in")]
   public int? ExpiresIn { get; set; }
 
-  public static AccessTokenValidationResponse Deserialize(string message)
+  public static AccessTokenValidationResponse? Deserialize(string message)
   {
+    if (message is null || message.Length == 0) return null;
+
     AccessTokenValidationResponse? ret = JsonSerializer.Deserialize<AccessTokenValidationResponse>(message);
     if (ret is null) throw new JsonException("Couldn't parse access token validation response.");
 

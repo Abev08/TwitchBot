@@ -68,24 +68,31 @@ public static class Events
           message = Encoding.UTF8.GetString(receiveBuffer, 0, receiveResult.Count);
           // Parse welcome message
           WelcomeMessage welcomeMessage = WelcomeMessage.Deserialize(message);
-          if (welcomeMessage?.Payload?.Session?.ID is null) throw new Exception(">> Couldn't read session ID.");
-          else sessionID = welcomeMessage.Payload.Session.ID;
-
-          // Subscribe to every event you want to
-          // We have <10 sec to subscribe to an event, also another connection has to be used because we can't send messages to websocket server
-          bool anySubscriptionSucceeded = false;
-          anySubscriptionSucceeded |= Subscribe("channel.follow", "2", sessionID); // Channel got new follow
-          anySubscriptionSucceeded |= Subscribe("channel.subscribe", "1", sessionID); // Channel got new subscription
-          anySubscriptionSucceeded |= Subscribe("channel.subscription.gift", "1", sessionID); // Channel got gift subscription
-          anySubscriptionSucceeded |= Subscribe("channel.subscription.message", "1", sessionID); // Channel got resubscription
-          anySubscriptionSucceeded |= Subscribe("channel.cheer", "1", sessionID); // Channel got cheered
-          anySubscriptionSucceeded |= Subscribe("channel.channel_points_custom_reward_redemption.add", "1", sessionID); // User redeemed channel points
-          anySubscriptionSucceeded |= Subscribe("channel.hype_train.progress", "1", sessionID); // A Hype Train makes progress on the specified channel
-
-          if (!anySubscriptionSucceeded)
+          if (welcomeMessage?.Payload?.Session?.ID is null)
           {
-            MainWindow.ConsoleWarning(">> Events bot: every subscription failed, websocket connection would get disconnected every 10 seconds, closing events bot!");
-            return;
+            MainWindow.ConsoleWarning(">> Event bot error. Couldn't read session ID.");
+            WebSocketClient.CloseAsync(WebSocketCloseStatus.NormalClosure, null, CancellationToken.None);
+          }
+          else
+          {
+            sessionID = welcomeMessage.Payload.Session.ID;
+
+            // Subscribe to every event you want to
+            // We have <10 sec to subscribe to an event, also another connection has to be used because we can't send messages to websocket server
+            bool anySubscriptionSucceeded = false;
+            anySubscriptionSucceeded |= Subscribe("channel.follow", "2", sessionID); // Channel got new follow
+            anySubscriptionSucceeded |= Subscribe("channel.subscribe", "1", sessionID); // Channel got new subscription
+            anySubscriptionSucceeded |= Subscribe("channel.subscription.gift", "1", sessionID); // Channel got gift subscription
+            anySubscriptionSucceeded |= Subscribe("channel.subscription.message", "1", sessionID); // Channel got resubscription
+            anySubscriptionSucceeded |= Subscribe("channel.cheer", "1", sessionID); // Channel got cheered
+            anySubscriptionSucceeded |= Subscribe("channel.channel_points_custom_reward_redemption.add", "1", sessionID); // User redeemed channel points
+            anySubscriptionSucceeded |= Subscribe("channel.hype_train.progress", "1", sessionID); // A Hype Train makes progress on the specified channel
+
+            if (!anySubscriptionSucceeded)
+            {
+              MainWindow.ConsoleWarning(">> Events bot: every subscription failed, websocket connection would get disconnected every 10 seconds, closing events bot!");
+              return;
+            }
           }
         }
         else { MainWindow.ConsoleWarning($">> Events bot couldn't connect to {WEBSOCKETURL}."); }
