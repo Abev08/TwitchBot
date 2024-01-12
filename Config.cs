@@ -160,7 +160,7 @@ public static class Config
               break;
 
             case Keys.DiscordMessageOnline:
-              Discrod.CustomOnlineMessage = text[1].Trim();
+              Discord.CustomOnlineMessage = text[1].Trim();
               break;
 
             case Keys.HotkeyNotificationPause:
@@ -815,7 +815,7 @@ public static class Config
       {
         if (data.ID.Equals(Config.Data[Config.Keys.ChannelID]))
         {
-          Discrod.LastStreamTitle = data.Title;
+          Discord.LastStreamTitle = data.Title;
           return data.IsLive == true;
         }
       }

@@ -214,7 +214,7 @@ public partial class MainWindow : Window
             {
               if (DateTime.Now - Config.BroadcasterLastOnline >= Config.BroadcasterOfflineTimeout)
               {
-                Discrod.SendOnlineMessage();
+                Discord.SendOnlineMessage();
               }
               Config.BroadcasterLastOnline = DateTime.Now;
               Config.UpdateLastOnline();
@@ -438,7 +438,7 @@ public partial class MainWindow : Window
         break;
 
       case "Discord message":
-        Discrod.SendOnlineMessage();
+        Discord.SendOnlineMessage();
         break;
     }
   }

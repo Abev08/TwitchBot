@@ -129,7 +129,7 @@ public static class AccessTokens
         }
       }
 
-      Discrod.Working = Secret.Data[Secret.Keys.DiscordOAuthToken].Length > 0 && Secret.Data[Secret.Keys.DiscordOAuthRefreshToken].Length > 0;
+      Discord.Working = Secret.Data[Secret.Keys.DiscordOAuthToken].Length > 0 && Secret.Data[Secret.Keys.DiscordOAuthRefreshToken].Length > 0;
     }
   }
 
@@ -460,7 +460,7 @@ public static class AccessTokens
   /// <returns>true if new token was acquired, otherwise false.</returns>
   public static bool RefreshDiscordAccessToken(bool forceRefresh = false)
   {
-    if (!Discrod.Working && !forceRefresh) return false;
+    if (!Discord.Working && !forceRefresh) return false;
     if (DiscordOAuthTokenExpiration == DateTime.MinValue || DateTime.Now < DiscordOAuthTokenExpiration) return false;
 
     MainWindow.ConsoleWarning(">> Refreshing Discord OAuth token.");

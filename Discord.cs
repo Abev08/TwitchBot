@@ -3,7 +3,7 @@ using System.Text;
 
 namespace AbevBot;
 
-public static class Discrod
+public static class Discord
 {
   /// <summary> Is connection to Discord API working? </summary>
   public static bool Working { get; set; }
