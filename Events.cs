@@ -288,8 +288,10 @@ public static class Events
     request.Headers.Add("Client-Id", Secret.Data[Secret.Keys.CustomerID]);
     request.Headers.Add("Authorization", $"Bearer {Secret.Data[Secret.Keys.OAuthToken]}");
 
-    string resp = HttpClient.Send(request).Content.ReadAsStringAsync().Result;
-    ResponseMessage response = ResponseMessage.Deserialize(resp);
+    string resp;
+    try { resp = HttpClient.Send(request).Content.ReadAsStringAsync().Result; }
+    catch (HttpRequestException ex) { MainWindow.ConsoleWarning($">> Events bot subscription request failed. {ex.Message}"); return false; }
+    var response = ResponseMessage.Deserialize(resp);
     if (response.Error != null) { MainWindow.ConsoleWarning($">> Events bot subscription error: {response.Message}"); }
     else
     {

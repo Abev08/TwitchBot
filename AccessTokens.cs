@@ -188,7 +188,7 @@ public static class AccessTokens
         ));
       request.Content.Headers.ContentType = MediaTypeHeaderValue.Parse("application/x-www-form-urlencoded");
 
-      string resp = Client.Send(request).Content.ReadAsStringAsync().Result;
+      string resp = Client.Send(request).Content.ReadAsStringAsync().Result; // No try/catch because it MUST work
       var response = AccessTokenResponse.Deserialize(resp);
       if (response is null || response.Token is null || response.RefreshToken is null)
       {
@@ -318,11 +318,13 @@ public static class AccessTokens
       request.Content.Headers.ContentType = MediaTypeHeaderValue.Parse("application/x-www-form-urlencoded");
       request.Headers.Add("Authorization", $"Basic {Convert.ToBase64String(Encoding.UTF8.GetBytes($"{Secret.Data[Secret.Keys.SpotifyClientID]}:{Secret.Data[Secret.Keys.SpotifyClientSecret]}"))}");
 
-      string resp = Client.Send(request).Content.ReadAsStringAsync().Result;
+      string resp;
+      try { resp = Client.Send(request).Content.ReadAsStringAsync().Result; }
+      catch (HttpRequestException ex) { MainWindow.ConsoleWarning($">> Spotify OAuth token request failed. {ex.Message}"); return; }
       SpotifyAccessTokenResponse response = SpotifyAccessTokenResponse.Deserialize(resp);
       if (response is null || response.Token is null || response.RefreshToken is null)
       {
-        MainWindow.ConsoleWarning(">> Response was empty or didn't received access token!\nProbably ClientID or ClientPassowrd doesn't match!");
+        MainWindow.ConsoleWarning(">> Spotify OAuth token request failed. Response was empty or didn't received access token!\nProbably ClientID or ClientPassowrd doesn't match!");
       }
       else
       {
@@ -336,7 +338,7 @@ public static class AccessTokens
     else
     {
       // Something went wrong
-      MainWindow.ConsoleWarning(">> Something went wrong! Response url didn't include code part!");
+      MainWindow.ConsoleWarning(">> Spotify OAuth token request failed. Something went wrong! Response url didn't include code part!");
     }
   }
 
@@ -363,11 +365,13 @@ public static class AccessTokens
     request.Content.Headers.ContentType = MediaTypeHeaderValue.Parse("application/x-www-form-urlencoded");
     request.Headers.Add("Authorization", $"Basic {Convert.ToBase64String(Encoding.UTF8.GetBytes($"{Secret.Data[Secret.Keys.SpotifyClientID]}:{Secret.Data[Secret.Keys.SpotifyClientSecret]}"))}");
 
-    string resp = Client.Send(request).Content.ReadAsStringAsync().Result;
+    string resp;
+    try { resp = Client.Send(request).Content.ReadAsStringAsync().Result; }
+    catch (HttpRequestException ex) { MainWindow.ConsoleWarning($">> Spotify OAuth token refresh failed. {ex.Message}"); return false; }
     SpotifyAccessTokenResponse response = SpotifyAccessTokenResponse.Deserialize(resp);
     if (response is null || response.Token is null)
     {
-      MainWindow.ConsoleWarning(">> Response was empty or didn't received access token!\nProbably ClientID or ClientPassowrd doesn't match!");
+      MainWindow.ConsoleWarning(">> Spotify OAuth token refresh failed. Response was empty or didn't received access token!\nProbably ClientID or ClientPassowrd doesn't match!");
       return false;
     }
     else
@@ -433,7 +437,9 @@ public static class AccessTokens
         ));
       request.Content.Headers.ContentType = MediaTypeHeaderValue.Parse("application/x-www-form-urlencoded");
 
-      string resp = Client.Send(request).Content.ReadAsStringAsync().Result;
+      string resp;
+      try { resp = Client.Send(request).Content.ReadAsStringAsync().Result; }
+      catch (HttpRequestException ex) { MainWindow.ConsoleWarning($">> Discord OAuth token request failed. {ex.Message}"); return; }
       var response = DiscordTokenResponse.Deserialize(resp);
       if (response is null || response.Token is null || response.RefreshToken is null)
       {
@@ -476,16 +482,18 @@ public static class AccessTokens
     ));
     request.Content.Headers.ContentType = MediaTypeHeaderValue.Parse("application/x-www-form-urlencoded");
 
-    string resp = Client.Send(request).Content.ReadAsStringAsync().Result;
+    string resp;
+    try { resp = Client.Send(request).Content.ReadAsStringAsync().Result; }
+    catch (HttpRequestException ex) { MainWindow.ConsoleWarning($">> Discord OAuth token refresh failed. {ex.Message}"); return false; }
     if (string.IsNullOrEmpty(resp) || resp.StartsWith("{\"error"))
     {
-      MainWindow.ConsoleWarning($">> Response contained an error! Discord integration won't work! Message:\n{resp}");
+      MainWindow.ConsoleWarning($">> Discord OAuth token refresh failed. Response contained an error! Discord integration won't work! Message:\n{resp}");
       return false;
     }
     var response = DiscordTokenResponse.Deserialize(resp);
     if (response is null || response.Token is null || response.RefreshToken is null)
     {
-      MainWindow.ConsoleWarning(">> Response was empty or didn't received access token! Discord integration won't work!");
+      MainWindow.ConsoleWarning(">> Discord OAuth token refresh failed. Response was empty or didn't received access token! Discord integration won't work!");
       return false;
     }
     MainWindow.ConsoleWarning(response.ToString());
@@ -503,15 +511,19 @@ public static class AccessTokens
   {
     using HttpRequestMessage request = new(HttpMethod.Get, "https://discord.com/api/v10/users/@me");
     request.Headers.Add("Authorization", $"Bearer {Secret.Data[Secret.Keys.DiscordOAuthToken]}");
-    string resp = Client.Send(request).Content.ReadAsStringAsync().Result;
+    string resp;
+    try { resp = Client.Send(request).Content.ReadAsStringAsync().Result; }
+    catch (HttpRequestException ex) { MainWindow.ConsoleWarning($">> Discrod OAuth token validation failed. {ex.Message}"); return false; }
     var response = DiscordMeResponse.Deserialize(resp);
     if (response?.ID?.Length > 0 && response?.UserName?.Length > 0)
     {
       MainWindow.ConsoleWarning($">> Discord OAuth token validation succeeded.");
       return true;
     }
-    else { MainWindow.ConsoleWarning(">> Discrod OAuth token validation failed."); }
-
-    return false;
+    else
+    {
+      MainWindow.ConsoleWarning(">> Discrod OAuth token validation failed.");
+      return false;
+    }
   }
 }

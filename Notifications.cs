@@ -363,8 +363,10 @@ namespace AbevBot
       using HttpRequestMessage request = new(HttpMethod.Post, "https://glot.io/api/snippets");
       request.Content = new StringContent(paste.ToJsonString(), Encoding.UTF8, "application/json");
 
-      string resp = Client.Send(request).Content.ReadAsStringAsync().Result;
-      GlotResponse response = GlotResponse.Deserialize(resp);
+      string resp;
+      try { resp = Client.Send(request).Content.ReadAsStringAsync().Result; }
+      catch (HttpRequestException ex) { MainWindow.ConsoleWarning($">> !voices response creation failed. {ex.Message}"); return; }
+      var response = GlotResponse.Deserialize(resp);
       if (response?.Url?.Length > 0)
       {
         VoicesLink = response.Url.Replace("api/", ""); // Remove "api/" part
@@ -480,8 +482,10 @@ namespace AbevBot
       using HttpRequestMessage request = new(HttpMethod.Post, "https://glot.io/api/snippets");
       request.Content = new StringContent(paste.ToJsonString(), Encoding.UTF8, "application/json");
 
-      string resp = Client.Send(request).Content.ReadAsStringAsync().Result;
-      GlotResponse response = GlotResponse.Deserialize(resp);
+      string resp;
+      try { resp = Client.Send(request).Content.ReadAsStringAsync().Result; }
+      catch (HttpRequestException ex) { MainWindow.ConsoleWarning($">> !voices response creation failed. {ex.Message}"); return string.Empty; }
+      var response = GlotResponse.Deserialize(resp);
       if (response?.Url?.Length > 0)
       {
         s_soundsSamplePasteLink = response.Url.Replace("api/", ""); // Remove "api/" part
@@ -540,8 +544,9 @@ namespace AbevBot
       request.Headers.Add("Authorization", $"Bearer {Secret.Data[Secret.Keys.OAuthToken]}");
       request.Headers.Add("Client-Id", Secret.Data[Secret.Keys.CustomerID]);
 
-      string resp = Client.Send(request).Content.ReadAsStringAsync().Result;
-      // Assume that it worked
+      string resp;
+      try { resp = Client.Send(request).Content.ReadAsStringAsync().Result; }      // Assume that it worked
+      catch (HttpRequestException ex) { MainWindow.ConsoleWarning($">> Marking redemption as fulfilled failed. {ex.Message}"); }
     }
   }
 

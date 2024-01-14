@@ -271,7 +271,8 @@ namespace AbevBot
 
       Stream stream;
       using HttpRequestMessage request = new(HttpMethod.Get, $"https://api.streamelements.com/kappa/v2/speech?voice={voice}&text={text}");
-      stream = Notifications.Client.Send(request).Content.ReadAsStream();
+      try { stream = Notifications.Client.Send(request).Content.ReadAsStream(); }
+      catch (HttpRequestException ex) { MainWindow.ConsoleWarning($">> StreamElements TTS request failed. {ex.Message}"); return null; }
 
       return stream;
     }
@@ -284,8 +285,10 @@ namespace AbevBot
       // Ask for speech without specifying the voice, error message will contain all available voices
       using HttpRequestMessage request = new(HttpMethod.Get, "https://api.streamelements.com/kappa/v2/speech?voice=");
 
-      string resp = Notifications.Client.Send(request).Content.ReadAsStringAsync().Result;
-      StreamElementsResponse response = StreamElementsResponse.Deserialize(resp);
+      string resp;
+      try { resp = Notifications.Client.Send(request).Content.ReadAsStringAsync().Result; }
+      catch (HttpRequestException ex) { MainWindow.ConsoleWarning($">> StreamElements voices request failed. {ex.Message}"); return; }
+      var response = StreamElementsResponse.Deserialize(resp);
       if (response?.Message?.Length > 0)
       {
         int startIndex = response.Message.IndexOf("must be one of");

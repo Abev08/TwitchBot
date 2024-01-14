@@ -24,7 +24,9 @@ namespace AbevBot
     {
       using HttpRequestMessage request = new(HttpMethod.Get, "https://api.spotify.com/v1/me/player/currently-playing");
       request.Headers.Add("Authorization", $"Bearer {Secret.Data[Secret.Keys.SpotifyOAuthToken]}");
-      string resp = Notifications.Client.Send(request).Content.ReadAsStringAsync().Result;
+      string resp;
+      try { resp = Notifications.Client.Send(request).Content.ReadAsStringAsync().Result; }
+      catch (HttpRequestException ex) { MainWindow.ConsoleWarning($">> Spotify request for current tracks failed. {ex.Message}"); return null; }
       if (resp is null) { MainWindow.ConsoleWarning(">> Spotify request for current tracks failed."); }
       else if (resp.Length == 0) { return "Nothing is currently playing"; }
       else
@@ -107,7 +109,9 @@ namespace AbevBot
       );
       using HttpRequestMessage request = new(HttpMethod.Get, uri);
       request.Headers.Add("Authorization", $"Bearer {Secret.Data[Secret.Keys.SpotifyOAuthToken]}");
-      string resp = Notifications.Client.Send(request).Content.ReadAsStringAsync().Result;
+      string resp;
+      try { resp = Notifications.Client.Send(request).Content.ReadAsStringAsync().Result; }
+      catch (HttpRequestException ex) { MainWindow.ConsoleWarning($">> Spotify request for recent tracks failed. {ex.Message}"); return null; }
       if (resp is null) { MainWindow.ConsoleWarning(">> Spotify request for recent tracks failed."); }
       else if (resp.Length == 0) { return "Nothing was recently playing"; }
       else
@@ -179,7 +183,9 @@ namespace AbevBot
       );
       using HttpRequestMessage request = new(HttpMethod.Post, uri);
       request.Headers.Add("Authorization", $"Bearer {Secret.Data[Secret.Keys.SpotifyOAuthToken]}");
-      string resp = Notifications.Client.Send(request).Content.ReadAsStringAsync().Result;
+      string resp;
+      try { resp = Notifications.Client.Send(request).Content.ReadAsStringAsync().Result; }
+      catch (HttpRequestException ex) { MainWindow.ConsoleWarning($">> Spotify add song to queue failed. {ex.Message}"); return false; }
       if (resp is null) return false; // Something went wrong
       if (resp.Length != 0)
       {
@@ -199,8 +205,9 @@ namespace AbevBot
     {
       using HttpRequestMessage request = new(HttpMethod.Post, "https://api.spotify.com/v1/me/player/next");
       request.Headers.Add("Authorization", $"Bearer {Secret.Data[Secret.Keys.SpotifyOAuthToken]}");
-      string resp = Notifications.Client.Send(request).Content.ReadAsStringAsync().Result;
-      // Assume that it worked
+      string resp;
+      try { resp = Notifications.Client.Send(request).Content.ReadAsStringAsync().Result; } // Assume that it worked
+      catch (HttpRequestException ex) { MainWindow.ConsoleWarning($">> Spotify song skip failed. {ex.Message}"); }
     }
 
     /// <summary> Gets songs in the queue. </summary>
@@ -208,7 +215,13 @@ namespace AbevBot
     {
       using HttpRequestMessage request = new(HttpMethod.Get, "https://api.spotify.com/v1/me/player/queue");
       request.Headers.Add("Authorization", $"Bearer {Secret.Data[Secret.Keys.SpotifyOAuthToken]}");
-      string resp = Notifications.Client.Send(request).Content.ReadAsStringAsync().Result;
+      string resp;
+      try { resp = Notifications.Client.Send(request).Content.ReadAsStringAsync().Result; }
+      catch (HttpRequestException ex)
+      {
+        MainWindow.ConsoleWarning($">> Spotify song queue request failed. {ex.Message}");
+        return "Something went wrong peepoSad";
+      }
 
       if (resp is null) return "Something went wrong peepoSad"; // Something went wrong
       if (resp.Length != 0)

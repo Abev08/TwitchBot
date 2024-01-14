@@ -204,13 +204,14 @@ namespace AbevBot
       // string url = $"https://api16-normal-v6.tiktokv.com/media/api/text/speech/invoke/?text_speaker={voice}&req_text={text}&speaker_map_type=0&aid=1233";
       string url = $"https://api16-normal-c-useast2a.tiktokv.com/media/api/text/speech/invoke/?text_speaker={voice}&req_text={text}&speaker_map_type=0&aid=1233";
 
-      TikTokTTSResponse result;
       using HttpRequestMessage request = new(HttpMethod.Post, url);
       request.Headers.Add("User-Agent", "com.zhiliaoapp.musically/2022600030 (Linux; U; Android 7.1.2; es_ES; SM-G988N; Build/NRD90M;tt-ok/3.12.13.1)");
       request.Headers.Add("Cookie", $"sessionid={Secret.Data[Secret.Keys.TikTokSessionID]}");
 
-      string resp = Notifications.Client.Send(request).Content.ReadAsStringAsync().Result;
-      result = TikTokTTSResponse.Deserialize(resp);
+      string resp;
+      try { resp = Notifications.Client.Send(request).Content.ReadAsStringAsync().Result; }
+      catch (HttpRequestException ex) { MainWindow.ConsoleWarning($">> TikTok TTS request failed. {ex.Message}"); return null; }
+      var result = TikTokTTSResponse.Deserialize(resp);
       if (result?.StatusCode != 0)
       {
         MainWindow.ConsoleWarning($">> TikTok TTS request status: {result?.StatusCode}, error: {result?.StatusMessage}");

@@ -31,7 +31,8 @@ public static class Discord
       Encoding.UTF8, "application/json");
 
     request.Headers.Add("Authorization", $"Bot {Secret.Data[Secret.Keys.DiscordBotToken]}");
-    string resp = Notifications.Client.Send(request).Content.ReadAsStringAsync().Result;
-    // Assume that it worked
+    string resp;
+    try { resp = Notifications.Client.Send(request).Content.ReadAsStringAsync().Result; }    // Assume that it worked
+    catch (HttpRequestException ex) { MainWindow.ConsoleWarning($">> Sending Discord Online message failed. {ex.Message}"); }
   }
 }

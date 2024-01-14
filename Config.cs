@@ -778,8 +778,10 @@ public static class Config
     request.Headers.Add("Authorization", $"Bearer {Secret.Data[Secret.Keys.OAuthToken]}");
     request.Headers.Add("Client-Id", Secret.Data[Secret.Keys.CustomerID]);
 
-    string resp = Notifications.Client.Send(request).Content.ReadAsStringAsync().Result;
-    ChannelIDResponse response = ChannelIDResponse.Deserialize(resp);
+    string resp;
+    try { resp = Notifications.Client.Send(request).Content.ReadAsStringAsync().Result; }
+    catch (HttpRequestException ex) { MainWindow.ConsoleWarning($">> Couldn't acquire broadcaster ID. {ex.Message}"); return; }
+    var response = ChannelIDResponse.Deserialize(resp);
     if (response != null && response?.Data?.Length == 1) { Config.Data[Config.Keys.ChannelID] = response.Data[0].ID; }
     else { MainWindow.ConsoleWarning(">> Couldn't acquire broadcaster ID. Probably defined channel name doesn't exist."); }
   }
@@ -797,7 +799,9 @@ public static class Config
     request.Headers.Add("Authorization", $"Bearer {Secret.Data[Secret.Keys.OAuthToken]}");
     request.Headers.Add("Client-Id", Secret.Data[Secret.Keys.CustomerID]);
 
-    string resp = Notifications.Client.Send(request).Content.ReadAsStringAsync().Result;
+    string resp;
+    try { resp = Notifications.Client.Send(request).Content.ReadAsStringAsync().Result; }
+    catch (HttpRequestException ex) { MainWindow.ConsoleWarning($">> Couldn't acquire stream status. {ex.Message}"); return false; }
     if (resp is null || resp.Length == 0 || resp.StartsWith('<'))
     {
       MainWindow.ConsoleWarning(">> Couldn't acquire stream status.");

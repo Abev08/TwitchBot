@@ -727,8 +727,10 @@ public static class Chat
     request.Headers.Add("Authorization", $"Bearer {Secret.Data[Secret.Keys.OAuthToken]}");
     request.Headers.Add("Client-Id", Secret.Data[Secret.Keys.CustomerID]);
 
-    string resp = Client.Send(request).Content.ReadAsStringAsync().Result;
-    GetChattersResponse response = GetChattersResponse.Deserialize(resp);
+    string resp;
+    try { resp = Client.Send(request).Content.ReadAsStringAsync().Result; }
+    catch (HttpRequestException ex) { MainWindow.ConsoleWarning($">> Acquiring chatters failed. {ex.Message}"); return chatters; }
+    var response = GetChattersResponse.Deserialize(resp);
     if (response?.Data?.Length > 0)
     {
       for (int i = 0; i < response.Data.Length; i++)
@@ -785,7 +787,8 @@ public static class Chat
     request.Headers.Add("Authorization", $"Bearer {Secret.Data[Secret.Keys.OAuthToken]}");
     request.Headers.Add("Client-Id", Secret.Data[Secret.Keys.CustomerID]);
 
-    Client.Send(request); // We don't really need the result, just assume that it worked
+    try { Client.Send(request); } // We don't really need the result, just assume that it worked
+    catch (HttpRequestException ex) { MainWindow.ConsoleWarning($">> Banning chatter failed. {ex.Message}"); }
   }
 
   private static void Hug(string userName, string message)
@@ -839,7 +842,8 @@ public static class Chat
     request.Headers.Add("Authorization", $"Bearer {Secret.Data[Secret.Keys.OAuthToken]}");
     request.Headers.Add("Client-Id", Secret.Data[Secret.Keys.CustomerID]);
 
-    Client.Send(request); // We don't really need the result, just assume that it worked
+    try { Client.Send(request); } // We don't really need the result, just assume that it worked
+    catch (HttpRequestException ex) { MainWindow.ConsoleWarning($">> Creating shoutout failed. {ex.Message}"); }
   }
 
   public static void SongRequest(Chatter chatter, string message, bool fromNotifications = false)
