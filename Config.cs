@@ -120,6 +120,7 @@ public static class Config
           text[1] = line[(indexOf + 1)..].Trim();
           indexOf = text[1].IndexOf(';');
           if (indexOf >= 0) text[1] = text[1][..indexOf].Trim();
+          text[1] = text[1].Replace("\"", "").Trim();
         }
         object key;
         if (Enum.TryParse(typeof(Keys), text[0], out key))
