@@ -13,7 +13,7 @@
             "args": [
               "--consoleVisible"
             ],
-            "cwd": "${workspaceFolder}",
+            "cwd": "${workspaceFolder}/bin/Debug/net7.0-windows/win-x64/",
             "console": "internalConsole",
             "stopAtEntry": false
         },
