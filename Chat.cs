@@ -221,13 +221,17 @@ public static class Chat
                 userName = message[0].Substring(currentIndex, nextIndex - currentIndex);
                 currentIndex = nextIndex;
 
-                MainWindow.ConsoleWriteLine(string.Format(
-                  "{0, -4}{1, 22}{2, 2}{3, -0}",
-                  userBadge,
-                  userName,
-                  ": ",
-                  message[1][1..]
-                ));
+                // Print chatter message
+                if (Config.PrintChatMessages)
+                {
+                  MainWindow.ConsoleWriteLine(string.Format(
+                    "{0, -4}{1, 22}{2, 2}{3, -0}",
+                    userBadge,
+                    userName,
+                    ": ",
+                    message[1][1..]
+                  ));
+                }
 
                 chatter = Chatter.GetChatterByID(userID, userName);
                 chatter.LastChatted = DateTime.Now;

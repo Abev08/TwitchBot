@@ -35,6 +35,8 @@ namespace AbevBot
     public static NotificationsConfig ConfigSubscriptionGiftReceived { get; set; } = new(NotificationType.SUBSCRIPTION);
     public static NotificationsConfig ConfigCheer { get; set; } = new(NotificationType.CHEER);
     public static NotificationsConfig ConfigRaid { get; set; } = new(NotificationType.RAID);
+    public static NotificationsConfig ConfigTimeout { get; set; } = new(NotificationType.TIMEOUT);
+    public static NotificationsConfig ConfigBan { get; set; } = new(NotificationType.BAN);
     private static readonly string[] NotificationData = new string[14];
     public static readonly List<ChannelRedemption> ChannelRedemptions = new();
     private static readonly List<(DateTime time, string name)> GiftedSubs = new();
@@ -341,6 +343,38 @@ namespace AbevBot
       });
     }
 
+    /// <summary> Creates and adds to queue Chatter Timeout notification. </summary>
+    /// <param name="userName">Chatter name that got the timeout</param>
+    /// <param name="duration">Timeout duration</param>
+    /// <param name="reason">Timeout reason</param>
+    public static void CreateTimeoutNotification(string userName, TimeSpan duration, string reason)
+    {
+      if (!ConfigTimeout.Enable) return;
+      if (duration < ConfigTimeout.MinimumTime) return;
+
+      Array.Clear(NotificationData);
+      NotificationData[0] = userName;
+      NotificationData[7] = reason;
+
+      Chat.AddMessageToQueue(string.Format(ConfigTimeout.ChatMessage, NotificationData));
+      AddNotification(new Notification(ConfigTimeout, NotificationData));
+    }
+
+    /// <summary> Creates and adds to queue Chatter ban notification. </summary>
+    /// <param name="userName">Chatter name that got banned</param>
+    /// <param name="reason">Ban reason</param>
+    public static void CreateBanNotification(string userName, string reason)
+    {
+      if (!ConfigBan.Enable) return;
+
+      Array.Clear(NotificationData);
+      NotificationData[0] = userName;
+      NotificationData[7] = reason;
+
+      Chat.AddMessageToQueue(string.Format(ConfigBan.ChatMessage, NotificationData));
+      AddNotification(new Notification(ConfigBan, NotificationData));
+    }
+
     private static void CreateVoicesPaste()
     {
       if (Chat.ResponseMessages.ContainsKey("!voices"))
@@ -550,11 +584,11 @@ namespace AbevBot
     }
   }
 
-  public enum NotificationType { FOLLOW, SUBSCRIPTION, SUBSCRIPTIONGIFT, CHEER, RAID, REDEMPTION }
+  public enum NotificationType { FOLLOW, SUBSCRIPTION, SUBSCRIPTIONGIFT, CHEER, RAID, REDEMPTION, TIMEOUT, BAN }
 
   public class NotificationsConfig
   {
-    public bool Enable { get; set; }
+    public bool Enable { get; set; } = false;
     public string ChatMessage { get; set; } = string.Empty;
     public string TextToDisplay { get; set; } = string.Empty;
     public Notifications.TextPosition TextPosition { get; set; } = Notifications.TextPosition.MIDDLE;
@@ -565,6 +599,7 @@ namespace AbevBot
     public int MinimumBits { get; set; } = 10;
     public bool DoShoutout { get; set; }
     public NotificationType Type { get; }
+    public TimeSpan MinimumTime { get; set; } = TimeSpan.MinValue;
 
     public NotificationsConfig(NotificationType type) { Type = type; }
   }

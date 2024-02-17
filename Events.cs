@@ -77,7 +77,7 @@ public static class Events
           {
             sessionID = welcomeMessage.Payload.Session.ID;
 
-            // Subscribe to every event you want to
+            // Subscribe to every event you want to, https://dev.twitch.tv/docs/eventsub/eventsub-subscription-types
             // We have <10 sec to subscribe to an event, also another connection has to be used because we can't send messages to websocket server
             bool anySubscriptionSucceeded = false;
             anySubscriptionSucceeded |= Subscribe("channel.follow", "2", sessionID); // Channel got new follow
@@ -87,6 +87,7 @@ public static class Events
             anySubscriptionSucceeded |= Subscribe("channel.cheer", "1", sessionID); // Channel got cheered
             anySubscriptionSucceeded |= Subscribe("channel.channel_points_custom_reward_redemption.add", "1", sessionID); // User redeemed channel points
             anySubscriptionSucceeded |= Subscribe("channel.hype_train.progress", "1", sessionID); // A Hype Train makes progress on the specified channel
+            anySubscriptionSucceeded |= Subscribe("channel.ban", "1", sessionID); // A viewer is banned from the specified channel
 
             if (!anySubscriptionSucceeded)
             {
@@ -197,15 +198,19 @@ public static class Events
             {
               // Received user banned event
               Payload payload = Payload.Deserialize(messageDeserialized?.Payload);
-              if (payload?.Event.IsPermanent == true)
+              if (payload?.Event != null)
               {
-                MainWindow.ConsoleWarning($">> {payload?.Event?.UserName} has been permanently banned. {payload?.Event?.Reason}.");
-              }
-              else
-              {
-                DateTime start = DateTime.Parse(payload?.Event.BannedAt);
-                DateTime end = DateTime.Parse(payload?.Event.EndsAt);
-                MainWindow.ConsoleWarning($">> {payload?.Event?.UserName} was banned for {end - start}. {payload?.Event?.Reason}.");
+                if (payload.Event.IsPermanent == true)
+                {
+                  MainWindow.ConsoleWarning($">> {payload.Event.UserName} has been permanently banned. {payload.Event.Reason}.");
+                  Notifications.CreateBanNotification(payload.Event.UserName, payload.Event.Reason);
+                }
+                else
+                {
+                  var duration = DateTime.Parse(payload.Event.EndsAt) - DateTime.Parse(payload.Event.BannedAt);
+                  MainWindow.ConsoleWarning($">> {payload.Event.UserName} was timed out for {duration}. {payload.Event.Reason}.");
+                  Notifications.CreateTimeoutNotification(payload.Event.UserName, duration, payload.Event.Reason);
+                }
               }
             }
             else if (messageDeserialized?.Metadata?.SubscriptionType?.Equals("channel.hype_train.progress") == true)

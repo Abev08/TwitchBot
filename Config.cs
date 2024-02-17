@@ -16,6 +16,7 @@ public static class Config
     SongRequestTimeout,
     DiscordMessageOnline,
     HotkeyNotificationPause, HotkeyNotificationSkip,
+    PrintChatMessagesToConsole,
 
     Follow_Enable, Follow_ChatMessage, Follow_TextToDisplay, Follow_TextPosition, Follow_TextToSpeech, Follow_SoundToPlay, Follow_VideoToPlay,
     Subscription_Enable, Subscription_ChatMessage, Subscription_TextToDisplay, Subscription_TextPosition, Subscription_TextToSpeech, Subscription_SoundToPlay, Subscription_VideoToPlay,
@@ -24,6 +25,8 @@ public static class Config
     SubscriptionGiftReceived_Enable, SubscriptionGiftReceived_ChatMessage, SubscriptionGiftReceived_TextToDisplay, SubscriptionGiftReceived_TextPosition, SubscriptionGiftReceived_TextToSpeech, SubscriptionGiftReceived_SoundToPlay, SubscriptionGiftReceived_VideoToPlay,
     Cheer_Enable, Cheer_ChatMessage, Cheer_TextToDisplay, Cheer_TextPosition, Cheer_TextToSpeech, Cheer_SoundToPlay, Cheer_VideoToPlay, Cheer_MinimumBitsForTTS,
     Raid_Enable, Raid_ChatMessage, Raid_TextToDisplay, Raid_TextPosition, Raid_TextToSpeech, Raid_SoundToPlay, Raid_VideoToPlay, Raid_MinimumRaiders, Raid_DoShoutout,
+    Timeout_Enable, Timeout_ChatMessage, Timeout_TextToDisplay, Timeout_TextPosition, Timeout_TextToSpeech, Timeout_SoundToPlay, Timeout_VideoToPlay, Timeout_MinimumDuration,
+    Ban_Enable, Ban_ChatMessage, Ban_TextToDisplay, Ban_TextPosition, Ban_TextToSpeech, Ban_SoundToPlay, Ban_VideoToPlay,
 
     ChannelRedemption_RandomVideo_ID, ChannelRedemption_RandomVideo_MarkAsFulfilled, ChannelRedemption_SongRequest_ID, ChannelRedemption_SongRequest_MarkAsFulfilled, ChannelRedemption_SongSkip_ID, ChannelRedemption_SongSkip_MarkAsFulfilled,
     ChannelRedemption_ID, ChannelRedemption_KeyAction, ChannelRedemption_KeyActionType, ChannelRedemption_KeyActionAfterTime, ChannelRedemption_KeyActionAfterTimeType, ChannelRedemption_ChatMessage, ChannelRedemption_TextToDisplay, ChannelRedemption_TextPosition, ChannelRedemption_TextToSpeech, ChannelRedemption_SoundToPlay, ChannelRedemption_VideoToPlay, ChannelRedemption_MarkAsFulfilled,
@@ -61,6 +64,7 @@ public static class Config
   public static TimeSpan BroadcasterOfflineTimeout { get; } = TimeSpan.FromMinutes(30);
   public static readonly List<Key> HotkeysForPauseNotification = new();
   public static readonly List<Key> HotkeysForSkipNotification = new();
+  public static bool PrintChatMessages { get; private set; } = true;
 
   public static bool ParseConfigFile(bool reload = false)
   {
@@ -138,7 +142,7 @@ public static class Config
             case Keys.PeriodicMessageTimeInterval:
               if (TimeSpan.TryParse(text[1], out timeSpan))
               {
-                if (timeSpan.TotalSeconds > 0) Chat.PeriodicMessageInterval = timeSpan;
+                if (timeSpan.TotalSeconds > 0) Chat.PeriodicMessageInterval = TimeSpan.FromTicks(timeSpan.Ticks);
               }
               break;
 
@@ -152,7 +156,7 @@ public static class Config
             case Keys.SongRequestTimeout:
               if (TimeSpan.TryParse(text[1], out timeSpan))
               {
-                Spotify.SongRequestTimeout = timeSpan;
+                Spotify.SongRequestTimeout = TimeSpan.FromTicks(timeSpan.Ticks);
               }
               break;
 
@@ -162,6 +166,10 @@ public static class Config
 
             case Keys.DiscordMessageOnline:
               Discord.CustomOnlineMessage = text[1].Trim();
+              break;
+
+            case Keys.PrintChatMessagesToConsole:
+              if (bool.TryParse(text[1], out result)) PrintChatMessages = result;
               break;
 
             case Keys.HotkeyNotificationPause:
@@ -343,6 +351,53 @@ public static class Config
               break;
             case Keys.Raid_DoShoutout:
               if (bool.TryParse(text[1], out result)) Notifications.ConfigRaid.DoShoutout = result;
+              break;
+
+            case Keys.Timeout_Enable:
+              if (bool.TryParse(text[1], out result)) Notifications.ConfigTimeout.Enable = result;
+              break;
+            case Keys.Timeout_ChatMessage:
+              Notifications.ConfigTimeout.ChatMessage = text[1].Trim();
+              break;
+            case Keys.Timeout_TextToDisplay:
+              Notifications.ConfigTimeout.TextToDisplay = text[1].Trim();
+              break;
+            case Keys.Timeout_TextPosition:
+              if (Enum.TryParse(typeof(Notifications.TextPosition), text[1].Trim(), out position)) Notifications.ConfigTimeout.TextPosition = (Notifications.TextPosition)position;
+              break;
+            case Keys.Timeout_TextToSpeech:
+              Notifications.ConfigTimeout.TextToSpeech = text[1].Trim();
+              break;
+            case Keys.Timeout_SoundToPlay:
+              if (text[1].Length > 0) Notifications.ConfigTimeout.SoundToPlay = $"Resources\\{text[1].Trim()}";
+              break;
+            case Keys.Timeout_VideoToPlay:
+              if (text[1].Length > 0) Notifications.ConfigTimeout.VideoToPlay = $"Resources\\{text[1].Trim()}";
+              break;
+            case Keys.Timeout_MinimumDuration:
+              if (TimeSpan.TryParse(text[1], out timeSpan)) Notifications.ConfigTimeout.MinimumTime = TimeSpan.FromTicks(timeSpan.Ticks);
+              break;
+
+            case Keys.Ban_Enable:
+              if (bool.TryParse(text[1], out result)) Notifications.ConfigBan.Enable = result;
+              break;
+            case Keys.Ban_ChatMessage:
+              Notifications.ConfigBan.ChatMessage = text[1].Trim();
+              break;
+            case Keys.Ban_TextToDisplay:
+              Notifications.ConfigBan.TextToDisplay = text[1].Trim();
+              break;
+            case Keys.Ban_TextPosition:
+              if (Enum.TryParse(typeof(Notifications.TextPosition), text[1].Trim(), out position)) Notifications.ConfigBan.TextPosition = (Notifications.TextPosition)position;
+              break;
+            case Keys.Ban_TextToSpeech:
+              Notifications.ConfigBan.TextToSpeech = text[1].Trim();
+              break;
+            case Keys.Ban_SoundToPlay:
+              if (text[1].Length > 0) Notifications.ConfigBan.SoundToPlay = $"Resources\\{text[1].Trim()}";
+              break;
+            case Keys.Ban_VideoToPlay:
+              if (text[1].Length > 0) Notifications.ConfigBan.VideoToPlay = $"Resources\\{text[1].Trim()}";
               break;
 
             case Keys.ChannelRedemption_ID:
@@ -587,6 +642,8 @@ public static class Config
       writer.WriteLine("; Discord message that will be sent when the stream goes online. Default: empty - \"Hello @everyone, stream just started https://twitch.tv/{ChannelName} ! {title}\"");
       writer.WriteLine("; The \"{title}\" part of the message will be replaced with current stream title and can be used in custom online message specified below.");
       writer.WriteLine(string.Concat(Keys.DiscordMessageOnline.ToString(), " = "));
+      writer.WriteLine("; Print chat messages to console window. Default: true");
+      writer.WriteLine(string.Concat(Keys.PrintChatMessagesToConsole.ToString(), " = true"));
 
       writer.WriteLine();
       writer.WriteLine("; Hotkeys configuration");
@@ -685,6 +742,26 @@ public static class Config
       writer.WriteLine("; Default empty -> minimum raiders 10.");
       writer.WriteLine(string.Concat(Keys.Raid_MinimumRaiders.ToString(), " = "));
       writer.WriteLine(string.Concat(Keys.Raid_DoShoutout.ToString(), " = true"));
+      writer.WriteLine();
+      writer.WriteLine("; ----- Chatter timeout");
+      writer.WriteLine(string.Concat(Keys.Timeout_Enable.ToString(), " = false"));
+      writer.WriteLine(string.Concat(Keys.Timeout_ChatMessage.ToString(), " = "));
+      writer.WriteLine(string.Concat(Keys.Timeout_TextToDisplay.ToString(), " = "));
+      writer.WriteLine(string.Concat(Keys.Timeout_TextPosition.ToString(), " = TOP"));
+      writer.WriteLine(string.Concat(Keys.Timeout_TextToSpeech.ToString(), " = "));
+      writer.WriteLine(string.Concat(Keys.Timeout_SoundToPlay.ToString(), " = tone1.wav"));
+      writer.WriteLine(string.Concat(Keys.Timeout_VideoToPlay.ToString(), " = "));
+      writer.WriteLine("; Minimum timeout duration (HH:MM:SS format -> 1 hour: 1:00:00, 1 minute 0:01:00, 1 second: 0:00:01). Default: empty - 0 seconds");
+      writer.WriteLine(string.Concat(Keys.Timeout_MinimumDuration.ToString(), " = "));
+      writer.WriteLine();
+      writer.WriteLine("; ----- Chatter ban");
+      writer.WriteLine(string.Concat(Keys.Ban_Enable.ToString(), " = false"));
+      writer.WriteLine(string.Concat(Keys.Ban_ChatMessage.ToString(), " = "));
+      writer.WriteLine(string.Concat(Keys.Ban_TextToDisplay.ToString(), " = "));
+      writer.WriteLine(string.Concat(Keys.Ban_TextPosition.ToString(), " = TOP"));
+      writer.WriteLine(string.Concat(Keys.Ban_TextToSpeech.ToString(), " = "));
+      writer.WriteLine(string.Concat(Keys.Ban_SoundToPlay.ToString(), " = tone1.wav"));
+      writer.WriteLine(string.Concat(Keys.Ban_VideoToPlay.ToString(), " = "));
 
       writer.WriteLine();
       writer.WriteLine();
