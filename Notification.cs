@@ -13,7 +13,7 @@ namespace AbevBot
     public bool Started { get; private set; }
     private DateTime StartTime { get; set; }
     public string TextToDisplay { get; init; }
-    public Notifications.TextPosition TextToDisplayPosition { get; init; } = Notifications.TextPosition.MIDDLE;
+    public Notifications.TextPosition TextToDisplayPosition { get; init; } = Notifications.TextPosition.TOP;
     public string TextToRead { get; init; }
     public float TTSVolume { get; init; } = 1f;
     public string SoundPath { get; init; }
@@ -32,6 +32,7 @@ namespace AbevBot
     private bool KeysPressed, Keys2Pressed;
     public NotificationType Type { get; }
     public Action ExtraActionAtStartup { get; set; }
+    public VideoParameters VideoParams;
 
     public Notification() { }
 
@@ -54,6 +55,7 @@ namespace AbevBot
       SoundVolume = Config.VolumeSounds;
       VideoPath = config.VideoToPlay;
       VideoVolume = Config.VolumeVideos;
+      VideoParams = config.VideoParams;
       Redemption = redemption;
       Type = config.Type;
     }
@@ -211,7 +213,7 @@ namespace AbevBot
       if (!TextDisplayed && !Notifications.NotificationsPaused && !Notifications.SkipNotification)
       {
         TextDisplayed = true;
-        MainWindow.I.SetTextDisplayed(TextToDisplay, TextToDisplayPosition);
+        MainWindow.I.SetTextDisplayed(TextToDisplay, TextToDisplayPosition, VideoParams);
       }
 
       if (!VideoEnded)
@@ -220,7 +222,7 @@ namespace AbevBot
         {
           // Start the video
           VideoStarted = true;
-          MainWindow.I.StartVideoPlayer(VideoPath, VideoVolume);
+          MainWindow.I.StartVideoPlayer(VideoPath, VideoVolume, VideoParams);
         }
         else if (Notifications.SkipNotification)
         {

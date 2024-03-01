@@ -18,17 +18,11 @@ public static class Config
     HotkeyNotificationPause, HotkeyNotificationSkip,
     PrintChatMessagesToConsole,
 
-    Follow_Enable, Follow_ChatMessage, Follow_TextToDisplay, Follow_TextPosition, Follow_TextToSpeech, Follow_SoundToPlay, Follow_VideoToPlay,
-    Subscription_Enable, Subscription_ChatMessage, Subscription_TextToDisplay, Subscription_TextPosition, Subscription_TextToSpeech, Subscription_SoundToPlay, Subscription_VideoToPlay,
-    SubscriptionExt_Enable, SubscriptionExt_ChatMessage, SubscriptionExt_TextToDisplay, SubscriptionExt_TextPosition, SubscriptionExt_TextToSpeech, SubscriptionExt_SoundToPlay, SubscriptionExt_VideoToPlay,
-    SubscriptionGift_Enable, SubscriptionGift_ChatMessage, SubscriptionGift_TextToDisplay, SubscriptionGift_TextPosition, SubscriptionGift_TextToSpeech, SubscriptionGift_SoundToPlay, SubscriptionGift_VideoToPlay,
-    SubscriptionGiftReceived_Enable, SubscriptionGiftReceived_ChatMessage, SubscriptionGiftReceived_TextToDisplay, SubscriptionGiftReceived_TextPosition, SubscriptionGiftReceived_TextToSpeech, SubscriptionGiftReceived_SoundToPlay, SubscriptionGiftReceived_VideoToPlay,
-    Cheer_Enable, Cheer_ChatMessage, Cheer_TextToDisplay, Cheer_TextPosition, Cheer_TextToSpeech, Cheer_SoundToPlay, Cheer_VideoToPlay, Cheer_MinimumBitsForTTS,
-    Raid_Enable, Raid_ChatMessage, Raid_TextToDisplay, Raid_TextPosition, Raid_TextToSpeech, Raid_SoundToPlay, Raid_VideoToPlay, Raid_MinimumRaiders, Raid_DoShoutout,
-    Timeout_Enable, Timeout_ChatMessage, Timeout_TextToDisplay, Timeout_TextPosition, Timeout_TextToSpeech, Timeout_SoundToPlay, Timeout_VideoToPlay, Timeout_MinimumDuration,
-    Ban_Enable, Ban_ChatMessage, Ban_TextToDisplay, Ban_TextPosition, Ban_TextToSpeech, Ban_SoundToPlay, Ban_VideoToPlay,
+    Enable, ChatMessage, TextToDisplay, TextPosition, TextToSpeech, SoundToPlay, VideoToPlay, VideoPosition, VideoSize, MinimumRaiders, DoShoutout, MinimumDuration, MinimumBitsForTTS,
 
     ChannelRedemption_RandomVideo_ID, ChannelRedemption_RandomVideo_MarkAsFulfilled, ChannelRedemption_SongRequest_ID, ChannelRedemption_SongRequest_MarkAsFulfilled, ChannelRedemption_SongSkip_ID, ChannelRedemption_SongSkip_MarkAsFulfilled,
+    ChannelRedemption_RandomVideo_Size, ChannelRedemption_RandomVideo_Position,
+
     ChannelRedemption_ID, ChannelRedemption_KeyAction, ChannelRedemption_KeyActionType, ChannelRedemption_KeyActionAfterTime, ChannelRedemption_KeyActionAfterTimeType, ChannelRedemption_ChatMessage, ChannelRedemption_TextToDisplay, ChannelRedemption_TextPosition, ChannelRedemption_TextToSpeech, ChannelRedemption_SoundToPlay, ChannelRedemption_VideoToPlay, ChannelRedemption_MarkAsFulfilled,
     msg
   };
@@ -83,6 +77,16 @@ public static class Config
     Notifications.ChannelRedemptions.Clear();
     HotkeysForPauseNotification.Clear();
     HotkeysForSkipNotification.Clear();
+    Notifications.ConfigFollow.VideoParams?.Reset();
+    Notifications.ConfigSubscription.VideoParams?.Reset();
+    Notifications.ConfigSubscriptionExt.VideoParams?.Reset();
+    Notifications.ConfigSubscriptionGift.VideoParams?.Reset();
+    Notifications.ConfigSubscriptionGiftReceived.VideoParams?.Reset();
+    Notifications.ConfigCheer.VideoParams?.Reset();
+    Notifications.ConfigRaid.VideoParams?.Reset();
+    Notifications.ConfigTimeout.VideoParams?.Reset();
+    Notifications.ConfigBan.VideoParams?.Reset();
+    Notifications.RandomVideoParameters?.Reset();
 
     // Create example Config.ini
     FileInfo configFile = new("Config_example.ini");
@@ -107,6 +111,7 @@ public static class Config
       ChannelRedemption redemption = null;
       string[] keys;
       TimeSpan timeSpan;
+      NotificationsConfig currentNotifConfig = null;
 
       // FileShare.ReadWrite needs to be used because it have to allow other processes to write into the file
       using FileStream fileStream = new(configFile.FullName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
@@ -114,8 +119,50 @@ public static class Config
       while ((line = reader.ReadLine()) != null)
       {
         lineIndex++;
+        line = line.Trim();
         // Skip commented out lines
         if (line.StartsWith("//") || line.StartsWith(';') || line.StartsWith('#') || string.IsNullOrWhiteSpace(line)) continue;
+
+        // check for group heading
+        if (line.EndsWith(':'))
+        {
+          switch (line)
+          {
+            case "Follow:":
+              currentNotifConfig = Notifications.ConfigFollow;
+              break;
+            case "Subscription:":
+              currentNotifConfig = Notifications.ConfigSubscription;
+              break;
+            case "SubscriptionExt:":
+              currentNotifConfig = Notifications.ConfigSubscriptionExt;
+              break;
+            case "SubscriptionGift:":
+              currentNotifConfig = Notifications.ConfigSubscriptionGift;
+              break;
+            case "SubscriptionGiftReceived:":
+              currentNotifConfig = Notifications.ConfigSubscriptionGiftReceived;
+              break;
+            case "Cheer:":
+              currentNotifConfig = Notifications.ConfigCheer;
+              break;
+            case "Raid:":
+              currentNotifConfig = Notifications.ConfigRaid;
+              break;
+            case "Timeout:":
+              currentNotifConfig = Notifications.ConfigTimeout;
+              break;
+            case "Ban:":
+              currentNotifConfig = Notifications.ConfigBan;
+              break;
+            default:
+              MainWindow.ConsoleWarning($">> Bad config line {lineIndex}. Group header not recognized!");
+              currentNotifConfig = null;
+              break;
+          }
+
+          continue;
+        }
 
         indexOf = line.IndexOf('=');
         if (indexOf > 0)
@@ -126,6 +173,7 @@ public static class Config
           if (indexOf >= 0) text[1] = text[1][..indexOf].Trim();
           text[1] = text[1].Replace("\"", "").Trim();
         }
+
         object key;
         if (Enum.TryParse(typeof(Keys), text[0], out key))
         {
@@ -190,214 +238,122 @@ public static class Config
               }
               break;
 
-            case Keys.Follow_Enable:
-              if (bool.TryParse(text[1], out result)) Notifications.ConfigFollow.Enable = result;
+            case Keys.Enable:
+              if (currentNotifConfig is null) MainWindow.ConsoleWarning($">> Bad config line {lineIndex}. Missing previous group header definition!");
+              else if (bool.TryParse(text[1], out result)) currentNotifConfig.Enable = result;
+              else MainWindow.ConsoleWarning($">> Bad config line {lineIndex}. Value not recognized!");
               break;
-            case Keys.Follow_ChatMessage:
-              Notifications.ConfigFollow.ChatMessage = text[1].Trim();
+            case Keys.ChatMessage:
+              if (currentNotifConfig is null) MainWindow.ConsoleWarning($">> Bad config line {lineIndex}. Missing previous group header definition!");
+              else currentNotifConfig.ChatMessage = text[1].Trim();
               break;
-            case Keys.Follow_TextToDisplay:
-              Notifications.ConfigFollow.TextToDisplay = text[1].Trim();
+            case Keys.TextToDisplay:
+              if (currentNotifConfig is null) MainWindow.ConsoleWarning($">> Bad config line {lineIndex}. Missing previous group header definition!");
+              else currentNotifConfig.TextToDisplay = text[1].Trim();
               break;
-            case Keys.Follow_TextPosition:
-              if (Enum.TryParse(typeof(Notifications.TextPosition), text[1].Trim(), out position)) Notifications.ConfigFollow.TextPosition = (Notifications.TextPosition)position;
+            case Keys.TextPosition:
+              if (currentNotifConfig is null) MainWindow.ConsoleWarning($">> Bad config line {lineIndex}. Missing previous group header definition!");
+              else if (Enum.TryParse(typeof(Notifications.TextPosition), text[1].Trim(), out position)) currentNotifConfig.TextPosition = (Notifications.TextPosition)position;
+              else MainWindow.ConsoleWarning($">> Bad config line {lineIndex}. Value not recognized!");
               break;
-            case Keys.Follow_TextToSpeech:
-              Notifications.ConfigFollow.TextToSpeech = text[1].Trim();
+            case Keys.TextToSpeech:
+              if (currentNotifConfig is null) MainWindow.ConsoleWarning($">> Bad config line {lineIndex}. Missing previous group header definition!");
+              else currentNotifConfig.TextToSpeech = text[1].Trim();
               break;
-            case Keys.Follow_SoundToPlay:
-              if (text[1].Length > 0) Notifications.ConfigFollow.SoundToPlay = $"Resources\\{text[1].Trim()}";
+            case Keys.SoundToPlay:
+              if (currentNotifConfig is null) MainWindow.ConsoleWarning($">> Bad config line {lineIndex}. Missing previous group header definition!");
+              else if (text[1].Length > 0) currentNotifConfig.SoundToPlay = $"Resources\\{text[1].Trim()}";
               break;
-            case Keys.Follow_VideoToPlay:
-              if (text[1].Length > 0) Notifications.ConfigFollow.VideoToPlay = $"Resources\\{text[1].Trim()}";
+            case Keys.VideoToPlay:
+              if (currentNotifConfig is null) MainWindow.ConsoleWarning($">> Bad config line {lineIndex}. Missing previous group header definition!");
+              else if (text[1].Length > 0) currentNotifConfig.VideoToPlay = $"Resources\\{text[1].Trim()}";
               break;
+            case Keys.VideoPosition:
+              if (currentNotifConfig is null) { MainWindow.ConsoleWarning($">> Bad config line {lineIndex}. Missing previous group header definition!"); }
+              else if (text[1].Length > 0)
+              {
+                var stringNums = text[1].Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                if (stringNums.Length == 2)
+                {
+                  var nums = new double[stringNums.Length];
+                  bool ok = true;
+                  for (int i = 0; i < stringNums.Length; i++)
+                  {
+                    if (!double.TryParse(stringNums[i], out nums[i]))
+                    {
+                      MainWindow.ConsoleWarning($">> Bad config line {lineIndex}. Value {i + 1} not recognized!");
+                      ok = false;
+                    }
+                  }
+                  if (ok)
+                  {
+                    if (currentNotifConfig.VideoParams is null) currentNotifConfig.VideoParams = new();
+                    currentNotifConfig.VideoParams.Left = nums[0];
+                    currentNotifConfig.VideoParams.Top = nums[1];
+                  }
+                }
+                else MainWindow.ConsoleWarning($">> Bad config line {lineIndex}. Not enough or too many values!");
+              }
+              break;
+            case Keys.VideoSize:
+              if (currentNotifConfig is null) MainWindow.ConsoleWarning($">> Bad config line {lineIndex}. Missing previous group header definition!");
+              else if (text[1].Length > 0)
+              {
+                var stringNums = text[1].Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                if (stringNums.Length == 2)
+                {
+                  var nums = new double[stringNums.Length];
+                  bool ok = true;
+                  for (int i = 0; i < stringNums.Length; i++)
+                  {
+                    if (!double.TryParse(stringNums[i], out nums[i]))
+                    {
+                      MainWindow.ConsoleWarning($">> Bad config line {lineIndex}. Value {i + 1} not recognized!");
+                      ok = false;
+                    }
+                  }
+                  if (ok)
+                  {
+                    // check the aspect ratio
+                    if (nums[0] / 16 > nums[1] / 9) { nums[0] = (nums[1] / 9) * 16; }
+                    else { nums[1] = (nums[0] / 16) * 9; }
 
-            case Keys.Subscription_Enable:
-              if (bool.TryParse(text[1], out result)) Notifications.ConfigSubscription.Enable = result;
+                    if (currentNotifConfig.VideoParams is null) currentNotifConfig.VideoParams = new();
+                    currentNotifConfig.VideoParams.Width = nums[0];
+                    currentNotifConfig.VideoParams.Height = nums[1];
+                  }
+                }
+                else MainWindow.ConsoleWarning($">> Bad config line {lineIndex}. Not enough or too many values!");
+              }
               break;
-            case Keys.Subscription_ChatMessage:
-              Notifications.ConfigSubscription.ChatMessage = text[1].Trim();
+            case Keys.MinimumRaiders:
+              if (currentNotifConfig is null) MainWindow.ConsoleWarning($">> Bad config line {lineIndex}. Missing previous group header definition!");
+              else if (text[1].Length > 0)
+              {
+                if (int.TryParse(text[1], out temp2)) currentNotifConfig.MinimumRaiders = temp2;
+                else MainWindow.ConsoleWarning($">> Bad config line {lineIndex}. Value not recognized!");
+              }
               break;
-            case Keys.Subscription_TextToDisplay:
-              Notifications.ConfigSubscription.TextToDisplay = text[1].Trim();
+            case Keys.DoShoutout:
+              if (currentNotifConfig is null) MainWindow.ConsoleWarning($">> Bad config line {lineIndex}. Missing previous group header definition!");
+              else if (bool.TryParse(text[1], out result)) currentNotifConfig.DoShoutout = result;
+              else MainWindow.ConsoleWarning($">> Bad config line {lineIndex}. Value not recognized!");
               break;
-            case Keys.Subscription_TextPosition:
-              if (Enum.TryParse(typeof(Notifications.TextPosition), text[1].Trim(), out position)) Notifications.ConfigSubscription.TextPosition = (Notifications.TextPosition)position;
+            case Keys.MinimumDuration:
+              if (currentNotifConfig is null) MainWindow.ConsoleWarning($">> Bad config line {lineIndex}. Missing previous group header definition!");
+              else if (text[1].Length > 0)
+              {
+                if (TimeSpan.TryParse(text[1], out timeSpan)) currentNotifConfig.MinimumTime = TimeSpan.FromTicks(timeSpan.Ticks);
+                else MainWindow.ConsoleWarning($">> Bad config line {lineIndex}. Value not recognized!");
+              }
               break;
-            case Keys.Subscription_TextToSpeech:
-              Notifications.ConfigSubscription.TextToSpeech = text[1].Trim();
-              break;
-            case Keys.Subscription_SoundToPlay:
-              if (text[1].Length > 0) Notifications.ConfigSubscription.SoundToPlay = $"Resources\\{text[1].Trim()}";
-              break;
-            case Keys.Subscription_VideoToPlay:
-              if (text[1].Length > 0) Notifications.ConfigSubscription.VideoToPlay = $"Resources\\{text[1].Trim()}";
-              break;
-
-            case Keys.SubscriptionExt_Enable:
-              if (bool.TryParse(text[1], out result)) Notifications.ConfigSubscriptionExt.Enable = result;
-              break;
-            case Keys.SubscriptionExt_ChatMessage:
-              Notifications.ConfigSubscriptionExt.ChatMessage = text[1].Trim();
-              break;
-            case Keys.SubscriptionExt_TextToDisplay:
-              Notifications.ConfigSubscriptionExt.TextToDisplay = text[1].Trim();
-              break;
-            case Keys.SubscriptionExt_TextPosition:
-              if (Enum.TryParse(typeof(Notifications.TextPosition), text[1].Trim(), out position)) Notifications.ConfigSubscriptionExt.TextPosition = (Notifications.TextPosition)position;
-              break;
-            case Keys.SubscriptionExt_TextToSpeech:
-              Notifications.ConfigSubscriptionExt.TextToSpeech = text[1].Trim();
-              break;
-            case Keys.SubscriptionExt_SoundToPlay:
-              if (text[1].Length > 0) Notifications.ConfigSubscriptionExt.SoundToPlay = $"Resources\\{text[1].Trim()}";
-              break;
-            case Keys.SubscriptionExt_VideoToPlay:
-              if (text[1].Length > 0) Notifications.ConfigSubscriptionExt.VideoToPlay = $"Resources\\{text[1].Trim()}";
-              break;
-
-            case Keys.SubscriptionGift_Enable:
-              if (bool.TryParse(text[1], out result)) Notifications.ConfigSubscriptionGift.Enable = result;
-              break;
-            case Keys.SubscriptionGift_ChatMessage:
-              Notifications.ConfigSubscriptionGift.ChatMessage = text[1].Trim();
-              break;
-            case Keys.SubscriptionGift_TextToDisplay:
-              Notifications.ConfigSubscriptionGift.TextToDisplay = text[1].Trim();
-              break;
-            case Keys.SubscriptionGift_TextPosition:
-              if (Enum.TryParse(typeof(Notifications.TextPosition), text[1].Trim(), out position)) Notifications.ConfigSubscriptionGift.TextPosition = (Notifications.TextPosition)position;
-              break;
-            case Keys.SubscriptionGift_TextToSpeech:
-              Notifications.ConfigSubscriptionGift.TextToSpeech = text[1].Trim();
-              break;
-            case Keys.SubscriptionGift_SoundToPlay:
-              if (text[1].Length > 0) Notifications.ConfigSubscriptionGift.SoundToPlay = $"Resources\\{text[1].Trim()}";
-              break;
-            case Keys.SubscriptionGift_VideoToPlay:
-              if (text[1].Length > 0) Notifications.ConfigSubscriptionGift.VideoToPlay = $"Resources\\{text[1].Trim()}";
-              break;
-
-            case Keys.SubscriptionGiftReceived_Enable:
-              if (bool.TryParse(text[1], out result)) Notifications.ConfigSubscriptionGiftReceived.Enable = result;
-              break;
-            case Keys.SubscriptionGiftReceived_ChatMessage:
-              Notifications.ConfigSubscriptionGiftReceived.ChatMessage = text[1].Trim();
-              break;
-            case Keys.SubscriptionGiftReceived_TextToDisplay:
-              Notifications.ConfigSubscriptionGiftReceived.TextToDisplay = text[1].Trim();
-              break;
-            case Keys.SubscriptionGiftReceived_TextPosition:
-              if (Enum.TryParse(typeof(Notifications.TextPosition), text[1].Trim(), out position)) Notifications.ConfigSubscriptionGiftReceived.TextPosition = (Notifications.TextPosition)position;
-              break;
-            case Keys.SubscriptionGiftReceived_TextToSpeech:
-              Notifications.ConfigSubscriptionGiftReceived.TextToSpeech = text[1].Trim();
-              break;
-            case Keys.SubscriptionGiftReceived_SoundToPlay:
-              if (text[1].Length > 0) Notifications.ConfigSubscriptionGiftReceived.SoundToPlay = $"Resources\\{text[1].Trim()}";
-              break;
-            case Keys.SubscriptionGiftReceived_VideoToPlay:
-              if (text[1].Length > 0) Notifications.ConfigSubscriptionGiftReceived.VideoToPlay = $"Resources\\{text[1].Trim()}";
-              break;
-
-            case Keys.Cheer_Enable:
-              if (bool.TryParse(text[1], out result)) Notifications.ConfigCheer.Enable = result;
-              break;
-            case Keys.Cheer_ChatMessage:
-              Notifications.ConfigCheer.ChatMessage = text[1].Trim();
-              break;
-            case Keys.Cheer_TextToDisplay:
-              Notifications.ConfigCheer.TextToDisplay = text[1].Trim();
-              break;
-            case Keys.Cheer_TextPosition:
-              if (Enum.TryParse(typeof(Notifications.TextPosition), text[1].Trim(), out position)) Notifications.ConfigCheer.TextPosition = (Notifications.TextPosition)position;
-              break;
-            case Keys.Cheer_TextToSpeech:
-              Notifications.ConfigCheer.TextToSpeech = text[1].Trim();
-              break;
-            case Keys.Cheer_SoundToPlay:
-              if (text[1].Length > 0) Notifications.ConfigCheer.SoundToPlay = $"Resources\\{text[1].Trim()}";
-              break;
-            case Keys.Cheer_VideoToPlay:
-              if (text[1].Length > 0) Notifications.ConfigCheer.VideoToPlay = $"Resources\\{text[1].Trim()}";
-              break;
-            case Keys.Cheer_MinimumBitsForTTS:
-              if (text[1].Length > 0 && int.TryParse(text[1], out temp2)) Notifications.ConfigCheer.MinimumBits = temp2;
-              break;
-
-            case Keys.Raid_Enable:
-              if (bool.TryParse(text[1], out result)) Notifications.ConfigRaid.Enable = result;
-              break;
-            case Keys.Raid_ChatMessage:
-              Notifications.ConfigRaid.ChatMessage = text[1].Trim();
-              break;
-            case Keys.Raid_TextToDisplay:
-              Notifications.ConfigRaid.TextToDisplay = text[1].Trim();
-              break;
-            case Keys.Raid_TextPosition:
-              if (Enum.TryParse(typeof(Notifications.TextPosition), text[1].Trim(), out position)) Notifications.ConfigRaid.TextPosition = (Notifications.TextPosition)position;
-              break;
-            case Keys.Raid_TextToSpeech:
-              Notifications.ConfigRaid.TextToSpeech = text[1].Trim();
-              break;
-            case Keys.Raid_SoundToPlay:
-              if (text[1].Length > 0) Notifications.ConfigRaid.SoundToPlay = $"Resources\\{text[1].Trim()}";
-              break;
-            case Keys.Raid_VideoToPlay:
-              if (text[1].Length > 0) Notifications.ConfigRaid.VideoToPlay = $"Resources\\{text[1].Trim()}";
-              break;
-            case Keys.Raid_MinimumRaiders:
-              if (int.TryParse(text[1], out temp2) && temp2 > 0) Notifications.ConfigRaid.MinimumRaiders = temp2;
-              break;
-            case Keys.Raid_DoShoutout:
-              if (bool.TryParse(text[1], out result)) Notifications.ConfigRaid.DoShoutout = result;
-              break;
-
-            case Keys.Timeout_Enable:
-              if (bool.TryParse(text[1], out result)) Notifications.ConfigTimeout.Enable = result;
-              break;
-            case Keys.Timeout_ChatMessage:
-              Notifications.ConfigTimeout.ChatMessage = text[1].Trim();
-              break;
-            case Keys.Timeout_TextToDisplay:
-              Notifications.ConfigTimeout.TextToDisplay = text[1].Trim();
-              break;
-            case Keys.Timeout_TextPosition:
-              if (Enum.TryParse(typeof(Notifications.TextPosition), text[1].Trim(), out position)) Notifications.ConfigTimeout.TextPosition = (Notifications.TextPosition)position;
-              break;
-            case Keys.Timeout_TextToSpeech:
-              Notifications.ConfigTimeout.TextToSpeech = text[1].Trim();
-              break;
-            case Keys.Timeout_SoundToPlay:
-              if (text[1].Length > 0) Notifications.ConfigTimeout.SoundToPlay = $"Resources\\{text[1].Trim()}";
-              break;
-            case Keys.Timeout_VideoToPlay:
-              if (text[1].Length > 0) Notifications.ConfigTimeout.VideoToPlay = $"Resources\\{text[1].Trim()}";
-              break;
-            case Keys.Timeout_MinimumDuration:
-              if (TimeSpan.TryParse(text[1], out timeSpan)) Notifications.ConfigTimeout.MinimumTime = TimeSpan.FromTicks(timeSpan.Ticks);
-              break;
-
-            case Keys.Ban_Enable:
-              if (bool.TryParse(text[1], out result)) Notifications.ConfigBan.Enable = result;
-              break;
-            case Keys.Ban_ChatMessage:
-              Notifications.ConfigBan.ChatMessage = text[1].Trim();
-              break;
-            case Keys.Ban_TextToDisplay:
-              Notifications.ConfigBan.TextToDisplay = text[1].Trim();
-              break;
-            case Keys.Ban_TextPosition:
-              if (Enum.TryParse(typeof(Notifications.TextPosition), text[1].Trim(), out position)) Notifications.ConfigBan.TextPosition = (Notifications.TextPosition)position;
-              break;
-            case Keys.Ban_TextToSpeech:
-              Notifications.ConfigBan.TextToSpeech = text[1].Trim();
-              break;
-            case Keys.Ban_SoundToPlay:
-              if (text[1].Length > 0) Notifications.ConfigBan.SoundToPlay = $"Resources\\{text[1].Trim()}";
-              break;
-            case Keys.Ban_VideoToPlay:
-              if (text[1].Length > 0) Notifications.ConfigBan.VideoToPlay = $"Resources\\{text[1].Trim()}";
+            case Keys.MinimumBitsForTTS:
+              if (text[1].Length > 0)
+              {
+                if (currentNotifConfig is null) MainWindow.ConsoleWarning($">> Bad config line {lineIndex}. Missing previous group header definition!");
+                else if (int.TryParse(text[1], out temp2)) currentNotifConfig.MinimumBits = temp2;
+                else MainWindow.ConsoleWarning($">> Bad config line {lineIndex}. Value not recognized!");
+              }
               break;
 
             case Keys.ChannelRedemption_ID:
@@ -559,6 +515,63 @@ public static class Config
               Chatter.OverpoweredInFight.AddRange(text[1].Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
               break;
 
+            case Keys.ChannelRedemption_RandomVideo_Size:
+              if (text[1].Length > 0)
+              {
+                var stringNums = text[1].Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                if (stringNums.Length == 2)
+                {
+                  var nums = new double[stringNums.Length];
+                  bool ok = true;
+                  for (int i = 0; i < stringNums.Length; i++)
+                  {
+                    if (!double.TryParse(stringNums[i], out nums[i]))
+                    {
+                      MainWindow.ConsoleWarning($">> Bad config line {lineIndex}. Value {i + 1} not recognized!");
+                      ok = false;
+                    }
+                  }
+                  if (ok)
+                  {
+                    // check the aspect ratio
+                    if (nums[0] / 16 > nums[1] / 9) { nums[0] = (nums[1] / 9) * 16; }
+                    else { nums[1] = (nums[0] / 16) * 9; }
+
+                    if (Notifications.RandomVideoParameters is null) Notifications.RandomVideoParameters = new();
+                    Notifications.RandomVideoParameters.Width = nums[0];
+                    Notifications.RandomVideoParameters.Height = nums[1];
+                  }
+                }
+                else MainWindow.ConsoleWarning($">> Bad config line {lineIndex}. Not enough or too many values!");
+              }
+              break;
+            case Keys.ChannelRedemption_RandomVideo_Position:
+              if (text[1].Length > 0)
+              {
+                var stringNums = text[1].Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                if (stringNums.Length == 2)
+                {
+                  var nums = new double[stringNums.Length];
+                  bool ok = true;
+                  for (int i = 0; i < stringNums.Length; i++)
+                  {
+                    if (!double.TryParse(stringNums[i], out nums[i]))
+                    {
+                      MainWindow.ConsoleWarning($">> Bad config line {lineIndex}. Value {i + 1} not recognized!");
+                      ok = false;
+                    }
+                  }
+                  if (ok)
+                  {
+                    if (Notifications.RandomVideoParameters is null) Notifications.RandomVideoParameters = new();
+                    Notifications.RandomVideoParameters.Left = nums[0];
+                    Notifications.RandomVideoParameters.Top = nums[1];
+                  }
+                }
+                else MainWindow.ConsoleWarning($">> Bad config line {lineIndex}. Not enough or too many values!");
+              }
+              break;
+
             default:
               if (Data.ContainsKey((Keys)key)) { Data[(Keys)key] = text[1].Trim(); }
               else MainWindow.ConsoleWarning($">> Not recognized key '{text[0]}' on line {lineIndex} in Config.ini file.");
@@ -656,10 +669,12 @@ public static class Config
       writer.WriteLine();
       writer.WriteLine();
       writer.WriteLine("; Event messages configuration.");
-      writer.WriteLine("; TextPosition - available options: TOP, MIDDLE, BOTTOM.");
-      writer.WriteLine("; Empty assignment means that this part of the notification would be disabled.");
+      writer.WriteLine("; TextPosition - available options: TOPLEFT, TOP, TOPRIGHT, LEFT, CENTER, RIGHT, BOTTOMLEFT, BOTTOM, BOTTOMRIGHT, VIDEOABOVE, VIDEOCENTER, VIDEOBELOW.");
+      writer.WriteLine("; Empty assignment means that this part of the notification would be disabled or default value would be used.");
       writer.WriteLine("; Paths to sounds and videos are relative to Resources folder.");
       writer.WriteLine("; For a file that is placed directly in Resources folder it would be just a filename with it's extension.");
+      writer.WriteLine("; VideoPosition - describes played video position from the top left corner in pixels. 2 values separated by a comma are needed.");
+      writer.WriteLine("; VideoSize - describes played video size in pixels. 2 values separated by a comma are needed. The aspect ratio is preserved. The best way is to set the width to some high value and shrink the video by chaning the height.");
       writer.WriteLine("; Use below expressions to insert data into messages:");
       writer.WriteLine("; {0} - user name that followed, subscribed, gifted subscriptions, etc.");
       writer.WriteLine("; {1} - subscription tier");
@@ -676,92 +691,119 @@ public static class Config
       writer.WriteLine("; Using index out of supported range WILL CRASH THE BOT!");
       writer.WriteLine();
       writer.WriteLine("; ----- Follow");
-      writer.WriteLine(string.Concat(Keys.Follow_Enable.ToString(), " = true"));
-      writer.WriteLine(string.Concat(Keys.Follow_ChatMessage.ToString(), " = @{0} thank you for following!"));
-      writer.WriteLine(string.Concat(Keys.Follow_TextToDisplay.ToString(), " = New follower {0}!"));
-      writer.WriteLine(string.Concat(Keys.Follow_TextPosition.ToString(), " = TOP"));
-      writer.WriteLine(string.Concat(Keys.Follow_TextToSpeech.ToString(), " = "));
-      writer.WriteLine(string.Concat(Keys.Follow_SoundToPlay.ToString(), " = tone1.wav"));
-      writer.WriteLine(string.Concat(Keys.Follow_VideoToPlay.ToString(), " = "));
+      writer.WriteLine("Follow:");
+      writer.WriteLine(string.Concat(Keys.Enable.ToString(), " = true"));
+      writer.WriteLine(string.Concat(Keys.ChatMessage.ToString(), " = @{0} thank you for following!"));
+      writer.WriteLine(string.Concat(Keys.TextToDisplay.ToString(), " = New follower {0}!"));
+      writer.WriteLine(string.Concat(Keys.TextPosition.ToString(), " = TOP"));
+      writer.WriteLine(string.Concat(Keys.TextToSpeech.ToString(), " = "));
+      writer.WriteLine(string.Concat(Keys.SoundToPlay.ToString(), " = tone1.wav"));
+      writer.WriteLine(string.Concat(Keys.VideoToPlay.ToString(), " = "));
+      writer.WriteLine(string.Concat(Keys.VideoPosition.ToString(), " = "));
+      writer.WriteLine(string.Concat(Keys.VideoSize.ToString(), " = "));
       writer.WriteLine();
       writer.WriteLine("; ----- Subscription (notification message, always received when someone subscribes even when the subscriber doesn't want it to be public)");
-      writer.WriteLine(string.Concat(Keys.Subscription_Enable.ToString(), " = false"));
-      writer.WriteLine(string.Concat(Keys.Subscription_ChatMessage.ToString(), " = "));
-      writer.WriteLine(string.Concat(Keys.Subscription_TextToDisplay.ToString(), " = {0} just subscribed!"));
-      writer.WriteLine(string.Concat(Keys.Subscription_TextPosition.ToString(), " = BOTTOM"));
-      writer.WriteLine(string.Concat(Keys.Subscription_TextToSpeech.ToString(), " = Thank you {0} for tier {1} sub! {7}"));
-      writer.WriteLine(string.Concat(Keys.Subscription_SoundToPlay.ToString(), " = "));
-      writer.WriteLine(string.Concat(Keys.Subscription_VideoToPlay.ToString(), " = peepoHey.mp4"));
+      writer.WriteLine("Subscription:");
+      writer.WriteLine(string.Concat(Keys.Enable.ToString(), " = false"));
+      writer.WriteLine(string.Concat(Keys.ChatMessage.ToString(), " = "));
+      writer.WriteLine(string.Concat(Keys.TextToDisplay.ToString(), " = {0} just subscribed!"));
+      writer.WriteLine(string.Concat(Keys.TextPosition.ToString(), " = TOP"));
+      writer.WriteLine(string.Concat(Keys.TextToSpeech.ToString(), " = Thank you {0} for tier {1} sub! {7}"));
+      writer.WriteLine(string.Concat(Keys.SoundToPlay.ToString(), " = "));
+      writer.WriteLine(string.Concat(Keys.VideoToPlay.ToString(), " = peepoHey.mp4"));
+      writer.WriteLine(string.Concat(Keys.VideoPosition.ToString(), " = "));
+      writer.WriteLine(string.Concat(Keys.VideoSize.ToString(), " = "));
       writer.WriteLine();
       writer.WriteLine("; ----- Subscription Extended Message (the subscriber shares that he subscribed)");
-      writer.WriteLine(string.Concat(Keys.SubscriptionExt_Enable.ToString(), " = true"));
-      writer.WriteLine(string.Concat(Keys.SubscriptionExt_ChatMessage.ToString(), " = "));
-      writer.WriteLine(string.Concat(Keys.SubscriptionExt_TextToDisplay.ToString(), " = {0} just subscribed!"));
-      writer.WriteLine(string.Concat(Keys.SubscriptionExt_TextPosition.ToString(), " = BOTTOM"));
-      writer.WriteLine(string.Concat(Keys.SubscriptionExt_TextToSpeech.ToString(), " = Thank you {0} for {2} month{10} in advance tier {1} sub! It is your {3} month in a row! {7}"));
-      writer.WriteLine(string.Concat(Keys.SubscriptionExt_SoundToPlay.ToString(), " = "));
-      writer.WriteLine(string.Concat(Keys.SubscriptionExt_VideoToPlay.ToString(), " = peepoHey.mp4"));
+      writer.WriteLine("SubscriptionExt:");
+      writer.WriteLine(string.Concat(Keys.Enable.ToString(), " = true"));
+      writer.WriteLine(string.Concat(Keys.ChatMessage.ToString(), " = "));
+      writer.WriteLine(string.Concat(Keys.TextToDisplay.ToString(), " = {0} just subscribed!"));
+      writer.WriteLine(string.Concat(Keys.TextPosition.ToString(), " = TOP"));
+      writer.WriteLine(string.Concat(Keys.TextToSpeech.ToString(), " = Thank you {0} for {2} month{10} in advance tier {1} sub! It is your {3} month in a row! {7}"));
+      writer.WriteLine(string.Concat(Keys.SoundToPlay.ToString(), " = "));
+      writer.WriteLine(string.Concat(Keys.VideoToPlay.ToString(), " = peepoHey.mp4"));
+      writer.WriteLine(string.Concat(Keys.VideoPosition.ToString(), " = "));
+      writer.WriteLine(string.Concat(Keys.VideoSize.ToString(), " = "));
       writer.WriteLine();
       writer.WriteLine("; ----- Subscription gifted (the user is gifting subscriptions)");
-      writer.WriteLine(string.Concat(Keys.SubscriptionGift_Enable.ToString(), " = true"));
-      writer.WriteLine(string.Concat(Keys.SubscriptionGift_ChatMessage.ToString(), " = "));
-      writer.WriteLine(string.Concat(Keys.SubscriptionGift_TextToDisplay.ToString(), " = Thank you {0} for {4} sub{12}!"));
-      writer.WriteLine(string.Concat(Keys.SubscriptionGift_TextPosition.ToString(), " = BOTTOM"));
-      writer.WriteLine(string.Concat(Keys.SubscriptionGift_TextToSpeech.ToString(), " = Thank you {0} for gifting {4} tier {1} sub{12} to {6}! {7}"));
-      writer.WriteLine(string.Concat(Keys.SubscriptionGift_SoundToPlay.ToString(), " = "));
-      writer.WriteLine(string.Concat(Keys.SubscriptionGift_VideoToPlay.ToString(), " = peepoHey.mp4"));
+      writer.WriteLine("SubscriptionGift:");
+      writer.WriteLine(string.Concat(Keys.Enable.ToString(), " = true"));
+      writer.WriteLine(string.Concat(Keys.ChatMessage.ToString(), " = "));
+      writer.WriteLine(string.Concat(Keys.TextToDisplay.ToString(), " = Thank you {0} for {4} sub{12}!"));
+      writer.WriteLine(string.Concat(Keys.TextPosition.ToString(), " = TOP"));
+      writer.WriteLine(string.Concat(Keys.TextToSpeech.ToString(), " = Thank you {0} for gifting {4} tier {1} sub{12} to {6}! {7}"));
+      writer.WriteLine(string.Concat(Keys.SoundToPlay.ToString(), " = "));
+      writer.WriteLine(string.Concat(Keys.VideoToPlay.ToString(), " = peepoHey.mp4"));
+      writer.WriteLine(string.Concat(Keys.VideoPosition.ToString(), " = "));
+      writer.WriteLine(string.Concat(Keys.VideoSize.ToString(), " = "));
       writer.WriteLine();
       writer.WriteLine("; ----- Subscription gift received (the user received subscription gift, these events are sent before or after subscription gifted event)");
-      writer.WriteLine(string.Concat(Keys.SubscriptionGiftReceived_Enable.ToString(), " = false"));
-      writer.WriteLine(string.Concat(Keys.SubscriptionGiftReceived_ChatMessage.ToString(), " = "));
-      writer.WriteLine(string.Concat(Keys.SubscriptionGiftReceived_TextToDisplay.ToString(), " = New subscriber {0}!"));
-      writer.WriteLine(string.Concat(Keys.SubscriptionGiftReceived_TextPosition.ToString(), " = TOP"));
-      writer.WriteLine(string.Concat(Keys.SubscriptionGiftReceived_TextToSpeech.ToString(), " = "));
-      writer.WriteLine(string.Concat(Keys.SubscriptionGiftReceived_SoundToPlay.ToString(), " = tone1.wav"));
-      writer.WriteLine(string.Concat(Keys.SubscriptionGiftReceived_VideoToPlay.ToString(), " = "));
+      writer.WriteLine("SubscriptionGiftReceived:");
+      writer.WriteLine(string.Concat(Keys.Enable.ToString(), " = false"));
+      writer.WriteLine(string.Concat(Keys.ChatMessage.ToString(), " = "));
+      writer.WriteLine(string.Concat(Keys.TextToDisplay.ToString(), " = New subscriber {0}!"));
+      writer.WriteLine(string.Concat(Keys.TextPosition.ToString(), " = TOP"));
+      writer.WriteLine(string.Concat(Keys.TextToSpeech.ToString(), " = "));
+      writer.WriteLine(string.Concat(Keys.SoundToPlay.ToString(), " = tone1.wav"));
+      writer.WriteLine(string.Concat(Keys.VideoToPlay.ToString(), " = "));
+      writer.WriteLine(string.Concat(Keys.VideoPosition.ToString(), " = "));
+      writer.WriteLine(string.Concat(Keys.VideoSize.ToString(), " = "));
       writer.WriteLine();
       writer.WriteLine("; ----- Bits cheer");
-      writer.WriteLine(string.Concat(Keys.Cheer_Enable.ToString(), " = true"));
-      writer.WriteLine(string.Concat(Keys.Cheer_ChatMessage.ToString(), " = "));
-      writer.WriteLine(string.Concat(Keys.Cheer_TextToDisplay.ToString(), " = Thank you {0} for {4} bit{12}!"));
-      writer.WriteLine(string.Concat(Keys.Cheer_TextPosition.ToString(), " = TOP"));
-      writer.WriteLine(string.Concat(Keys.Cheer_TextToSpeech.ToString(), " = Thank you {0} for {4} bit{12}! {7}"));
-      writer.WriteLine(string.Concat(Keys.Cheer_SoundToPlay.ToString(), " = tone1.wav"));
-      writer.WriteLine(string.Concat(Keys.Cheer_VideoToPlay.ToString(), " = "));
+      writer.WriteLine("Cheer:");
+      writer.WriteLine(string.Concat(Keys.Enable.ToString(), " = true"));
+      writer.WriteLine(string.Concat(Keys.ChatMessage.ToString(), " = "));
+      writer.WriteLine(string.Concat(Keys.TextToDisplay.ToString(), " = Thank you {0} for {4} bit{12}!"));
+      writer.WriteLine(string.Concat(Keys.TextPosition.ToString(), " = TOP"));
+      writer.WriteLine(string.Concat(Keys.TextToSpeech.ToString(), " = Thank you {0} for {4} bit{12}! {7}"));
+      writer.WriteLine(string.Concat(Keys.SoundToPlay.ToString(), " = tone1.wav"));
+      writer.WriteLine(string.Concat(Keys.VideoToPlay.ToString(), " = "));
+      writer.WriteLine(string.Concat(Keys.VideoPosition.ToString(), " = "));
+      writer.WriteLine(string.Concat(Keys.VideoSize.ToString(), " = "));
       writer.WriteLine("; The minimum amount of bits thrown for the message to be read as TTS. Default: empty - 10");
-      writer.WriteLine(string.Concat(Keys.Cheer_MinimumBitsForTTS.ToString(), " = "));
+      writer.WriteLine(string.Concat(Keys.MinimumBitsForTTS.ToString(), " = "));
       writer.WriteLine();
       writer.WriteLine("; ----- Raid (channel got raided)");
-      writer.WriteLine(string.Concat(Keys.Raid_Enable.ToString(), " = true"));
-      writer.WriteLine(string.Concat(Keys.Raid_ChatMessage.ToString(), " = "));
-      writer.WriteLine(string.Concat(Keys.Raid_TextToDisplay.ToString(), " = {4} raider{12} from {0} are coming!"));
-      writer.WriteLine(string.Concat(Keys.Raid_TextPosition.ToString(), " = TOP"));
-      writer.WriteLine(string.Concat(Keys.Raid_TextToSpeech.ToString(), " = "));
-      writer.WriteLine(string.Concat(Keys.Raid_SoundToPlay.ToString(), " = tone1.wav"));
-      writer.WriteLine(string.Concat(Keys.Raid_VideoToPlay.ToString(), " = "));
+      writer.WriteLine("Raid:");
+      writer.WriteLine(string.Concat(Keys.Enable.ToString(), " = true"));
+      writer.WriteLine(string.Concat(Keys.ChatMessage.ToString(), " = "));
+      writer.WriteLine(string.Concat(Keys.TextToDisplay.ToString(), " = {4} raider{12} from {0} are coming!"));
+      writer.WriteLine(string.Concat(Keys.TextPosition.ToString(), " = TOP"));
+      writer.WriteLine(string.Concat(Keys.TextToSpeech.ToString(), " = "));
+      writer.WriteLine(string.Concat(Keys.SoundToPlay.ToString(), " = tone1.wav"));
+      writer.WriteLine(string.Concat(Keys.VideoToPlay.ToString(), " = "));
+      writer.WriteLine(string.Concat(Keys.VideoPosition.ToString(), " = "));
+      writer.WriteLine(string.Concat(Keys.VideoSize.ToString(), " = "));
       writer.WriteLine("; Default empty -> minimum raiders 10.");
-      writer.WriteLine(string.Concat(Keys.Raid_MinimumRaiders.ToString(), " = "));
-      writer.WriteLine(string.Concat(Keys.Raid_DoShoutout.ToString(), " = true"));
+      writer.WriteLine(string.Concat(Keys.MinimumRaiders.ToString(), " = "));
+      writer.WriteLine(string.Concat(Keys.DoShoutout.ToString(), " = true"));
       writer.WriteLine();
       writer.WriteLine("; ----- Chatter timeout");
-      writer.WriteLine(string.Concat(Keys.Timeout_Enable.ToString(), " = false"));
-      writer.WriteLine(string.Concat(Keys.Timeout_ChatMessage.ToString(), " = "));
-      writer.WriteLine(string.Concat(Keys.Timeout_TextToDisplay.ToString(), " = "));
-      writer.WriteLine(string.Concat(Keys.Timeout_TextPosition.ToString(), " = TOP"));
-      writer.WriteLine(string.Concat(Keys.Timeout_TextToSpeech.ToString(), " = "));
-      writer.WriteLine(string.Concat(Keys.Timeout_SoundToPlay.ToString(), " = tone1.wav"));
-      writer.WriteLine(string.Concat(Keys.Timeout_VideoToPlay.ToString(), " = "));
+      writer.WriteLine("Timeout:");
+      writer.WriteLine(string.Concat(Keys.Enable.ToString(), " = false"));
+      writer.WriteLine(string.Concat(Keys.ChatMessage.ToString(), " = "));
+      writer.WriteLine(string.Concat(Keys.TextToDisplay.ToString(), " = "));
+      writer.WriteLine(string.Concat(Keys.TextPosition.ToString(), " = TOP"));
+      writer.WriteLine(string.Concat(Keys.TextToSpeech.ToString(), " = "));
+      writer.WriteLine(string.Concat(Keys.SoundToPlay.ToString(), " = tone1.wav"));
+      writer.WriteLine(string.Concat(Keys.VideoToPlay.ToString(), " = "));
+      writer.WriteLine(string.Concat(Keys.VideoPosition.ToString(), " = "));
+      writer.WriteLine(string.Concat(Keys.VideoSize.ToString(), " = "));
       writer.WriteLine("; Minimum timeout duration (HH:MM:SS format -> 1 hour: 1:00:00, 1 minute 0:01:00, 1 second: 0:00:01). Default: empty - 0 seconds");
-      writer.WriteLine(string.Concat(Keys.Timeout_MinimumDuration.ToString(), " = "));
+      writer.WriteLine(string.Concat(Keys.MinimumDuration.ToString(), " = "));
       writer.WriteLine();
       writer.WriteLine("; ----- Chatter ban");
-      writer.WriteLine(string.Concat(Keys.Ban_Enable.ToString(), " = false"));
-      writer.WriteLine(string.Concat(Keys.Ban_ChatMessage.ToString(), " = "));
-      writer.WriteLine(string.Concat(Keys.Ban_TextToDisplay.ToString(), " = "));
-      writer.WriteLine(string.Concat(Keys.Ban_TextPosition.ToString(), " = TOP"));
-      writer.WriteLine(string.Concat(Keys.Ban_TextToSpeech.ToString(), " = "));
-      writer.WriteLine(string.Concat(Keys.Ban_SoundToPlay.ToString(), " = tone1.wav"));
-      writer.WriteLine(string.Concat(Keys.Ban_VideoToPlay.ToString(), " = "));
+      writer.WriteLine("Ban:");
+      writer.WriteLine(string.Concat(Keys.Enable.ToString(), " = false"));
+      writer.WriteLine(string.Concat(Keys.ChatMessage.ToString(), " = "));
+      writer.WriteLine(string.Concat(Keys.TextToDisplay.ToString(), " = "));
+      writer.WriteLine(string.Concat(Keys.TextPosition.ToString(), " = TOP"));
+      writer.WriteLine(string.Concat(Keys.TextToSpeech.ToString(), " = "));
+      writer.WriteLine(string.Concat(Keys.SoundToPlay.ToString(), " = tone1.wav"));
+      writer.WriteLine(string.Concat(Keys.VideoToPlay.ToString(), " = "));
+      writer.WriteLine(string.Concat(Keys.VideoPosition.ToString(), " = "));
+      writer.WriteLine(string.Concat(Keys.VideoSize.ToString(), " = "));
 
       writer.WriteLine();
       writer.WriteLine();
@@ -773,6 +815,8 @@ public static class Config
       writer.WriteLine("; ----- Plays random video from Resources/Videos folder.");
       writer.WriteLine(string.Concat(Keys.ChannelRedemption_RandomVideo_ID.ToString(), " = "));
       writer.WriteLine(string.Concat(Keys.ChannelRedemption_RandomVideo_MarkAsFulfilled.ToString(), " = false"));
+      writer.WriteLine(string.Concat(Keys.ChannelRedemption_RandomVideo_Position.ToString(), " = "));
+      writer.WriteLine(string.Concat(Keys.ChannelRedemption_RandomVideo_Size.ToString(), " = "));
       writer.WriteLine();
       writer.WriteLine("; ----- Adds provided song (Spotify link) to song queue.");
       writer.WriteLine(string.Concat(Keys.ChannelRedemption_SongRequest_ID.ToString(), " = "));

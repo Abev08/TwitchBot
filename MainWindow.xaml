@@ -7,7 +7,7 @@
         Title="AbevBot"
         Height="760" Width="1493"
         MinHeight="760" MinWidth="500">
-        <!-- This width and height sets green area aspect ratio to 16:9 -->
+  <!-- This width and height sets green area aspect ratio to 16:9 -->
   <Grid>
     <Grid.ColumnDefinitions>
       <ColumnDefinition Width="170px"/>
@@ -15,30 +15,19 @@
     </Grid.ColumnDefinitions>
 
     <!-- Video player, text display, etc -->
-    <Grid Grid.Column="1" Background="#FF00FF00"> <!-- ARGB -->
+    <Grid Grid.Column="1" Background="#FF00FF00">
+      <!-- ARGB -->
       <!-- Main video player and main text output -->
-      <Grid>
+      <Grid x:Name="MainGrid">
         <Grid.RowDefinitions>
           <RowDefinition Height="Auto"/>
           <RowDefinition Height="*"/>
-          <RowDefinition Height="Auto" MinHeight="140"/>
+          <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <MediaElement x:Name="VideoPlayer" Grid.Row="1" MediaEnded="MainVideoEnded" LoadedBehavior="Manual" UnloadedBehavior="Manual"/>
+        <MediaElement x:Name="VideoPlayer" Grid.Row="1" MediaEnded="MainVideoEnded" LoadedBehavior="Manual" UnloadedBehavior="Manual" SizeChanged="VideoPlayer_SizeChanged"/>
 
-        <TextBlock x:Name="tbTop" Grid.Row="0" Text="" FontSize="48" FontFamily="{DynamicResource OpenSans}" Foreground="DodgerBlue" TextWrapping="Wrap" TextAlignment="Center" VerticalAlignment="Bottom" HorizontalAlignment="Stretch" FontWeight="Bold">
-          <TextBlock.Effect>
-            <DropShadowEffect ShadowDepth="2" BlurRadius="1" Color="DarkBlue"/>
-          </TextBlock.Effect>
-        </TextBlock>
-
-        <TextBlock x:Name="tbMid" Grid.Row="1" Text="" FontSize="48" FontFamily="{DynamicResource OpenSans}" Foreground="DodgerBlue" TextWrapping="Wrap" TextAlignment="Center" VerticalAlignment="Center" HorizontalAlignment="Stretch" FontWeight="Bold">
-          <TextBlock.Effect>
-            <DropShadowEffect ShadowDepth="2" BlurRadius="1" Color="DarkBlue"/>
-          </TextBlock.Effect>
-        </TextBlock>
-
-        <TextBlock x:Name="tbBottom" Grid.Row="2" Text="" FontSize="48" FontFamily="{DynamicResource OpenSans}" Foreground="DodgerBlue" TextWrapping="Wrap" TextAlignment="Center" VerticalAlignment="Top" HorizontalAlignment="Stretch" FontWeight="Bold">
+        <TextBlock x:Name="tbText" Grid.Row="1" Text="" FontSize="48" FontFamily="{DynamicResource OpenSans}" Foreground="DodgerBlue" TextWrapping="Wrap" TextAlignment="Center" VerticalAlignment="Top" HorizontalAlignment="Left" FontWeight="Bold" SizeChanged="tbText_SizeChanged" Visibility="Hidden">
           <TextBlock.Effect>
             <DropShadowEffect ShadowDepth="2" BlurRadius="1" Color="DarkBlue"/>
           </TextBlock.Effect>
@@ -68,10 +57,10 @@
       <!-- Pause and skip buttons -->
       <Border Padding="4,10,4,10" Margin="2,10,4,0" BorderThickness="1" BorderBrush="Black" CornerRadius="10">
         <StackPanel>
-          <Button x:Name="btnPause" Content="Toggle notifications pause" Click="PauseNotificationsClicked" ToolTip="Pauses playing notifications.&#x0a;The notifications will be queued."/>
+          <Button x:Name="btnPause" Content="Toggle notifications pause" Click="PauseNotificationsClicked" ToolTip="Pauses playing notifications.&#xA;The notifications will be queued."/>
           <Button x:Name="btnSkip" Content="Skip notification" Margin="0,10,0,0" Click="SkipNotificationClicked" ToolTip="Skips the currently playing notification"/>
           <TextBlock x:Name="tbNotificationsQueue" Text="Notifications in queue: 0" Margin="0,10,0,0" HorizontalAlignment="Center" ToolTip="Number of notifications in the queue"/>
-          <Button x:Name="btnAntiFollowBot" Content="Stop follow bots" Margin="0,10,0,0" Click="StopFollowBotsClicked" Background="Orange" ToolTip="Bans every chatter that followed in last 20 seconds.&#x0a;Also cleans up follow notifications (other types are kept).&#x0a;The ban lasts 10 hours."/>
+          <Button x:Name="btnAntiFollowBot" Content="Stop follow bots" Margin="0,10,0,0" Click="StopFollowBotsClicked" Background="Orange" ToolTip="Bans every chatter that followed in last 20 seconds.&#xA;Also cleans up follow notifications (other types are kept).&#xA;The ban lasts 10 hours."/>
         </StackPanel>
       </Border>
 
@@ -118,6 +107,7 @@
             <ComboBoxItem Content="Subscription Ext. Msg" ToolTip="The user is sharing the subscription"/>
             <ComboBoxItem Content="Cheer" ToolTip="Cheer notification"/>
             <ComboBoxItem Content="Discord message" ToolTip="Discord notification (the stream went online)"/>
+            <ComboBoxItem Content="Random video" ToolTip="Random video"/>
           </ComboBox>
           <Button x:Name="btnTestNotification" Content="Test Notification" Click="NotificationTestClicked" ToolTip="Queues selected above test notification"/>
         </StackPanel>

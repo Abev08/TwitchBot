@@ -41,8 +41,9 @@ namespace AbevBot
     public static readonly List<ChannelRedemption> ChannelRedemptions = new();
     private static readonly List<(DateTime time, string name)> GiftedSubs = new();
     private static readonly TimeSpan GiftSubMaxTimeout = new(0, 0, 10);
+    public static VideoParameters RandomVideoParameters;
 
-    public enum TextPosition { TOP, MIDDLE, BOTTOM }
+    public enum TextPosition { TOPLEFT, TOP, TOPRIGHT, LEFT, CENTER, RIGHT, BOTTOMLEFT, BOTTOM, BOTTOMRIGHT, VIDEOABOVE, VIDEOCENTER, VIDEOBELOW }
 
     public static void Start()
     {
@@ -333,6 +334,8 @@ namespace AbevBot
       {
         VideoPath = videos[Random.Shared.Next(0, videos.Count)].FullName,
         VideoVolume = Config.VolumeVideos,
+        VideoParams = RandomVideoParameters,
+
         ExtraActionAtStartup = () =>
         {
           if (Config.Data[Config.Keys.ChannelRedemption_RandomVideo_MarkAsFulfilled].Equals("True"))
@@ -591,10 +594,11 @@ namespace AbevBot
     public bool Enable { get; set; } = false;
     public string ChatMessage { get; set; } = string.Empty;
     public string TextToDisplay { get; set; } = string.Empty;
-    public Notifications.TextPosition TextPosition { get; set; } = Notifications.TextPosition.MIDDLE;
+    public Notifications.TextPosition TextPosition { get; set; } = Notifications.TextPosition.TOP;
     public string TextToSpeech { get; set; } = string.Empty;
     public string SoundToPlay { get; set; } = string.Empty;
     public string VideoToPlay { get; set; } = string.Empty;
+    public VideoParameters VideoParams { get; set; }
     public int MinimumRaiders { get; set; } = 10;
     public int MinimumBits { get; set; } = 10;
     public bool DoShoutout { get; set; }

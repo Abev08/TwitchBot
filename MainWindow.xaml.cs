@@ -34,6 +34,8 @@ public partial class MainWindow : Window
   public static MainWindow I { get; private set; }
   public static bool VideoEnded { get; private set; }
   private static bool FinishedLoading;
+  private Thickness tbTextDesiredPosition = new();
+  private Thickness playerDesiredPosition = new();
 
   public MainWindow(string[] args = null)
   {
@@ -268,24 +270,91 @@ public partial class MainWindow : Window
     Chatter.StopFollowBots();
   }
 
-  public void SetTextDisplayed(string text, Notifications.TextPosition position)
+  public void SetTextDisplayed(string text, Notifications.TextPosition position, VideoParameters videoParams)
   {
+    (double x, double y) videoCenter = (0d, 0d);
+    if (position == Notifications.TextPosition.VIDEOABOVE ||
+         position == Notifications.TextPosition.VIDEOCENTER ||
+         position == Notifications.TextPosition.VIDEOBELOW)
+    {
+      if (videoParams is null) position = Notifications.TextPosition.CENTER;
+      else
+      {
+        videoCenter.x = videoParams.Left + (videoParams.Width / 2d);
+        videoCenter.y = videoParams.Top + (videoParams.Height / 2d);
+        if (videoParams.Left == 0 && videoParams.Top == 0)
+        {
+          videoCenter.x += MainGrid.ActualWidth / 2d;
+          videoCenter.y += MainGrid.ActualHeight / 2d;
+        }
+      }
+    }
+
     Dispatcher.Invoke(new Action(() =>
     {
+      tbText.Text = text;
+      tbText.Margin = new Thickness();
+      tbTextDesiredPosition.Left = 0;
+      tbTextDesiredPosition.Top = 0;
+
       switch (position)
       {
+        case Notifications.TextPosition.TOPLEFT:
+          tbText.VerticalAlignment = VerticalAlignment.Top;
+          tbText.HorizontalAlignment = HorizontalAlignment.Left;
+          break;
         case Notifications.TextPosition.TOP:
-          tbTop.Text = text;
+          tbText.VerticalAlignment = VerticalAlignment.Top;
+          tbText.HorizontalAlignment = HorizontalAlignment.Center;
           break;
-
-        case Notifications.TextPosition.MIDDLE:
-          tbMid.Text = text;
+        case Notifications.TextPosition.TOPRIGHT:
+          tbText.VerticalAlignment = VerticalAlignment.Top;
+          tbText.HorizontalAlignment = HorizontalAlignment.Right;
           break;
-
+        case Notifications.TextPosition.LEFT:
+          tbText.VerticalAlignment = VerticalAlignment.Center;
+          tbText.HorizontalAlignment = HorizontalAlignment.Left;
+          break;
+        case Notifications.TextPosition.CENTER:
+          tbText.VerticalAlignment = VerticalAlignment.Center;
+          tbText.HorizontalAlignment = HorizontalAlignment.Center;
+          break;
+        case Notifications.TextPosition.RIGHT:
+          tbText.VerticalAlignment = VerticalAlignment.Center;
+          tbText.HorizontalAlignment = HorizontalAlignment.Right;
+          break;
+        case Notifications.TextPosition.BOTTOMLEFT:
+          tbText.VerticalAlignment = VerticalAlignment.Bottom;
+          tbText.HorizontalAlignment = HorizontalAlignment.Left;
+          break;
         case Notifications.TextPosition.BOTTOM:
-          tbBottom.Text = text;
+          tbText.VerticalAlignment = VerticalAlignment.Bottom;
+          tbText.HorizontalAlignment = HorizontalAlignment.Center;
+          break;
+        case Notifications.TextPosition.BOTTOMRIGHT:
+          tbText.VerticalAlignment = VerticalAlignment.Bottom;
+          tbText.HorizontalAlignment = HorizontalAlignment.Right;
+          break;
+        case Notifications.TextPosition.VIDEOABOVE:
+          tbText.VerticalAlignment = VerticalAlignment.Top;
+          tbText.HorizontalAlignment = HorizontalAlignment.Left;
+          tbTextDesiredPosition.Left = videoCenter.x;
+          tbTextDesiredPosition.Top = videoCenter.y - (videoParams.Height / 2d) - (tbText.FontSize / 2d);
+          break;
+        case Notifications.TextPosition.VIDEOCENTER:
+          tbText.VerticalAlignment = VerticalAlignment.Top;
+          tbText.HorizontalAlignment = HorizontalAlignment.Left;
+          tbTextDesiredPosition.Left = videoCenter.x;
+          tbTextDesiredPosition.Top = videoCenter.y;
+          break;
+        case Notifications.TextPosition.VIDEOBELOW:
+          tbText.VerticalAlignment = VerticalAlignment.Top;
+          tbText.HorizontalAlignment = HorizontalAlignment.Left;
+          tbTextDesiredPosition.Left = videoCenter.x;
+          tbTextDesiredPosition.Top = videoCenter.y + (videoParams.Height / 2d) + (tbText.FontSize / 2d);
           break;
       }
+      tbText.Visibility = Visibility.Visible;
     }));
   }
 
@@ -293,16 +362,39 @@ public partial class MainWindow : Window
   {
     Dispatcher.Invoke(new Action(() =>
     {
-      tbTop.Text = string.Empty;
-      tbMid.Text = string.Empty;
-      tbBottom.Text = string.Empty;
+      tbText.Text = string.Empty;
+      tbText.Visibility = Visibility.Hidden;
     }));
   }
 
-  public void StartVideoPlayer(string path, float volume)
+  private void ResetVideoPlayer()
+  {
+    VideoPlayer.Height = double.NaN; // default: double.NaN
+    VideoPlayer.Width = double.NaN;
+    VideoPlayer.HorizontalAlignment = HorizontalAlignment.Stretch; // default: Stretch
+    VideoPlayer.VerticalAlignment = VerticalAlignment.Stretch; // default: Stretch
+    VideoPlayer.Margin = new Thickness(0);
+    playerDesiredPosition = new();
+  }
+
+  public void StartVideoPlayer(string path, float volume, VideoParameters videoParams = null)
   {
     Dispatcher.Invoke(new Action(() =>
     {
+      ResetVideoPlayer();
+      if (videoParams != null)
+      {
+        if (videoParams.Left != 0 || videoParams.Top != 0)
+        {
+          VideoPlayer.HorizontalAlignment = HorizontalAlignment.Left;
+          VideoPlayer.VerticalAlignment = VerticalAlignment.Top;
+          playerDesiredPosition.Left = videoParams.Left;
+          playerDesiredPosition.Top = videoParams.Top;
+        }
+        VideoPlayer.Height = videoParams.Height;
+        VideoPlayer.Width = videoParams.Width;
+      }
+
       if (VideoPlayer.Source != null)
       {
         VideoEnded = true;
@@ -330,6 +422,7 @@ public partial class MainWindow : Window
       VideoPlayer.Stop();
       VideoPlayer.Source = null;
       VideoEnded = true;
+      ResetVideoPlayer();
     }));
   }
 
@@ -439,6 +532,10 @@ public partial class MainWindow : Window
 
       case "Discord message":
         Discord.SendOnlineMessage();
+        break;
+
+      case "Random video":
+        Notifications.CreateRandomVideoNotification(string.Empty);
         break;
     }
   }
@@ -565,5 +662,41 @@ public partial class MainWindow : Window
   private void GambaTest(object sender, RoutedEventArgs e)
   {
     GambaAnimationStart(new FileInfo("Resources/Gamba/GambaLoose1.mp4"), "Chatter", 1000, 0);
+  }
+
+  private void tbText_SizeChanged(object sender, SizeChangedEventArgs e)
+  {
+    if (!this.IsLoaded) return;
+
+    var tb = (TextBlock)sender;
+    if (tbTextDesiredPosition.Left != 0 || tbTextDesiredPosition.Top != 0)
+    {
+      Dispatcher.Invoke(new Action(() =>
+      {
+        tb.Margin = new Thickness(tbTextDesiredPosition.Left - (e.NewSize.Width / 2d), tbTextDesiredPosition.Top - (e.NewSize.Height / 2d), 0, 0);
+      }));
+    }
+  }
+
+  private void VideoPlayer_SizeChanged(object sender, SizeChangedEventArgs e)
+  {
+    var player = (MediaElement)sender;
+    if (playerDesiredPosition.Left != 0 || playerDesiredPosition.Top != 0)
+    {
+      player.Margin = new Thickness(playerDesiredPosition.Left - e.NewSize.Width / 2d, playerDesiredPosition.Top - e.NewSize.Height / 2d, 0, 0);
+    }
+  }
+}
+
+public class VideoParameters
+{
+  public double Width;
+  public double Height;
+  public double Left;
+  public double Top;
+
+  public void Reset()
+  {
+    Width = Height = Left = Top = 0;
   }
 }
