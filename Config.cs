@@ -18,7 +18,7 @@ public static class Config
     HotkeyNotificationPause, HotkeyNotificationSkip,
     PrintChatMessagesToConsole,
 
-    Enable, ChatMessage, TextToDisplay, TextPosition, TextToSpeech, SoundToPlay, VideoToPlay, VideoPosition, VideoSize, MinimumRaiders, DoShoutout, MinimumDuration, MinimumBitsForTTS,
+    Enable, ChatMessage, TextToDisplay, TextPosition, TextSize, TextToSpeech, SoundToPlay, VideoToPlay, VideoPosition, VideoSize, MinimumRaiders, DoShoutout, MinimumDuration, MinimumBitsForTTS,
 
     ChannelRedemption_RandomVideo_ID, ChannelRedemption_RandomVideo_MarkAsFulfilled, ChannelRedemption_SongRequest_ID, ChannelRedemption_SongRequest_MarkAsFulfilled, ChannelRedemption_SongSkip_ID, ChannelRedemption_SongSkip_MarkAsFulfilled,
     ChannelRedemption_RandomVideo_Size, ChannelRedemption_RandomVideo_Position,
@@ -77,15 +77,15 @@ public static class Config
     Notifications.ChannelRedemptions.Clear();
     HotkeysForPauseNotification.Clear();
     HotkeysForSkipNotification.Clear();
-    Notifications.ConfigFollow.VideoParams?.Reset();
-    Notifications.ConfigSubscription.VideoParams?.Reset();
-    Notifications.ConfigSubscriptionExt.VideoParams?.Reset();
-    Notifications.ConfigSubscriptionGift.VideoParams?.Reset();
-    Notifications.ConfigSubscriptionGiftReceived.VideoParams?.Reset();
-    Notifications.ConfigCheer.VideoParams?.Reset();
-    Notifications.ConfigRaid.VideoParams?.Reset();
-    Notifications.ConfigTimeout.VideoParams?.Reset();
-    Notifications.ConfigBan.VideoParams?.Reset();
+    Notifications.ConfigFollow.Reset();
+    Notifications.ConfigSubscription.Reset();
+    Notifications.ConfigSubscriptionExt.Reset();
+    Notifications.ConfigSubscriptionGift.Reset();
+    Notifications.ConfigSubscriptionGiftReceived.Reset();
+    Notifications.ConfigCheer.Reset();
+    Notifications.ConfigRaid.Reset();
+    Notifications.ConfigTimeout.Reset();
+    Notifications.ConfigBan.Reset();
     Notifications.RandomVideoParameters?.Reset();
 
     // Create example Config.ini
@@ -255,6 +255,18 @@ public static class Config
               if (currentNotifConfig is null) MainWindow.ConsoleWarning($">> Bad config line {lineIndex}. Missing previous group header definition!");
               else if (Enum.TryParse(typeof(Notifications.TextPosition), text[1].Trim(), out position)) currentNotifConfig.TextPosition = (Notifications.TextPosition)position;
               else MainWindow.ConsoleWarning($">> Bad config line {lineIndex}. Value not recognized!");
+              break;
+            case Keys.TextSize:
+              if (currentNotifConfig is null) MainWindow.ConsoleWarning($">> Bad config line {lineIndex}. Missing previous group header definition!");
+              else if (text[1].Length > 0)
+              {
+                string separator = System.Globalization.CultureInfo.CurrentCulture.NumberFormat.NumberDecimalSeparator;
+                string numString = text[1];
+                if (separator == ",") numString = numString.Replace('.', ',');
+                else if (separator == ".") numString = numString.Replace(',', '.');
+                if (double.TryParse(numString, out double size) && size >= 0.1) currentNotifConfig.TextSize = size;
+                else MainWindow.ConsoleWarning($">> Bad config line {lineIndex}. Value not recognized!");
+              }
               break;
             case Keys.TextToSpeech:
               if (currentNotifConfig is null) MainWindow.ConsoleWarning($">> Bad config line {lineIndex}. Missing previous group header definition!");
@@ -669,8 +681,9 @@ public static class Config
       writer.WriteLine();
       writer.WriteLine();
       writer.WriteLine("; Event messages configuration.");
-      writer.WriteLine("; TextPosition - available options: TOPLEFT, TOP, TOPRIGHT, LEFT, CENTER, RIGHT, BOTTOMLEFT, BOTTOM, BOTTOMRIGHT, VIDEOABOVE, VIDEOCENTER, VIDEOBELOW.");
       writer.WriteLine("; Empty assignment means that this part of the notification would be disabled or default value would be used.");
+      writer.WriteLine("; TextPosition - available options: TOPLEFT, TOP, TOPRIGHT, LEFT, CENTER, RIGHT, BOTTOMLEFT, BOTTOM, BOTTOMRIGHT, VIDEOABOVE, VIDEOCENTER, VIDEOBELOW.");
+      writer.WriteLine("; TextSize - displayed text size. Default: empty - 48");
       writer.WriteLine("; Paths to sounds and videos are relative to Resources folder.");
       writer.WriteLine("; For a file that is placed directly in Resources folder it would be just a filename with it's extension.");
       writer.WriteLine("; VideoPosition - describes played video position from the top left corner in pixels. 2 values separated by a comma are needed.");
@@ -696,6 +709,7 @@ public static class Config
       writer.WriteLine(string.Concat(Keys.ChatMessage.ToString(), " = @{0} thank you for following!"));
       writer.WriteLine(string.Concat(Keys.TextToDisplay.ToString(), " = New follower {0}!"));
       writer.WriteLine(string.Concat(Keys.TextPosition.ToString(), " = TOP"));
+      writer.WriteLine(string.Concat(Keys.TextSize.ToString(), " = "));
       writer.WriteLine(string.Concat(Keys.TextToSpeech.ToString(), " = "));
       writer.WriteLine(string.Concat(Keys.SoundToPlay.ToString(), " = tone1.wav"));
       writer.WriteLine(string.Concat(Keys.VideoToPlay.ToString(), " = "));
@@ -708,6 +722,7 @@ public static class Config
       writer.WriteLine(string.Concat(Keys.ChatMessage.ToString(), " = "));
       writer.WriteLine(string.Concat(Keys.TextToDisplay.ToString(), " = {0} just subscribed!"));
       writer.WriteLine(string.Concat(Keys.TextPosition.ToString(), " = TOP"));
+      writer.WriteLine(string.Concat(Keys.TextSize.ToString(), " = "));
       writer.WriteLine(string.Concat(Keys.TextToSpeech.ToString(), " = Thank you {0} for tier {1} sub! {7}"));
       writer.WriteLine(string.Concat(Keys.SoundToPlay.ToString(), " = "));
       writer.WriteLine(string.Concat(Keys.VideoToPlay.ToString(), " = peepoHey.mp4"));
@@ -720,6 +735,7 @@ public static class Config
       writer.WriteLine(string.Concat(Keys.ChatMessage.ToString(), " = "));
       writer.WriteLine(string.Concat(Keys.TextToDisplay.ToString(), " = {0} just subscribed!"));
       writer.WriteLine(string.Concat(Keys.TextPosition.ToString(), " = TOP"));
+      writer.WriteLine(string.Concat(Keys.TextSize.ToString(), " = "));
       writer.WriteLine(string.Concat(Keys.TextToSpeech.ToString(), " = Thank you {0} for {2} month{10} in advance tier {1} sub! It is your {3} month in a row! {7}"));
       writer.WriteLine(string.Concat(Keys.SoundToPlay.ToString(), " = "));
       writer.WriteLine(string.Concat(Keys.VideoToPlay.ToString(), " = peepoHey.mp4"));
@@ -732,6 +748,7 @@ public static class Config
       writer.WriteLine(string.Concat(Keys.ChatMessage.ToString(), " = "));
       writer.WriteLine(string.Concat(Keys.TextToDisplay.ToString(), " = Thank you {0} for {4} sub{12}!"));
       writer.WriteLine(string.Concat(Keys.TextPosition.ToString(), " = TOP"));
+      writer.WriteLine(string.Concat(Keys.TextSize.ToString(), " = "));
       writer.WriteLine(string.Concat(Keys.TextToSpeech.ToString(), " = Thank you {0} for gifting {4} tier {1} sub{12} to {6}! {7}"));
       writer.WriteLine(string.Concat(Keys.SoundToPlay.ToString(), " = "));
       writer.WriteLine(string.Concat(Keys.VideoToPlay.ToString(), " = peepoHey.mp4"));
@@ -744,6 +761,7 @@ public static class Config
       writer.WriteLine(string.Concat(Keys.ChatMessage.ToString(), " = "));
       writer.WriteLine(string.Concat(Keys.TextToDisplay.ToString(), " = New subscriber {0}!"));
       writer.WriteLine(string.Concat(Keys.TextPosition.ToString(), " = TOP"));
+      writer.WriteLine(string.Concat(Keys.TextSize.ToString(), " = "));
       writer.WriteLine(string.Concat(Keys.TextToSpeech.ToString(), " = "));
       writer.WriteLine(string.Concat(Keys.SoundToPlay.ToString(), " = tone1.wav"));
       writer.WriteLine(string.Concat(Keys.VideoToPlay.ToString(), " = "));
@@ -756,6 +774,7 @@ public static class Config
       writer.WriteLine(string.Concat(Keys.ChatMessage.ToString(), " = "));
       writer.WriteLine(string.Concat(Keys.TextToDisplay.ToString(), " = Thank you {0} for {4} bit{12}!"));
       writer.WriteLine(string.Concat(Keys.TextPosition.ToString(), " = TOP"));
+      writer.WriteLine(string.Concat(Keys.TextSize.ToString(), " = "));
       writer.WriteLine(string.Concat(Keys.TextToSpeech.ToString(), " = Thank you {0} for {4} bit{12}! {7}"));
       writer.WriteLine(string.Concat(Keys.SoundToPlay.ToString(), " = tone1.wav"));
       writer.WriteLine(string.Concat(Keys.VideoToPlay.ToString(), " = "));
@@ -770,6 +789,7 @@ public static class Config
       writer.WriteLine(string.Concat(Keys.ChatMessage.ToString(), " = "));
       writer.WriteLine(string.Concat(Keys.TextToDisplay.ToString(), " = {4} raider{12} from {0} are coming!"));
       writer.WriteLine(string.Concat(Keys.TextPosition.ToString(), " = TOP"));
+      writer.WriteLine(string.Concat(Keys.TextSize.ToString(), " = "));
       writer.WriteLine(string.Concat(Keys.TextToSpeech.ToString(), " = "));
       writer.WriteLine(string.Concat(Keys.SoundToPlay.ToString(), " = tone1.wav"));
       writer.WriteLine(string.Concat(Keys.VideoToPlay.ToString(), " = "));
@@ -785,6 +805,7 @@ public static class Config
       writer.WriteLine(string.Concat(Keys.ChatMessage.ToString(), " = "));
       writer.WriteLine(string.Concat(Keys.TextToDisplay.ToString(), " = "));
       writer.WriteLine(string.Concat(Keys.TextPosition.ToString(), " = TOP"));
+      writer.WriteLine(string.Concat(Keys.TextSize.ToString(), " = "));
       writer.WriteLine(string.Concat(Keys.TextToSpeech.ToString(), " = "));
       writer.WriteLine(string.Concat(Keys.SoundToPlay.ToString(), " = tone1.wav"));
       writer.WriteLine(string.Concat(Keys.VideoToPlay.ToString(), " = "));
@@ -799,6 +820,7 @@ public static class Config
       writer.WriteLine(string.Concat(Keys.ChatMessage.ToString(), " = "));
       writer.WriteLine(string.Concat(Keys.TextToDisplay.ToString(), " = "));
       writer.WriteLine(string.Concat(Keys.TextPosition.ToString(), " = TOP"));
+      writer.WriteLine(string.Concat(Keys.TextSize.ToString(), " = "));
       writer.WriteLine(string.Concat(Keys.TextToSpeech.ToString(), " = "));
       writer.WriteLine(string.Concat(Keys.SoundToPlay.ToString(), " = tone1.wav"));
       writer.WriteLine(string.Concat(Keys.VideoToPlay.ToString(), " = "));

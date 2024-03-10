@@ -595,6 +595,7 @@ namespace AbevBot
     public string ChatMessage { get; set; } = string.Empty;
     public string TextToDisplay { get; set; } = string.Empty;
     public Notifications.TextPosition TextPosition { get; set; } = Notifications.TextPosition.TOP;
+    public double TextSize { get; set; }
     public string TextToSpeech { get; set; } = string.Empty;
     public string SoundToPlay { get; set; } = string.Empty;
     public string VideoToPlay { get; set; } = string.Empty;
@@ -606,6 +607,23 @@ namespace AbevBot
     public TimeSpan MinimumTime { get; set; } = TimeSpan.MinValue;
 
     public NotificationsConfig(NotificationType type) { Type = type; }
+
+    public void Reset()
+    {
+      Enable = false;
+      ChatMessage = string.Empty;
+      TextToDisplay = string.Empty;
+      TextPosition = Notifications.TextPosition.TOP;
+      TextSize = 48;
+      TextToSpeech = string.Empty;
+      SoundToPlay = string.Empty;
+      VideoToPlay = string.Empty;
+      VideoParams?.Reset();
+      MinimumRaiders = 10;
+      MinimumBits = 10;
+      DoShoutout = false;
+      MinimumTime = TimeSpan.MinValue;
+    }
   }
 
   public class ChannelRedemption

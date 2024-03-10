@@ -34,8 +34,10 @@ public partial class MainWindow : Window
   public static MainWindow I { get; private set; }
   public static bool VideoEnded { get; private set; }
   private static bool FinishedLoading;
-  private Thickness tbTextDesiredPosition = new();
+  private (double x, double y) tbTextDesiredPosition = new();
   private Thickness playerDesiredPosition = new();
+  private Notifications.TextPosition tbTextPositionAnchor;
+  private bool TextPositionShouldUpdate;
 
   public MainWindow(string[] args = null)
   {
@@ -270,9 +272,10 @@ public partial class MainWindow : Window
     Chatter.StopFollowBots();
   }
 
-  public void SetTextDisplayed(string text, Notifications.TextPosition position, VideoParameters videoParams)
+  public void SetTextDisplayed(string text, Notifications.TextPosition position, double textSize, VideoParameters videoParams)
   {
-    (double x, double y) videoCenter = (0d, 0d);
+    VideoParameters video = null;
+
     if (position == Notifications.TextPosition.VIDEOABOVE ||
          position == Notifications.TextPosition.VIDEOCENTER ||
          position == Notifications.TextPosition.VIDEOBELOW)
@@ -280,12 +283,18 @@ public partial class MainWindow : Window
       if (videoParams is null) position = Notifications.TextPosition.CENTER;
       else
       {
-        videoCenter.x = videoParams.Left + (videoParams.Width / 2d);
-        videoCenter.y = videoParams.Top + (videoParams.Height / 2d);
+        video = new()
+        {
+          Left = videoParams.Left + (videoParams.Width / 2d),
+          Top = videoParams.Top + (videoParams.Height / 2d),
+          Width = videoParams.Width,
+          Height = videoParams.Height
+        };
+
         if (videoParams.Left == 0 && videoParams.Top == 0)
         {
-          videoCenter.x += MainGrid.ActualWidth / 2d;
-          videoCenter.y += MainGrid.ActualHeight / 2d;
+          video.Left += MainGrid.ActualWidth / 2d;
+          video.Top += MainGrid.ActualHeight / 2d;
         }
       }
     }
@@ -293,69 +302,86 @@ public partial class MainWindow : Window
     Dispatcher.Invoke(new Action(() =>
     {
       tbText.Text = text;
+      tbText.FontSize = textSize;
       tbText.Margin = new Thickness();
-      tbTextDesiredPosition.Left = 0;
-      tbTextDesiredPosition.Top = 0;
-
+      tbTextPositionAnchor = position;
+      tbTextDesiredPosition.x = 0;
+      tbTextDesiredPosition.y = 0;
+      UpdateTextDesiredPosition(video);
       switch (position)
       {
-        case Notifications.TextPosition.TOPLEFT:
-          tbText.VerticalAlignment = VerticalAlignment.Top;
-          tbText.HorizontalAlignment = HorizontalAlignment.Left;
-          break;
-        case Notifications.TextPosition.TOP:
-          tbText.VerticalAlignment = VerticalAlignment.Top;
-          tbText.HorizontalAlignment = HorizontalAlignment.Center;
-          break;
-        case Notifications.TextPosition.TOPRIGHT:
-          tbText.VerticalAlignment = VerticalAlignment.Top;
-          tbText.HorizontalAlignment = HorizontalAlignment.Right;
-          break;
-        case Notifications.TextPosition.LEFT:
-          tbText.VerticalAlignment = VerticalAlignment.Center;
-          tbText.HorizontalAlignment = HorizontalAlignment.Left;
-          break;
-        case Notifications.TextPosition.CENTER:
-          tbText.VerticalAlignment = VerticalAlignment.Center;
-          tbText.HorizontalAlignment = HorizontalAlignment.Center;
-          break;
-        case Notifications.TextPosition.RIGHT:
-          tbText.VerticalAlignment = VerticalAlignment.Center;
-          tbText.HorizontalAlignment = HorizontalAlignment.Right;
-          break;
-        case Notifications.TextPosition.BOTTOMLEFT:
-          tbText.VerticalAlignment = VerticalAlignment.Bottom;
-          tbText.HorizontalAlignment = HorizontalAlignment.Left;
-          break;
-        case Notifications.TextPosition.BOTTOM:
-          tbText.VerticalAlignment = VerticalAlignment.Bottom;
-          tbText.HorizontalAlignment = HorizontalAlignment.Center;
-          break;
-        case Notifications.TextPosition.BOTTOMRIGHT:
-          tbText.VerticalAlignment = VerticalAlignment.Bottom;
-          tbText.HorizontalAlignment = HorizontalAlignment.Right;
-          break;
         case Notifications.TextPosition.VIDEOABOVE:
-          tbText.VerticalAlignment = VerticalAlignment.Top;
-          tbText.HorizontalAlignment = HorizontalAlignment.Left;
-          tbTextDesiredPosition.Left = videoCenter.x;
-          tbTextDesiredPosition.Top = videoCenter.y - (videoParams.Height / 2d) - (tbText.FontSize / 2d);
-          break;
         case Notifications.TextPosition.VIDEOCENTER:
-          tbText.VerticalAlignment = VerticalAlignment.Top;
-          tbText.HorizontalAlignment = HorizontalAlignment.Left;
-          tbTextDesiredPosition.Left = videoCenter.x;
-          tbTextDesiredPosition.Top = videoCenter.y;
-          break;
         case Notifications.TextPosition.VIDEOBELOW:
-          tbText.VerticalAlignment = VerticalAlignment.Top;
-          tbText.HorizontalAlignment = HorizontalAlignment.Left;
-          tbTextDesiredPosition.Left = videoCenter.x;
-          tbTextDesiredPosition.Top = videoCenter.y + (videoParams.Height / 2d) + (tbText.FontSize / 2d);
+          tbText.Visibility = Visibility.Hidden;
+          break;
+        default:
+          tbText.Visibility = Visibility.Visible;
           break;
       }
-      tbText.Visibility = Visibility.Visible;
+      TextPositionShouldUpdate = true;
     }));
+  }
+
+  private void UpdateTextDesiredPosition(VideoParameters video)
+  {
+    switch (tbTextPositionAnchor)
+    {
+      case Notifications.TextPosition.TOPLEFT:
+        tbText.VerticalAlignment = VerticalAlignment.Top;
+        tbText.HorizontalAlignment = HorizontalAlignment.Left;
+        break;
+      case Notifications.TextPosition.TOP:
+        tbText.VerticalAlignment = VerticalAlignment.Top;
+        tbText.HorizontalAlignment = HorizontalAlignment.Center;
+        break;
+      case Notifications.TextPosition.TOPRIGHT:
+        tbText.VerticalAlignment = VerticalAlignment.Top;
+        tbText.HorizontalAlignment = HorizontalAlignment.Right;
+        break;
+      case Notifications.TextPosition.LEFT:
+        tbText.VerticalAlignment = VerticalAlignment.Center;
+        tbText.HorizontalAlignment = HorizontalAlignment.Left;
+        break;
+      case Notifications.TextPosition.CENTER:
+        tbText.VerticalAlignment = VerticalAlignment.Center;
+        tbText.HorizontalAlignment = HorizontalAlignment.Center;
+        break;
+      case Notifications.TextPosition.RIGHT:
+        tbText.VerticalAlignment = VerticalAlignment.Center;
+        tbText.HorizontalAlignment = HorizontalAlignment.Right;
+        break;
+      case Notifications.TextPosition.BOTTOMLEFT:
+        tbText.VerticalAlignment = VerticalAlignment.Bottom;
+        tbText.HorizontalAlignment = HorizontalAlignment.Left;
+        break;
+      case Notifications.TextPosition.BOTTOM:
+        tbText.VerticalAlignment = VerticalAlignment.Bottom;
+        tbText.HorizontalAlignment = HorizontalAlignment.Center;
+        break;
+      case Notifications.TextPosition.BOTTOMRIGHT:
+        tbText.VerticalAlignment = VerticalAlignment.Bottom;
+        tbText.HorizontalAlignment = HorizontalAlignment.Right;
+        break;
+      case Notifications.TextPosition.VIDEOABOVE:
+        tbText.VerticalAlignment = VerticalAlignment.Top;
+        tbText.HorizontalAlignment = HorizontalAlignment.Left;
+        tbTextDesiredPosition.x = video.Left;
+        tbTextDesiredPosition.y = video.Top - (video.Height / 2d) - (tbText.FontSize / 2d);
+        break;
+      case Notifications.TextPosition.VIDEOCENTER:
+        tbText.VerticalAlignment = VerticalAlignment.Top;
+        tbText.HorizontalAlignment = HorizontalAlignment.Left;
+        tbTextDesiredPosition.x = video.Left;
+        tbTextDesiredPosition.y = video.Top;
+        break;
+      case Notifications.TextPosition.VIDEOBELOW:
+        tbText.VerticalAlignment = VerticalAlignment.Top;
+        tbText.HorizontalAlignment = HorizontalAlignment.Left;
+        tbTextDesiredPosition.x = video.Left;
+        tbTextDesiredPosition.y = video.Top + (video.Height / 2d) + (tbText.FontSize / 2d);
+        break;
+    }
   }
 
   public void ClearTextDisplayed()
@@ -667,14 +693,15 @@ public partial class MainWindow : Window
   private void tbText_SizeChanged(object sender, SizeChangedEventArgs e)
   {
     if (!this.IsLoaded) return;
+    if (!TextPositionShouldUpdate) return;
+    TextPositionShouldUpdate = false;
 
     var tb = (TextBlock)sender;
-    if (tbTextDesiredPosition.Left != 0 || tbTextDesiredPosition.Top != 0)
+    if (tbTextDesiredPosition.x != 0 || tbTextDesiredPosition.y != 0)
     {
-      Dispatcher.Invoke(new Action(() =>
-      {
-        tb.Margin = new Thickness(tbTextDesiredPosition.Left - (e.NewSize.Width / 2d), tbTextDesiredPosition.Top - (e.NewSize.Height / 2d), 0, 0);
-      }));
+      double width = e is null ? tb.ActualWidth : e.NewSize.Width;
+      double height = e is null ? tb.ActualHeight : e.NewSize.Height;
+      tb.Margin = new Thickness(tbTextDesiredPosition.x - (width / 2d), tbTextDesiredPosition.y - (height / 2d), 0, 0);
     }
   }
 
@@ -684,6 +711,21 @@ public partial class MainWindow : Window
     if (playerDesiredPosition.Left != 0 || playerDesiredPosition.Top != 0)
     {
       player.Margin = new Thickness(playerDesiredPosition.Left - e.NewSize.Width / 2d, playerDesiredPosition.Top - e.NewSize.Height / 2d, 0, 0);
+
+      if (!VideoEnded)
+      {
+        VideoParameters video = new()
+        {
+          Left = playerDesiredPosition.Left,
+          Top = playerDesiredPosition.Top,
+          Width = e.NewSize.Width,
+          Height = e.NewSize.Height,
+        };
+        UpdateTextDesiredPosition(video);
+        TextPositionShouldUpdate = true;
+        tbText_SizeChanged(tbText, null);
+        tbText.Visibility = Visibility.Visible;
+      }
     }
   }
 }

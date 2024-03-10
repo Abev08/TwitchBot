@@ -14,6 +14,7 @@ namespace AbevBot
     private DateTime StartTime { get; set; }
     public string TextToDisplay { get; init; }
     public Notifications.TextPosition TextToDisplayPosition { get; init; } = Notifications.TextPosition.TOP;
+    public double TextToDisplaySize { get; init; }
     public string TextToRead { get; init; }
     public float TTSVolume { get; init; } = 1f;
     public string SoundPath { get; init; }
@@ -40,6 +41,7 @@ namespace AbevBot
     {
       TextToDisplay = string.Format(config.TextToDisplay, data).Replace("\\n", Environment.NewLine);
       TextToDisplayPosition = config.TextPosition;
+      TextToDisplaySize = config.TextSize;
       if (config.Type == NotificationType.CHEER)
       {
         // For bits check the minimum amount
@@ -213,7 +215,7 @@ namespace AbevBot
       if (!TextDisplayed && !Notifications.NotificationsPaused && !Notifications.SkipNotification)
       {
         TextDisplayed = true;
-        MainWindow.I.SetTextDisplayed(TextToDisplay, TextToDisplayPosition, VideoParams);
+        MainWindow.I.SetTextDisplayed(TextToDisplay, TextToDisplayPosition, TextToDisplaySize, VideoParams);
       }
 
       if (!VideoEnded)
