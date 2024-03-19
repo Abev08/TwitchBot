@@ -325,6 +325,8 @@ public partial class MainWindow : Window
 
   private void UpdateTextDesiredPosition(VideoParameters video)
   {
+    var lineCount = 1;
+    double lineSpacing = tbText.FontSize * 0.75d;
     switch (tbTextPositionAnchor)
     {
       case Notifications.TextPosition.TOPLEFT:
@@ -367,7 +369,8 @@ public partial class MainWindow : Window
         tbText.VerticalAlignment = VerticalAlignment.Top;
         tbText.HorizontalAlignment = HorizontalAlignment.Left;
         tbTextDesiredPosition.x = video.Left;
-        tbTextDesiredPosition.y = video.Top - (video.Height / 2d) - (tbText.FontSize / 2d);
+        foreach (char c in tbText.Text) if (c == '\n') lineCount++;
+        tbTextDesiredPosition.y = video.Top - (video.Height / 2d) - (lineSpacing * lineCount);
         break;
       case Notifications.TextPosition.VIDEOCENTER:
         tbText.VerticalAlignment = VerticalAlignment.Top;
@@ -379,7 +382,8 @@ public partial class MainWindow : Window
         tbText.VerticalAlignment = VerticalAlignment.Top;
         tbText.HorizontalAlignment = HorizontalAlignment.Left;
         tbTextDesiredPosition.x = video.Left;
-        tbTextDesiredPosition.y = video.Top + (video.Height / 2d) + (tbText.FontSize / 2d);
+        foreach (char c in tbText.Text) if (c == '\n') lineCount++;
+        tbTextDesiredPosition.y = video.Top + (video.Height / 2d) + (lineSpacing * lineCount);
         break;
     }
   }
