@@ -235,7 +235,7 @@ public static class Chat
 
                 chatter = Chatter.GetChatterByID(userID, userName);
                 chatter.LastChatted = DateTime.Now;
-                if (Notifications.WelcomeMessagesEnabled && chatter?.WelcomeMessage.Length > 0 && chatter.LastWelcomeMessage.Date != DateTime.Now.Date)
+                if (Notifications.WelcomeMessagesEnabled && chatter?.WelcomeMessage?.Length > 0 && chatter.LastWelcomeMessage.Date != DateTime.Now.Date)
                 {
                   MainWindow.ConsoleWarning($">> Creating {chatter.Name} welcome message TTS.");
                   chatter.SetLastWelcomeMessageToNow();
@@ -298,6 +298,16 @@ public static class Chat
                     ResponseMessages["!commands"] = (string.Empty, DateTime.Now);
                   }
                   else { MainWindow.ConsoleWarning(">> Not sending response for \"!commands\" key. Cooldown active."); }
+                }
+                else if (message[1][1..].StartsWith("!welcomemessageclear")) // Check if the message starts with !welcomemessageclear key
+                {
+                  // Clear current welcome message
+                  if (chatter.WelcomeMessage?.Length > 0)
+                  {
+                    chatter.SetWelcomeMessage(null);
+                    AddMessageToQueue($"@{chatter.Name} welcome message was cleared");
+                  }
+                  else { AddMessageToQueue($"@{chatter.Name} your welcome message is empty WeirdDude"); }
                 }
                 else if (message[1][1..].StartsWith("!welcomemessage")) // Check if the message starts with !welcomemessage key
                 {
@@ -816,7 +826,7 @@ public static class Chat
     if (s?.Length > 0) sb.Append(s).Append(", ");
     sb.Append("!hug, ");
     if (Notifications.AreSoundsAvailable()) sb.Append("!sounds, ");
-    if (Notifications.WelcomeMessagesEnabled) sb.Append("!welcomemessage <empty/message>, ");
+    if (Notifications.WelcomeMessagesEnabled) sb.Append("!welcomemessage <empty/message>, !welcomemessageclear, ");
     if (Spotify.Working)
     {
       sb.Append("!song, !previoussong, !songqueue, ");
