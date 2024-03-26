@@ -452,23 +452,54 @@ namespace AbevBot
 
     public static Dictionary<string, FileInfo> GetSampleSounds()
     {
-      // Load sounds
-      if (SampleSounds.Count == 0)
+      // Get all sound files
+      Dictionary<string, FileInfo> sounds = new();
+      DirectoryInfo dir = new("Resources/Sounds");
+      if (dir.Exists)
       {
-        DirectoryInfo dir = new("Resources/Sounds");
-        if (dir.Exists)
+        foreach (var file in dir.GetFiles())
         {
-          foreach (FileInfo file in dir.GetFiles())
+          if (file.Extension.Equals(".mp3") || file.Extension.Equals(".wav"))
           {
-            if (file.Extension.Equals(".mp3") || file.Extension.Equals(".wav"))
+            sounds.Add(file.Name.Replace(file.Extension, "").ToLower(), file);
+          }
+        }
+      }
+
+      lock (SampleSounds)
+      {
+        bool newSounds = false;
+        // Check if new sounds are available
+        // comparasion is needed to know when to update !sounds response paste link
+        if (sounds.Count != SampleSounds.Count) { newSounds = true; }
+        else
+        {
+          // Check file by file
+          foreach (var sound in sounds)
+          {
+            if (!SampleSounds.TryGetValue(sound.Key, out var val))
             {
-              SampleSounds.Add(file.Name.Replace(file.Extension, "").ToLower(), file);
-              SoundsAvailable = true;
+              newSounds = true;
+              break;
+            }
+            else
+            {
+              if (sound.Value.Length != val.Length)
+              {
+                newSounds = true;
+                break;
+              }
             }
           }
         }
 
-        if (SampleSounds.Count == 0) SampleSounds.Add("___", null); // Add dummy sound for the top if not to be checked every time
+        if (newSounds)
+        {
+          SampleSounds.Clear();
+          foreach (var sound in sounds) { SampleSounds.Add(sound.Key, sound.Value); }
+          SoundsAvailable = SampleSounds.Count > 0;
+          s_soundsSamplePasteLink = null;
+        }
       }
 
       return SampleSounds;
@@ -492,9 +523,10 @@ namespace AbevBot
     /// <returns>Link to the paste.</returns>
     public static string GetSampleSoundsPaste()
     {
+      var samples = GetSampleSounds();
+
       if (s_soundsSamplePasteLink?.Length > 0) return s_soundsSamplePasteLink;
 
-      var samples = GetSampleSounds();
       int lineLength = 0;
       StringBuilder sb = new();
       sb.AppendLine("Sound samples that can be used in TTS messages like: \"!tts -fart\".");
@@ -513,7 +545,7 @@ namespace AbevBot
       string result = sb.ToString().Trim();
       if (result.EndsWith(',')) result = result[..^1];
 
-      GlotPaste paste = new() { Language = "plaintext", Title = "Sound samples" };
+      GlotPaste paste = new() { Language = "assembly", Title = "Sound samples" };
       paste.Files.Add(new GlotFile() { Name = "Sound samples", Content = result });
 
       using HttpRequestMessage request = new(HttpMethod.Post, "https://glot.io/api/snippets");
@@ -537,7 +569,7 @@ namespace AbevBot
 
     public static bool AreSoundsAvailable()
     {
-      if (SampleSounds.Count == 0) GetSampleSounds();
+      if (!SoundsAvailable) GetSampleSounds(); // try to load the sounds
 
       return SoundsAvailable;
     }
@@ -545,8 +577,9 @@ namespace AbevBot
     public static List<FileInfo> GetRandomVideos()
     {
       // Load random videos
-      if (RandomVideos.Count == 0)
+      lock (RandomVideos)
       {
+        RandomVideos.Clear();
         DirectoryInfo dir = new("Resources/Videos");
         if (dir.Exists)
         {
@@ -558,8 +591,6 @@ namespace AbevBot
             }
           }
         }
-
-        if (RandomVideos.Count == 0) RandomVideos.Add(new FileInfo(Guid.NewGuid().ToString())); // Add dummy random video for the top if not to be checked every time
       }
 
       return RandomVideos;
