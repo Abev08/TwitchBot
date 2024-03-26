@@ -35,6 +35,16 @@ namespace AbevBot
     {
       if (sound is null) return null;
 
+      // FIXME: Mp3FileReader, WaveFileReader, etc. doesn't free the files after reading - we need to manually .Dispose() them,
+      // So there should be list of xxxFileReader and after the device finished playing something like
+      // ```
+      // device.Stop();
+      // foreach (var file in files) file.Dispose();
+      // device.Dispose();
+      // ```
+      // If it's not being done like this (like right now) after the device is disposed the file is being locked by the program
+      // Also using AudioFileReader instead of Mp3FileReader / WaveFileReader may be better?
+
       ISampleProvider sample;
       if (sound is ISampleProvider) { sample = (ISampleProvider)sound; }
       else if (sound is IEnumerable<ISampleProvider>) { sample = new ConcatenatingSampleProvider((IEnumerable<ISampleProvider>)sound); }
