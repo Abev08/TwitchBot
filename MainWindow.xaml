@@ -82,6 +82,7 @@
           <CheckBox x:Name="chkEnableWelcomeMessages" Content="!welcomemessage enabled" VerticalContentAlignment="Center" IsChecked="True" Checked="ChkWelcome_CheckChanged" Unchecked="ChkWelcome_CheckChanged" ToolTip="Welcome messages"/>
           <CheckBox x:Name="chkEnableSongSkip" Content="!skipsong enabled (chat)" VerticalContentAlignment="Center" IsChecked="True" Checked="ChkSkip_CheckChanged" Unchecked="ChkSkip_CheckChanged" ToolTip="Song skip"/>
           <CheckBox x:Name="chkEnableSongRequest" Content="!sr enabled (chat)" VerticalContentAlignment="Center" IsChecked="True" Checked="ChkRequest_CheckChanged" Unchecked="ChkRequest_CheckChanged" ToolTip="Song request"/>
+          <CheckBox x:Name="chkEnableVanish" Content="!vanish enabled (chat)" VerticalContentAlignment="Center" IsChecked="True" Checked="ChkVanish_CheckChanged" Unchecked="ChkVanish_CheckChanged" ToolTip="'!vanish' command (self timeout)"/>
         </StackPanel>
       </Border>
     </StackPanel>

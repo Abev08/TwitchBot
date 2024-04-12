@@ -19,6 +19,7 @@ public static class Database
     EnabledFight,
     EnabledWelcomeMessages,
     EnabledSpotifySkip, EnabledSpotifyRequest,
+    EnabledVanish,
     SpotifyOAuth, SpotifyOAuthRefresh,
     DiscordOAuth, DiscordOAuthRefresh, DiscordOAuthExpiration,
     LastOnline
@@ -94,6 +95,7 @@ public static class Database
     Notifications.WelcomeMessagesEnabled = bool.Parse(GetValueOrCreateFromConfig(Keys.EnabledWelcomeMessages, "True"));
     Spotify.SkipEnabled = bool.Parse(GetValueOrCreateFromConfig(Keys.EnabledSpotifySkip, "True"));
     Spotify.RequestEnabled = bool.Parse(GetValueOrCreateFromConfig(Keys.EnabledSpotifyRequest, "True"));
+    Chat.VanishEnabled = bool.Parse(GetValueOrCreateFromConfig(Keys.EnabledVanish, "True"));
     MainWindow.I.SetEnabledStatus();
 
     Connection.Close();

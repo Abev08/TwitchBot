@@ -30,6 +30,8 @@ public static class Chat
   private static DateTime RespMsgFileTimestamp;
   private static readonly List<SkipSongChatter> SkipSongChatters = new();
   private static int s_chatMessagesSinceLastPeriodicMessage;
+  /// <summary> !vanish chat command enabled </summary>
+  public static bool VanishEnabled { get; set; }
 
   public static void Start()
   {
@@ -271,7 +273,8 @@ public static class Chat
                 }
                 else if (message[1][1..].StartsWith("!vanish")) // Check if the message starts with !vanish key
                 {
-                  if (message[1].Length == 8)
+                  if (!Chat.VanishEnabled) { } // Disabled - do nothing
+                  else if (message[1].Length == 8)
                   {
                     // Vanish the command user
                     if (!userBadge.Equals("STR")) BanChatter("!vanish command", userID, userName);
@@ -814,7 +817,7 @@ public static class Chat
   {
     StringBuilder sb = new();
     string s;
-    sb.Append('@').Append(userName).Append(" ");
+    sb.Append('@').Append(userName).Append(' ');
     if (Notifications.ChatTTSEnabled) sb.Append("!tts message, ");
     s = MinigameFight.GetCommands();
     if (s?.Length > 0) sb.Append(s).Append(", ");
@@ -832,6 +835,10 @@ public static class Chat
       sb.Append("!song, !previoussong, !songqueue, ");
       if (Spotify.RequestEnabled) sb.Append("!songrequest, !sr, ");
       if (Spotify.SkipEnabled) sb.Append("!skipsong, ");
+    }
+    if (Chat.VanishEnabled)
+    {
+      sb.Append("!vanish, ");
     }
 
     foreach (string key in ResponseMessages.Keys)

@@ -512,6 +512,12 @@ public partial class MainWindow : Window
     if (FinishedLoading) await Database.UpdateValueInConfig(Database.Keys.EnabledSpotifyRequest, Spotify.RequestEnabled);
   }
 
+  private async void ChkVanish_CheckChanged(object sender, RoutedEventArgs e)
+  {
+    Chat.VanishEnabled = ((CheckBox)sender).IsChecked == true;
+    if (FinishedLoading) await Database.UpdateValueInConfig(Database.Keys.EnabledVanish, Chat.VanishEnabled);
+  }
+
   private void MainVideoEnded(object sender, RoutedEventArgs e)
   {
     VideoPlayer.Source = null;
@@ -615,6 +621,7 @@ public partial class MainWindow : Window
     chkEnableWelcomeMessages.IsChecked = Notifications.WelcomeMessagesEnabled;
     chkEnableSongSkip.IsChecked = Spotify.SkipEnabled;
     chkEnableSongRequest.IsChecked = Spotify.RequestEnabled;
+    chkEnableVanish.IsChecked = Chat.VanishEnabled;
   }
 
   public void GambaAnimationStart(FileInfo videoPath, string userName, int points, int pointsResult)
