@@ -4,6 +4,8 @@ using System.IO;
 using System.Net.Http;
 using System.Text;
 
+using Serilog;
+
 namespace AbevBot
 {
   public static class StreamElements
@@ -272,7 +274,7 @@ namespace AbevBot
       Stream stream;
       using HttpRequestMessage request = new(HttpMethod.Get, $"https://api.streamelements.com/kappa/v2/speech?voice={voice}&text={text}");
       try { stream = Notifications.Client.Send(request).Content.ReadAsStream(); }
-      catch (HttpRequestException ex) { MainWindow.ConsoleWarning($">> StreamElements TTS request failed. {ex.Message}"); return null; }
+      catch (HttpRequestException ex) { Log.Error("StreamElements TTS request failed. {ex}", ex); return null; }
 
       return stream;
     }
@@ -287,7 +289,7 @@ namespace AbevBot
 
       string resp;
       try { resp = Notifications.Client.Send(request).Content.ReadAsStringAsync().Result; }
-      catch (HttpRequestException ex) { MainWindow.ConsoleWarning($">> StreamElements voices request failed. {ex.Message}"); return; }
+      catch (HttpRequestException ex) { Log.Error("StreamElements voices request failed. {ex}", ex); return; }
       var response = StreamElementsResponse.Deserialize(resp);
       if (response?.Message?.Length > 0)
       {
@@ -303,7 +305,7 @@ namespace AbevBot
         }
       }
 
-      MainWindow.ConsoleWarning(string.Concat(">> StreamElements voices: ", string.Join(", ", voices)));
+      Log.Information("StreamElements voices: {voices}", string.Join(", ", voices));
     }
   }
 }

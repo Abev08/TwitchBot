@@ -4,6 +4,8 @@ using System.Net.WebSockets;
 using System.Text;
 using System.Threading;
 
+using Serilog;
+
 namespace AbevBot;
 
 public static class Events
@@ -28,7 +30,7 @@ public static class Events
     if (Started) return;
     Started = true;
 
-    MainWindow.ConsoleWarning(">> Starting events bot.");
+    Log.Information("Starting events bot.");
 
     EventsThread = new Thread(Update)
     {
@@ -56,7 +58,7 @@ public static class Events
         WebSocketClient.Options.SetRequestHeader("Client-Id", Secret.Data[Secret.Keys.CustomerID]);
         WebSocketClient.Options.SetRequestHeader("Authorization", $"Bearer {Secret.Data[Secret.Keys.OAuthToken]}");
         try { WebSocketClient.ConnectAsync(new Uri(WEBSOCKETURL), CancellationToken.None).Wait(); }
-        catch (AggregateException ex) { MainWindow.ConsoleWarning($">> Events bot error: {ex.Message}"); }
+        catch (AggregateException ex) { Log.Error("Events bot error: {ex}", ex); }
 
         // Check if it worked
         if (WebSocketClient.State == WebSocketState.Open) receiveResult = WebSocketClient.ReceiveAsync(receiveBuffer, CancellationToken.None).Result;
@@ -64,13 +66,13 @@ public static class Events
 
         if (receiveResult?.Count > 0)
         {
-          MainWindow.ConsoleWarning(">> Events bot connected.");
+          Log.Information("Events bot connected.");
           message = Encoding.UTF8.GetString(receiveBuffer, 0, receiveResult.Count);
           // Parse welcome message
           WelcomeMessage welcomeMessage = WelcomeMessage.Deserialize(message);
           if (welcomeMessage?.Payload?.Session?.ID is null)
           {
-            MainWindow.ConsoleWarning(">> Event bot error. Couldn't read session ID.");
+            Log.Warning("Event bot error. Couldn't read session ID.");
             WebSocketClient.CloseAsync(WebSocketCloseStatus.NormalClosure, null, CancellationToken.None);
           }
           else
@@ -91,12 +93,12 @@ public static class Events
 
             if (!anySubscriptionSucceeded)
             {
-              MainWindow.ConsoleWarning(">> Events bot: every subscription failed, websocket connection would get disconnected every 10 seconds, closing events bot!");
+              Log.Warning("Events bot every subscription failed, websocket connection would get disconnected every 10 seconds, closing events bot!");
               return;
             }
           }
         }
-        else { MainWindow.ConsoleWarning($">> Events bot couldn't connect to {WEBSOCKETURL}."); }
+        else { Log.Warning("Events bot couldn't connect to {url}.", WEBSOCKETURL); }
 
         zeroBytesReceivedCounter = 0;
       }
@@ -105,7 +107,7 @@ public static class Events
       {
         // During debugging ReceiveAsync may return an exception when paused for too long
         try { receiveResult = WebSocketClient.ReceiveAsync(receiveBuffer, CancellationToken.None).Result; }
-        catch (AggregateException ex) { MainWindow.ConsoleWarning($">> Events bot error: {ex.Message}"); receiveResult = null; }
+        catch (AggregateException ex) { Log.Error("Events bot error: {ex}", ex); receiveResult = null; }
 
         if (receiveResult?.Count > 0)
         {
@@ -116,7 +118,7 @@ public static class Events
           if (messageDeserialized?.Metadata?.MessageType?.Equals("session_keepalive") == true)
           {
             // Keep alive message, if it wasn't received in "keepalive_timeout_seconds" time from welcome message the connection should be restarted
-            // MainWindow.ConsoleWarning(">> Events bot got keepalive message.");
+            // Log.Information("Events bot got keepalive message.");
           }
           else if (messageDeserialized?.Metadata?.MessageType?.Equals("notification") == true)
           {
@@ -131,10 +133,10 @@ public static class Events
                 if (c.LastTimeFollowed.Date != DateTime.Now.Date)
                 {
                   c.SetLastTimeFollowedToNow();
-                  MainWindow.ConsoleWarning($">> New follow from {c.Name}.");
+                  Log.Information("New follow from {name}.", c.Name);
                   Notifications.CreateFollowNotification(payload?.Event?.UserName);
                 }
-                else { MainWindow.ConsoleWarning($">> {c.Name} refollowed again in the same day."); }
+                else { Log.Information("{name} refollowed again in the same day.", c.Name); }
               }
             }
             else if (messageDeserialized?.Metadata?.SubscriptionType?.Equals("channel.subscribe") == true)
@@ -143,12 +145,12 @@ public static class Events
               Payload payload = Payload.Deserialize(messageDeserialized?.Payload);
               if (payload?.Event?.IsGift == true)
               {
-                MainWindow.ConsoleWarning($">> {payload?.Event?.UserName} received a gift subscription.");
+                Log.Information("{name} received a gift subscription.", payload?.Event?.UserName);
                 Notifications.CreateReceiveGiftSubscriptionNotification(payload?.Event?.UserName, payload?.Subscription?.CreatedAt);
               }
               else
               {
-                MainWindow.ConsoleWarning($">> New subscription from {payload?.Event?.UserName}.");
+                Log.Information("New subscription from {name}.", payload?.Event?.UserName);
                 Notifications.CreateSubscriptionNotification(payload?.Event?.UserName, payload?.Event?.Tier, "");
               }
               // MainWindow.ConsoleWriteLine(message);
@@ -157,7 +159,7 @@ public static class Events
             {
               // Received gifted subscription event
               Payload payload = Payload.Deserialize(messageDeserialized?.Payload);
-              MainWindow.ConsoleWarning($">> {payload?.Event?.UserName} gifted {payload?.Event?.TotalGifted} subscription(s).");
+              Log.Information("{name} gifted {count} subscription(s).", payload?.Event?.UserName, payload?.Event?.TotalGifted);
               Notifications.CreateGiftSubscriptionNotification(
                 payload?.Event?.IsAnonymous == true ? null : payload?.Event?.UserName, payload?.Event?.Tier,
                 (int)payload?.Event?.TotalGifted,
@@ -169,7 +171,7 @@ public static class Events
             {
               // Received subscription with message event
               Payload payload = Payload.Deserialize(messageDeserialized?.Payload);
-              MainWindow.ConsoleWarning($">> New subscription from {payload?.Event?.UserName}. {payload?.Event?.Message.Text}");
+              Log.Information("New subscription from {name}. {msg}", payload?.Event?.UserName, payload?.Event?.Message.Text);
               Notifications.CreateSubscriptionNotification(
                 payload?.Event?.UserName, payload?.Event?.Tier,
                 (int)payload?.Event?.MonthsDuration.Value,
@@ -182,7 +184,7 @@ public static class Events
             {
               // Received cheer event
               PayloadCheer payload = PayloadCheer.Deserialize(messageDeserialized?.Payload);
-              MainWindow.ConsoleWarning($">> {payload?.Event?.UserName} cheered with {payload?.Event?.Bits} bits.");
+              Log.Information("{name} cheered with {count} bits.", payload?.Event?.UserName, payload?.Event?.Bits);
               Notifications.CreateCheerNotification(payload?.Event?.UserName, (int)payload?.Event?.Bits.Value, payload?.Event?.Message);
               // MainWindow.ConsoleWriteLine(message);
             }
@@ -190,7 +192,7 @@ public static class Events
             {
               // Received channel points redemption event
               Payload payload = Payload.Deserialize(messageDeserialized?.Payload);
-              MainWindow.ConsoleWarning($">> {payload?.Event?.UserName} redeemed ID: {payload?.Event?.Reward?.ID} with channel points.");
+              Log.Information("{name} redeemed ID: {id} with channel points.", payload?.Event?.UserName, payload?.Event?.Reward?.ID);
               Notifications.CreateRedemptionNotificaiton(payload?.Event?.UserName, payload?.Event?.Reward?.ID, payload?.Event?.ID, payload?.Event?.Reward?.Prompt);
               // MainWindow.ConsoleWriteLine(message);
             }
@@ -202,13 +204,13 @@ public static class Events
               {
                 if (payload.Event.IsPermanent == true)
                 {
-                  MainWindow.ConsoleWarning($">> {payload.Event.UserName} has been permanently banned. {payload.Event.Reason}.");
+                  Log.Information("{name} has been permanently banned. {msg}.", payload.Event.UserName, payload.Event.Reason);
                   Notifications.CreateBanNotification(payload.Event.UserName, payload.Event.Reason);
                 }
                 else
                 {
                   var duration = DateTime.Parse(payload.Event.EndsAt) - DateTime.Parse(payload.Event.BannedAt);
-                  MainWindow.ConsoleWarning($">> {payload.Event.UserName} was timed out for {duration}. {payload.Event.Reason}.");
+                  Log.Information("{name} was timed out for {duration}. {msg}.", payload.Event.UserName, duration, payload.Event.Reason);
                   Notifications.CreateTimeoutNotification(payload.Event.UserName, duration, payload.Event.Reason);
                 }
               }
@@ -237,7 +239,7 @@ public static class Events
           else if (messageDeserialized?.Metadata?.MessageType?.Equals("notification") == true)
           {
             // Reconnect message
-            MainWindow.ConsoleWarning(">> Event bot got session reconnect message. Should close the connection and use provided url as WEBSOCKETURL but not doing that because it's not mandatory.");
+            Log.Information("Event bot got session reconnect message. Should close the connection and use provided url as WEBSOCKETURL but not doing that because it's not mandatory.");
             // TODO: Think about it :)
             // The message is rare and is sent only when edge server that the client is connected to needs to be swapped.
             // Well if we would use it the events subscriptions are left untouched on the new url.
@@ -259,12 +261,12 @@ public static class Events
         }
         else
         {
-          MainWindow.ConsoleWarning(">> Events bot received 0 bytes.");
+          Log.Warning("Events bot received {count} bytes.", 0);
           zeroBytesReceivedCounter++;
           if (zeroBytesReceivedCounter >= 5)
           {
             // Close connection if 5 times in a row received 0 bytes
-            MainWindow.ConsoleWarning(">> Events bot connection lost, waiting 2 sec to reconnect.");
+            Log.Warning("Events bot connection lost, waiting 2 sec to reconnect.");
             WebSocketClient.CloseAsync(WebSocketCloseStatus.NormalClosure, null, CancellationToken.None);
             Thread.Sleep(2000);
             WebSocketClient = null;
@@ -276,7 +278,7 @@ public static class Events
 
       if (WebSocketClient.State != WebSocketState.Open)
       {
-        MainWindow.ConsoleWarning($">> Events bot connection lost, waiting 2 sec to reconnect. {WebSocketClient.CloseStatus} {WebSocketClient.CloseStatusDescription}");
+        Log.Warning("Events bot connection lost, waiting 2 sec to reconnect. {status}, {description}", WebSocketClient.CloseStatus, WebSocketClient.CloseStatusDescription);
         if (WebSocketClient.State != WebSocketState.Closed && WebSocketClient.State != WebSocketState.Aborted) WebSocketClient.CloseAsync(WebSocketCloseStatus.NormalClosure, null, CancellationToken.None);
         Thread.Sleep(2000);
         WebSocketClient = null;
@@ -287,7 +289,7 @@ public static class Events
   private static bool Subscribe(string type, string version, string sessionID)
   {
     // https://dev.twitch.tv/docs/eventsub/eventsub-subscription-types/
-    MainWindow.ConsoleWarning($">> Events bot subscribing to {type} event.");
+    Log.Information("Events bot subscribing to {type} event.", type);
     using HttpRequestMessage request = new(HttpMethod.Post, SUBSCRIPTIONRUL);
     request.Content = new StringContent(new SubscriptionMessage(type, version, Config.Data[Config.Keys.ChannelID], sessionID).ToJsonString(), Encoding.UTF8, "application/json");
     request.Headers.Add("Client-Id", Secret.Data[Secret.Keys.CustomerID]);
@@ -295,12 +297,12 @@ public static class Events
 
     string resp;
     try { resp = HttpClient.Send(request).Content.ReadAsStringAsync().Result; }
-    catch (HttpRequestException ex) { MainWindow.ConsoleWarning($">> Events bot subscription request failed. {ex.Message}"); return false; }
+    catch (HttpRequestException ex) { Log.Error("Events bot subscription request failed. {ex}", ex); return false; }
     var response = ResponseMessage.Deserialize(resp);
-    if (response.Error != null) { MainWindow.ConsoleWarning($">> Events bot subscription error: {response.Message}"); }
+    if (response.Error != null) { Log.Warning("Events bot subscription error: {msg}", response.Message); }
     else
     {
-      MainWindow.ConsoleWarning(string.Concat(">> Events bot subscription response: ", response.Data?[0].Type, " ", response.Data?[0].Status, "."));
+      Log.Information("Events bot subscription response: {type} {status}.", response.Data?[0].Type, response.Data?[0].Status);
       return true;
     }
     return false;

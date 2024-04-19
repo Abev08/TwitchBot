@@ -4,6 +4,8 @@ using System.IO;
 using System.Net.Http;
 using System.Windows.Input;
 
+using Serilog;
+
 namespace AbevBot;
 
 public static class Config
@@ -48,9 +50,8 @@ public static class Config
   public static bool ConsoleVisible { get; private set; }
   public static bool StartVideoEnabled { get; private set; } = true;
   public static bool VolumeValuesDirty { get; set; }
-  public static float VolumeTTS { get; set; }
-  public static float VolumeSounds { get; set; }
-  public static float VolumeVideos { get; set; }
+  public static float VolumeAudio { get; set; }
+  public static float VolumeVideo { get; set; }
   private static DateTime ConfigFileTimestamp;
   public static DateTime BroadcasterLastOnline;
   public static DateTime BroadcasterLastOnlineCheck { get; set; }
@@ -62,8 +63,8 @@ public static class Config
 
   public static bool ParseConfigFile(bool reload = false)
   {
-    if (reload) { MainWindow.ConsoleWarning($">> Reloading {FILENAME} file."); }
-    else { MainWindow.ConsoleWarning($">> Reading {FILENAME} file."); }
+    if (reload) { Log.Information("Reloading {file} file.", FILENAME); }
+    else { Log.Information("Reading {file} file.", FILENAME); }
 
     // Create resources folders just for user convenience (if they don't exist)
     DirectoryInfo dir = new("Resources/Sounds");
@@ -156,7 +157,7 @@ public static class Config
               currentNotifConfig = Notifications.ConfigBan;
               break;
             default:
-              MainWindow.ConsoleWarning($">> Bad config line {lineIndex}. Group header not recognized!");
+              Log.Warning("Bad config line {index}. Group header not recognized!", lineIndex);
               currentNotifConfig = null;
               break;
           }
@@ -225,7 +226,7 @@ public static class Config
               foreach (string k in keys)
               {
                 if (Enum.TryParse(typeof(Key), k, out position)) HotkeysForPauseNotification.Add((Key)position);
-                else MainWindow.ConsoleWarning($">> Keycode: {k} not recognized in line {lineIndex} in Config.ini file.");
+                else Log.Warning("Keycode: {key} not recognized in line {index} in Config.ini file.", k, lineIndex);
               }
               break;
 
@@ -234,30 +235,30 @@ public static class Config
               foreach (string k in keys)
               {
                 if (Enum.TryParse(typeof(Key), k, out position)) HotkeysForSkipNotification.Add((Key)position);
-                else MainWindow.ConsoleWarning($">> Keycode: {k} not recognized in line {lineIndex} in Config.ini file.");
+                else Log.Warning("Keycode: {key} not recognized in line {index} in Config.ini file.", k, lineIndex);
               }
               break;
 
             case Keys.Enable:
-              if (currentNotifConfig is null) MainWindow.ConsoleWarning($">> Bad config line {lineIndex}. Missing previous group header definition!");
+              if (currentNotifConfig is null) Log.Warning("Bad config line {index}. Missing previous group header definition!", lineIndex);
               else if (bool.TryParse(text[1], out result)) currentNotifConfig.Enable = result;
-              else MainWindow.ConsoleWarning($">> Bad config line {lineIndex}. Value not recognized!");
+              else Log.Warning("Bad config line {index}. Value not recognized!", lineIndex);
               break;
             case Keys.ChatMessage:
-              if (currentNotifConfig is null) MainWindow.ConsoleWarning($">> Bad config line {lineIndex}. Missing previous group header definition!");
+              if (currentNotifConfig is null) Log.Warning("Bad config line {index}. Missing previous group header definition!", lineIndex);
               else currentNotifConfig.ChatMessage = text[1].Trim();
               break;
             case Keys.TextToDisplay:
-              if (currentNotifConfig is null) MainWindow.ConsoleWarning($">> Bad config line {lineIndex}. Missing previous group header definition!");
+              if (currentNotifConfig is null) Log.Warning("Bad config line {index}. Missing previous group header definition!", lineIndex);
               else currentNotifConfig.TextToDisplay = text[1].Trim();
               break;
             case Keys.TextPosition:
-              if (currentNotifConfig is null) MainWindow.ConsoleWarning($">> Bad config line {lineIndex}. Missing previous group header definition!");
+              if (currentNotifConfig is null) Log.Warning("Bad config line {index}. Missing previous group header definition!", lineIndex);
               else if (Enum.TryParse(typeof(Notifications.TextPosition), text[1].Trim(), out position)) currentNotifConfig.TextPosition = (Notifications.TextPosition)position;
-              else MainWindow.ConsoleWarning($">> Bad config line {lineIndex}. Value not recognized!");
+              else Log.Warning("Bad config line {index}. Value not recognized!", lineIndex);
               break;
             case Keys.TextSize:
-              if (currentNotifConfig is null) MainWindow.ConsoleWarning($">> Bad config line {lineIndex}. Missing previous group header definition!");
+              if (currentNotifConfig is null) Log.Warning("Bad config line {index}. Missing previous group header definition!", lineIndex);
               else if (text[1].Length > 0)
               {
                 string separator = System.Globalization.CultureInfo.CurrentCulture.NumberFormat.NumberDecimalSeparator;
@@ -265,23 +266,23 @@ public static class Config
                 if (separator == ",") numString = numString.Replace('.', ',');
                 else if (separator == ".") numString = numString.Replace(',', '.');
                 if (double.TryParse(numString, out double size) && size >= 0.1) currentNotifConfig.TextSize = size;
-                else MainWindow.ConsoleWarning($">> Bad config line {lineIndex}. Value not recognized!");
+                else Log.Warning("Bad config line {index}. Value not recognized!", lineIndex);
               }
               break;
             case Keys.TextToSpeech:
-              if (currentNotifConfig is null) MainWindow.ConsoleWarning($">> Bad config line {lineIndex}. Missing previous group header definition!");
+              if (currentNotifConfig is null) Log.Warning("Bad config line {index}. Missing previous group header definition!", lineIndex);
               else currentNotifConfig.TextToSpeech = text[1].Trim();
               break;
             case Keys.SoundToPlay:
-              if (currentNotifConfig is null) MainWindow.ConsoleWarning($">> Bad config line {lineIndex}. Missing previous group header definition!");
+              if (currentNotifConfig is null) Log.Warning("Bad config line {index}. Missing previous group header definition!", lineIndex);
               else if (text[1].Length > 0) currentNotifConfig.SoundToPlay = $"Resources\\{text[1].Trim()}";
               break;
             case Keys.VideoToPlay:
-              if (currentNotifConfig is null) MainWindow.ConsoleWarning($">> Bad config line {lineIndex}. Missing previous group header definition!");
+              if (currentNotifConfig is null) Log.Warning("Bad config line {index}. Missing previous group header definition!", lineIndex);
               else if (text[1].Length > 0) currentNotifConfig.VideoToPlay = $"Resources\\{text[1].Trim()}";
               break;
             case Keys.VideoPosition:
-              if (currentNotifConfig is null) { MainWindow.ConsoleWarning($">> Bad config line {lineIndex}. Missing previous group header definition!"); }
+              if (currentNotifConfig is null) { Log.Warning("Bad config line {index}. Missing previous group header definition!", lineIndex); }
               else if (text[1].Length > 0)
               {
                 var stringNums = text[1].Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
@@ -293,7 +294,7 @@ public static class Config
                   {
                     if (!double.TryParse(stringNums[i], out nums[i]))
                     {
-                      MainWindow.ConsoleWarning($">> Bad config line {lineIndex}. Value {i + 1} not recognized!");
+                      Log.Warning("Bad config line {index}. Value {val} not recognized!", lineIndex, i + 1);
                       ok = false;
                     }
                   }
@@ -304,11 +305,11 @@ public static class Config
                     currentNotifConfig.VideoParams.Top = nums[1];
                   }
                 }
-                else MainWindow.ConsoleWarning($">> Bad config line {lineIndex}. Not enough or too many values!");
+                else Log.Warning("Bad config line {index}. Not enough or too many values!", lineIndex);
               }
               break;
             case Keys.VideoSize:
-              if (currentNotifConfig is null) MainWindow.ConsoleWarning($">> Bad config line {lineIndex}. Missing previous group header definition!");
+              if (currentNotifConfig is null) Log.Warning("Bad config line {index}. Missing previous group header definition!", lineIndex);
               else if (text[1].Length > 0)
               {
                 var stringNums = text[1].Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
@@ -320,7 +321,7 @@ public static class Config
                   {
                     if (!double.TryParse(stringNums[i], out nums[i]))
                     {
-                      MainWindow.ConsoleWarning($">> Bad config line {lineIndex}. Value {i + 1} not recognized!");
+                      Log.Warning("Bad config line {index}. Value {val} not recognized!", lineIndex, i + 1);
                       ok = false;
                     }
                   }
@@ -335,36 +336,36 @@ public static class Config
                     currentNotifConfig.VideoParams.Height = nums[1];
                   }
                 }
-                else MainWindow.ConsoleWarning($">> Bad config line {lineIndex}. Not enough or too many values!");
+                else Log.Warning("Bad config line {index}. Not enough or too many values!", lineIndex);
               }
               break;
             case Keys.MinimumRaiders:
-              if (currentNotifConfig is null) MainWindow.ConsoleWarning($">> Bad config line {lineIndex}. Missing previous group header definition!");
+              if (currentNotifConfig is null) Log.Warning("Bad config line {index}. Missing previous group header definition!", lineIndex);
               else if (text[1].Length > 0)
               {
                 if (int.TryParse(text[1], out temp2)) currentNotifConfig.MinimumRaiders = temp2;
-                else MainWindow.ConsoleWarning($">> Bad config line {lineIndex}. Value not recognized!");
+                else Log.Warning("Bad config line {index}. Value not recognized!", lineIndex);
               }
               break;
             case Keys.DoShoutout:
-              if (currentNotifConfig is null) MainWindow.ConsoleWarning($">> Bad config line {lineIndex}. Missing previous group header definition!");
+              if (currentNotifConfig is null) Log.Warning("Bad config line {index}. Missing previous group header definition!", lineIndex);
               else if (bool.TryParse(text[1], out result)) currentNotifConfig.DoShoutout = result;
-              else MainWindow.ConsoleWarning($">> Bad config line {lineIndex}. Value not recognized!");
+              else Log.Warning("Bad config line {index}. Value not recognized!", lineIndex);
               break;
             case Keys.MinimumDuration:
-              if (currentNotifConfig is null) MainWindow.ConsoleWarning($">> Bad config line {lineIndex}. Missing previous group header definition!");
+              if (currentNotifConfig is null) Log.Warning("Bad config line {index}. Missing previous group header definition!", lineIndex);
               else if (text[1].Length > 0)
               {
                 if (TimeSpan.TryParse(text[1], out timeSpan)) currentNotifConfig.MinimumTime = TimeSpan.FromTicks(timeSpan.Ticks);
-                else MainWindow.ConsoleWarning($">> Bad config line {lineIndex}. Value not recognized!");
+                else Log.Warning("Bad config line {index}. Value not recognized!", lineIndex);
               }
               break;
             case Keys.MinimumBitsForTTS:
               if (text[1].Length > 0)
               {
-                if (currentNotifConfig is null) MainWindow.ConsoleWarning($">> Bad config line {lineIndex}. Missing previous group header definition!");
+                if (currentNotifConfig is null) Log.Warning("Bad config line {index}. Missing previous group header definition!", lineIndex);
                 else if (int.TryParse(text[1], out temp2)) currentNotifConfig.MinimumBits = temp2;
-                else MainWindow.ConsoleWarning($">> Bad config line {lineIndex}. Value not recognized!");
+                else Log.Warning("Bad config line {index}. Value not recognized!", lineIndex);
               }
               break;
 
@@ -392,21 +393,21 @@ public static class Config
               if (text[1].Length == 0) continue;
               if (redemption is null)
               {
-                MainWindow.ConsoleWarning($">> Bad config line {lineIndex}. Missing previous ID filed declaration!");
+                Log.Warning("Bad config line {index}. Missing previous ID filed declaration!", lineIndex);
                 continue;
               }
               keys = text[1].Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
               foreach (string k in keys)
               {
                 if (Enum.TryParse(typeof(Key), k, out position)) redemption.KeysToPress.Add((Key)position);
-                else MainWindow.ConsoleWarning($">> Keycode: {k} not recognized in line {lineIndex} in Config.ini file.");
+                else Log.Warning("Keycode: {key} not recognized in line {index} in Config.ini file.", k, lineIndex);
               }
               break;
             case Keys.ChannelRedemption_KeyActionType:
               if (text[1].Length == 0) continue;
               if (redemption is null)
               {
-                MainWindow.ConsoleWarning($">> Bad config line {lineIndex}. Missing previous ID filed declaration!");
+                Log.Warning("Bad config line {index}. Missing previous ID filed declaration!", lineIndex);
                 continue;
               }
               if (Enum.TryParse(typeof(KeyActionType), text[1].Trim(), out position)) redemption.KeysToPressType = (KeyActionType)position;
@@ -415,25 +416,25 @@ public static class Config
               if (text[1].Length == 0) continue;
               if (redemption is null)
               {
-                MainWindow.ConsoleWarning($">> Bad config line {lineIndex}. Missing previous ID filed declaration!");
+                Log.Warning("Bad config line {index}. Missing previous ID filed declaration!", lineIndex);
                 continue;
               }
               keys = text[1].Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
               if (int.TryParse(keys[0], out temp2)) redemption.TimeToPressSecondAction = TimeSpan.FromMilliseconds(temp2);
-              else MainWindow.ConsoleWarning($">> Action time {keys[0]} not recognized in line {lineIndex} in Config.ini file.");
+              else Log.Warning("Action time {key} not recognized in line {index} in Config.ini file.", keys[0], lineIndex);
               keys[0] = string.Empty;
               foreach (string k in keys)
               {
                 if (k?.Length == 0) continue;
                 if (Enum.TryParse(typeof(Key), k, out position)) redemption.KeysToPressAfterTime.Add((Key)position);
-                else MainWindow.ConsoleWarning($">> Keycode: {k} not recognized in line {lineIndex} in Config.ini file.");
+                else Log.Warning("Keycode: {key} not recognized in line {index} in Config.ini file.", k, lineIndex);
               }
               break;
             case Keys.ChannelRedemption_KeyActionAfterTimeType:
               if (text[1].Length == 0) continue;
               if (redemption is null)
               {
-                MainWindow.ConsoleWarning($">> Bad config line {lineIndex}. Missing previous ID filed declaration!");
+                Log.Warning("Bad config line {index}. Missing previous ID filed declaration!", lineIndex);
                 continue;
               }
               if (Enum.TryParse(typeof(KeyActionType), text[1].Trim(), out position)) redemption.KeysToPressAfterTimeType = (KeyActionType)position;
@@ -442,7 +443,7 @@ public static class Config
               if (text[1].Length == 0) continue;
               if (redemption is null)
               {
-                MainWindow.ConsoleWarning($">> Bad config line {lineIndex}. Missing previous ID filed declaration!");
+                Log.Warning("Bad config line {index}. Missing previous ID filed declaration!", lineIndex);
                 continue;
               }
               redemption.Config.ChatMessage = text[1].Trim();
@@ -451,7 +452,7 @@ public static class Config
               if (text[1].Length == 0) continue;
               if (redemption is null)
               {
-                MainWindow.ConsoleWarning($">> Bad config line {lineIndex}. Missing previous ID filed declaration!");
+                Log.Warning("Bad config line {index}. Missing previous ID filed declaration!", lineIndex);
                 continue;
               }
               redemption.Config.TextToDisplay = text[1].Trim();
@@ -460,7 +461,7 @@ public static class Config
               if (text[1].Length == 0) continue;
               if (redemption is null)
               {
-                MainWindow.ConsoleWarning($">> Bad config line {lineIndex}. Missing previous ID filed declaration!");
+                Log.Warning("Bad config line {index}. Missing previous ID filed declaration!", lineIndex);
                 continue;
               }
               if (Enum.TryParse(typeof(Notifications.TextPosition), text[1].Trim(), out position)) redemption.Config.TextPosition = (Notifications.TextPosition)position;
@@ -469,7 +470,7 @@ public static class Config
               if (text[1].Length == 0) continue;
               if (redemption is null)
               {
-                MainWindow.ConsoleWarning($">> Bad config line {lineIndex}. Missing previous ID filed declaration!");
+                Log.Warning("Bad config line {index}. Missing previous ID filed declaration!", lineIndex);
                 continue;
               }
               redemption.Config.TextToSpeech = text[1].Trim();
@@ -478,7 +479,7 @@ public static class Config
               if (text[1].Length == 0) continue;
               if (redemption is null)
               {
-                MainWindow.ConsoleWarning($">> Bad config line {lineIndex}. Missing previous ID filed declaration!");
+                Log.Warning("Bad config line {index}. Missing previous ID filed declaration!", lineIndex);
                 continue;
               }
               if (text[1].Length > 0) redemption.Config.SoundToPlay = $"Resources\\{text[1].Trim()}";
@@ -487,7 +488,7 @@ public static class Config
               if (text[1].Length == 0) continue;
               if (redemption is null)
               {
-                MainWindow.ConsoleWarning($">> Bad config line {lineIndex}. Missing previous ID filed declaration!");
+                Log.Warning("Bad config line {index}. Missing previous ID filed declaration!", lineIndex);
                 continue;
               }
               if (text[1].Length > 0) redemption.Config.VideoToPlay = $"Resources\\{text[1].Trim()}";
@@ -495,7 +496,7 @@ public static class Config
             case Keys.ChannelRedemption_MarkAsFulfilled:
               if (redemption is null)
               {
-                MainWindow.ConsoleWarning($">> Bad config line {lineIndex}. Missing previous ID filed declaration!");
+                Log.Warning("Bad config line {index}. Missing previous ID filed declaration!", lineIndex);
                 continue;
               }
               if (bool.TryParse(text[1], out result)) redemption.MarkAsFulfilled = result;
@@ -539,7 +540,7 @@ public static class Config
                   {
                     if (!double.TryParse(stringNums[i], out nums[i]))
                     {
-                      MainWindow.ConsoleWarning($">> Bad config line {lineIndex}. Value {i + 1} not recognized!");
+                      Log.Warning("Bad config line {index}. Value {val} not recognized!", lineIndex, i + 1);
                       ok = false;
                     }
                   }
@@ -554,7 +555,7 @@ public static class Config
                     Notifications.RandomVideoParameters.Height = nums[1];
                   }
                 }
-                else MainWindow.ConsoleWarning($">> Bad config line {lineIndex}. Not enough or too many values!");
+                else Log.Warning("Bad config line {index}. Not enough or too many values!", lineIndex);
               }
               break;
             case Keys.ChannelRedemption_RandomVideo_Position:
@@ -569,7 +570,7 @@ public static class Config
                   {
                     if (!double.TryParse(stringNums[i], out nums[i]))
                     {
-                      MainWindow.ConsoleWarning($">> Bad config line {lineIndex}. Value {i + 1} not recognized!");
+                      Log.Warning("Bad config line {index}. Value {val} not recognized!", lineIndex, i + 1);
                       ok = false;
                     }
                   }
@@ -580,32 +581,28 @@ public static class Config
                     Notifications.RandomVideoParameters.Top = nums[1];
                   }
                 }
-                else MainWindow.ConsoleWarning($">> Bad config line {lineIndex}. Not enough or too many values!");
+                else Log.Warning("Bad config line {index}. Not enough or too many values!", lineIndex);
               }
               break;
 
             default:
               if (Data.ContainsKey((Keys)key)) { Data[(Keys)key] = text[1].Trim(); }
-              else MainWindow.ConsoleWarning($">> Not recognized key '{text[0]}' on line {lineIndex} in Config.ini file.");
+              else Log.Warning("Not recognized key '{key}' on line {index} in Config.ini file.", text[0], lineIndex);
               break;
           }
         }
-        else { MainWindow.ConsoleWarning($">> Not recognized key '{text[0]}' on line {lineIndex} in Config.ini file."); }
+        else { Log.Warning("Not recognized key '{key}' on line {index} in Config.ini file.", text[0], lineIndex); }
       }
 
       // Check if all needed data was read
       if (Data[Keys.ChannelName].Length == 0)
       {
-        MainWindow.ConsoleWarning(string.Concat(
-          $">> Missing required info in {FILENAME} file.", Environment.NewLine,
-          $"Look inside \"Required information in {FILENAME}\" section in README for help.", Environment.NewLine,
-          $"You can delete {FILENAME} file to generate new one. ! WARNING - ALL DATA INSIDE IT WILL BE LOST !"
-        ));
+        Log.Error("Missing required info in {file} file.\r\nLook inside \"Required information in {file}\" section in README for help.\r\nYou can delete {file} file to generate new one. ! WARNING - ALL DATA INSIDE IT WILL BE LOST !", FILENAME, FILENAME, FILENAME);
         return true;
       }
 
       // Nothing is missing, do some setup things
-      MainWindow.ConsoleWarning($">> Loaded {Chat.PeriodicMessages.Count} periodic messages.");
+      Log.Information("Loaded {count} periodic messages.", Chat.PeriodicMessages.Count);
     }
 
     ConfigFileTimestamp = configFile.LastWriteTime;
@@ -613,6 +610,9 @@ public static class Config
     return false;
   }
 
+  /// <summary> Creates new Config.ini file. </summary>
+  /// <param name="file">FileInfo object describing file parameters</param>
+  /// <param name="example">Is this example Config.ini file?</param>
   private static void CreateConfigFile(FileInfo file, bool example = false)
   {
     using (StreamWriter writer = new(file.FullName))
@@ -884,14 +884,12 @@ public static class Config
     if (!example)
     {
       // Notify the user
-      MainWindow.ConsoleWarning(string.Concat(
-        $">> Missing required info in {FILENAME} file.", Environment.NewLine,
-        "The file was generated.", Environment.NewLine,
-        "Please fill it up and restart the bot."
-      ));
+      Log.Error("Missing required info in {file} file.\r\nThe file was generated.\r\nPlease fill it up and restart the bot.", FILENAME);
     }
   }
 
+  /// <summary> Checks if Config.ini file was updated. </summary>
+  /// <returns><value>true</value> if the file was updated, otherwise <value>false</value></returns>
   public static bool IsConfigFileUpdated()
   {
     FileInfo file = new(FILENAME);
@@ -908,15 +906,14 @@ public static class Config
     if (!VolumeValuesDirty) return;
     VolumeValuesDirty = false;
 
-    await Database.UpdateValueInConfig(Database.Keys.VolumeTTS, VolumeTTS.ToString().Replace('.', ','));
-    await Database.UpdateValueInConfig(Database.Keys.VolumeSounds, VolumeSounds.ToString().Replace('.', ','));
-    await Database.UpdateValueInConfig(Database.Keys.VolumeVideos, VolumeVideos.ToString().Replace('.', ','));
+    await Database.UpdateValueInConfig(Database.Keys.VolumeAudio, VolumeAudio.ToString().Replace('.', ','));
+    await Database.UpdateValueInConfig(Database.Keys.VolumeVideo, VolumeVideo.ToString().Replace('.', ','));
   }
 
   /// <summary> Gets Broadcaster ID from Channel Name. Should be used once at bot startup. </summary>
   public static void GetBroadcasterID()
   {
-    MainWindow.ConsoleWarning(">> Getting broadcaster ID.");
+    Log.Information("Getting broadcaster ID.");
     string uri = $"https://api.twitch.tv/helix/users?login={Config.Data[Config.Keys.ChannelName]}";
     using HttpRequestMessage request = new(HttpMethod.Get, uri);
     request.Headers.Add("Authorization", $"Bearer {Secret.Data[Secret.Keys.OAuthToken]}");
@@ -924,17 +921,17 @@ public static class Config
 
     string resp;
     try { resp = Notifications.Client.Send(request).Content.ReadAsStringAsync().Result; }
-    catch (HttpRequestException ex) { MainWindow.ConsoleWarning($">> Couldn't acquire broadcaster ID. {ex.Message}"); return; }
+    catch (HttpRequestException ex) { Log.Error("Couldn't acquire broadcaster ID. {ex}", ex); return; }
     var response = ChannelIDResponse.Deserialize(resp);
     if (response != null && response?.Data?.Length == 1) { Config.Data[Config.Keys.ChannelID] = response.Data[0].ID; }
-    else { MainWindow.ConsoleWarning(">> Couldn't acquire broadcaster ID. Probably defined channel name doesn't exist."); }
+    else { Log.Warning("Couldn't acquire broadcaster ID. Probably defined channel name doesn't exist."); }
   }
 
   /// <summary> Gets current broadcaster status. </summary>
   /// <returns>true if the stream is online, otherwise false.</returns>
   public static bool GetBroadcasterStatus()
   {
-    MainWindow.ConsoleWarning(">> Getting broadcaster status.");
+    Log.Information("Getting broadcaster status.");
     string uri = string.Concat(
       "https://api.twitch.tv/helix/search/channels",
       "?query=", Config.Data[Config.Keys.ChannelName].Replace(" ", "%20")
@@ -945,16 +942,16 @@ public static class Config
 
     string resp;
     try { resp = Notifications.Client.Send(request).Content.ReadAsStringAsync().Result; }
-    catch (HttpRequestException ex) { MainWindow.ConsoleWarning($">> Couldn't acquire stream status. {ex.Message}"); return false; }
+    catch (HttpRequestException ex) { Log.Error("Couldn't acquire stream status. {ex}", ex); return false; }
     if (resp is null || resp.Length == 0 || resp.StartsWith('<'))
     {
-      MainWindow.ConsoleWarning(">> Couldn't acquire stream status.");
+      Log.Warning("Couldn't acquire stream status.");
       return false;
     }
     var response = StatusResponse.Deserialize(resp);
     if (response is null || response.Data is null || response.Data.Length == 0)
     {
-      MainWindow.ConsoleWarning(">> Couldn't acquire stream status.");
+      Log.Warning("Couldn't acquire stream status.");
       return false;
     }
     else

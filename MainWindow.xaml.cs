@@ -11,6 +11,8 @@ using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
 
+using Serilog;
+
 namespace AbevBot;
 
 public partial class MainWindow : Window
@@ -38,6 +40,8 @@ public partial class MainWindow : Window
   private Thickness playerDesiredPosition = new();
   private Notifications.TextPosition tbTextPositionAnchor;
   private bool TextPositionShouldUpdate;
+  /// <summary> Window / program close was requested. </summary>
+  public static bool CloseRequested { get; private set; }
 
   public MainWindow(string[] args = null)
   {
@@ -52,17 +56,27 @@ public partial class MainWindow : Window
       writer.WriteLine(ex.ExceptionObject);
     };
 
-    AllocConsole();
+    // Configure the logger
+    Log.Logger = new LoggerConfiguration()
+#if DEBUG
+      .MinimumLevel.Debug()
+#endif
+      .WriteTo.Console()
+      .CreateLogger();
+
+    // AllocConsole();
     // Free console window on program close
     Closing += (sender, e) =>
     {
+      CloseRequested = true;
+      Log.Information("Bot close requested");
       Chatter.UpdateChattersFile(true);
       Config.UpdateVolumes();
       ConsoleFreed = true;
       FreeConsole();
     };
 
-    ConsoleWarning(">> Hi. I'm AbevBot.");
+    Log.Information("Hi. I'm {AbevBot}.", "AbevBot");
 
     // Read Secrets.ini and Config.ini
     bool error = false;
@@ -86,7 +100,7 @@ public partial class MainWindow : Window
         if (result.IsSuccessStatusCode) break;
       }
       catch { }
-      ConsoleWarning(">> Internet connection not active. Waiting 5 s and trying out again.");
+      Log.Warning("Internet connection not active. Waiting 5 s and trying out again.");
       Thread.Sleep(5000);
     } while (true);
 
@@ -103,6 +117,7 @@ public partial class MainWindow : Window
     Chat.Start(); // Start chat bot
     Events.Start(); // Start events bot
     Notifications.Start(); // Start notifications on MainWindow
+    Server.Start(); // Start http server
 
     // Wait for window to be loaded (visible) to start a demo video
     Loaded += (sender, e) =>
@@ -118,7 +133,7 @@ public partial class MainWindow : Window
         var currentStyle = GetWindowLong(hwndSource.Handle, GWL_STYLE);
         SetWindowLong(hwndSource.Handle, GWL_STYLE, currentStyle & ~WS_MINIMIZEBOX);
       }
-      catch (Exception ex) { ConsoleWarning($">> {ex.Message}"); }
+      catch (Exception ex) { Log.Error("{exception}", ex); }
 
       if (Config.StartVideoEnabled)
       {
@@ -126,7 +141,7 @@ public partial class MainWindow : Window
         {
           // VideoPath = "Resources/peepoHey.mp4",
           VideoPath = "Resources/bot.mp4",
-          VideoVolume = Config.VolumeVideos,
+          VideoVolume = Config.VolumeVideo,
         });
       }
     };
@@ -146,6 +161,8 @@ public partial class MainWindow : Window
       bool hotkeyActive;
       while (true)
       {
+        if (CloseRequested) { break; }
+
         // every tick check for active hotkeys
         if (shouldHotkeysBeChecked)
         {
@@ -165,7 +182,7 @@ public partial class MainWindow : Window
                 {
                   hotkeyPausePressed = true;
                   PauseNotificationsClicked(btnPause, null);
-                  ConsoleWarning(">> Notification pause hotkey activated.");
+                  Log.Information("Notification pause hotkey activated.");
                 }
               }
               else { hotkeyPausePressed = false; }
@@ -185,7 +202,7 @@ public partial class MainWindow : Window
                 {
                   hotkeySkipPressed = true;
                   SkipNotificationClicked(btnSkip, null);
-                  ConsoleWarning(">> Notification skip hotkey activated.");
+                  Log.Information("Notification skip hotkey activated.");
                 }
               }
               else { hotkeySkipPressed = false; }
@@ -239,20 +256,12 @@ public partial class MainWindow : Window
     FinishedLoading = true;
   }
 
-  public static void ConsoleWarning(string text, ConsoleColor color = ConsoleColor.DarkYellow)
+  /// <summary> Writes a message to console window. </summary>
+  /// <param name="msg">The message</param>
+  public static void ConsoleWriteLine(string msg)
   {
     if (ConsoleFreed) return;
-
-    Console.ForegroundColor = color;
-    Console.WriteLine(text);
-    Console.ResetColor();
-  }
-
-  public static void ConsoleWriteLine(string text)
-  {
-    if (ConsoleFreed) return;
-
-    Console.WriteLine(text);
+    Console.WriteLine(msg);
   }
 
   private void PauseNotificationsClicked(object sender, RoutedEventArgs e)
@@ -456,6 +465,22 @@ public partial class MainWindow : Window
     }));
   }
 
+  public void PauseVideoPlayer()
+  {
+    Dispatcher.Invoke(new Action(() =>
+    {
+      VideoPlayer.Pause();
+    }));
+  }
+
+  public void ResumeVideoPlayer()
+  {
+    Dispatcher.Invoke(new Action(() =>
+    {
+      VideoPlayer.Play();
+    }));
+  }
+
   public void SetNotificationQueueCount(int count)
   {
     Dispatcher.Invoke(new Action(() =>
@@ -531,7 +556,7 @@ public partial class MainWindow : Window
       // VideoPath = "Resources/peepoHey.mp4",
       // VideoVolume = Config.VolumeVideos,
       VideoPath = "Resources/bot.mp4",
-      VideoVolume = Config.VolumeVideos,
+      VideoVolume = Config.VolumeVideo,
     });
   }
 
@@ -576,28 +601,21 @@ public partial class MainWindow : Window
     }
   }
 
-  private void VolumeTTSChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+  private void VolumeAudioChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
   {
-    tbVolumeTTS.Text = $"TTS Volume: {e.NewValue}%";
-    Config.VolumeTTS = (float)e.NewValue / 100f;
+    tbVolumeAudio.Text = $"Sounds Volume: {e.NewValue}%";
+    Config.VolumeAudio = (float)e.NewValue / 100f;
     if (FinishedLoading) Config.VolumeValuesDirty = true;
   }
 
-  private void VolumeSoundsChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+  private void VolumeVideoChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
   {
-    tbVolumeSounds.Text = $"Sounds Volume: {e.NewValue}%";
-    Config.VolumeSounds = (float)e.NewValue / 100f;
+    tbVolumeVideo.Text = $"Videos Volume: {e.NewValue}%";
+    Config.VolumeVideo = (float)e.NewValue / 100f;
     if (FinishedLoading) Config.VolumeValuesDirty = true;
   }
 
-  private void VolumeVideosChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
-  {
-    tbVolumeVideos.Text = $"Videos Volume: {e.NewValue}%";
-    Config.VolumeVideos = (float)e.NewValue / 100f;
-    if (FinishedLoading) Config.VolumeValuesDirty = true;
-  }
-
-  private void VolumeChange(object sender, System.Windows.Input.MouseWheelEventArgs e)
+  private void VolumeChange(object sender, MouseWheelEventArgs e)
   {
     ((Slider)sender).Value += e.Delta > 0 ? 1 : -1;
   }
@@ -605,9 +623,8 @@ public partial class MainWindow : Window
   /// <summary> Sets volume sliders value to values present in Config class. </summary>
   public void SetVolumeSliderValues()
   {
-    volumeTTS.Value = MathF.Round(Config.VolumeTTS * 100);
-    volumeSounds.Value = MathF.Round(Config.VolumeSounds * 100);
-    volumeVideos.Value = MathF.Round(Config.VolumeVideos * 100);
+    volumeAudio.Value = MathF.Round(Config.VolumeAudio * 100);
+    volumeVideo.Value = MathF.Round(Config.VolumeVideo * 100);
   }
 
   /// <summary> Sets enabled checkboxes statuses to values present in relevant classes. </summary>

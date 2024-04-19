@@ -6,50 +6,70 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 
+using Serilog;
+
 namespace AbevBot;
 
 public static class Chat
 {
-  private const int MESSAGESENTMAXLEN = 460; // 500 characters Twitch limit, -40 characters as a buffer
+  /// <summary> Maximum number of characters in one message. 500 characters Twitch limit, -40 characters as a buffer </summary>
+  private const int MESSAGESENTMAXLEN = 460;
+  /// <summary> Path to .csv file with response messages. </summary>
   private const string RESPONSEMESSAGESPATH = "Resources/ResponseMessages.csv";
 
-  /// <summary> Chat bot started. </summary>
-  public static bool Started { get; private set; }
+  /// <summary> Is chat bot started? </summary>
+  public static bool IsStarted { get; private set; }
+  /// <summary> TCP Socket connection to Twitch server. </summary>
   private static Socket ChatSocket = null;
+  /// <summary> Minimum time between the same response message. </summary>
   private static readonly TimeSpan CooldownBetweenTheSameMessage = new(0, 0, 10);
-  public static readonly Dictionary<string, (string, DateTime)> ResponseMessages = new();
+  /// <summary> Collection of response messages. </summary>
+  public static readonly Dictionary<string, (string response, DateTime lastUsed)> ResponseMessages = new();
+  /// <summary> Chat bot receive messages thread. </summary>
   private static Thread ChatReceiveThread;
+  /// <summary> Chat bot send messages thread. </summary>
   private static Thread ChatSendThread;
-  public static List<string> PeriodicMessages { get; set; } = new();
+  /// <summary> Collection of periodic messages. </summary>
+  public static readonly List<string> PeriodicMessages = new();
+  /// <summary> Index of last send periodic message. </summary>
   private static int PeriodicMessageIndex = -1;
+  /// <summary> Time of last send periodic message. </summary>
   private static DateTime LastPeriodicMessage = DateTime.Now;
+  /// <summary> Minimum time interval between periodic messages. </summary>
   public static TimeSpan PeriodicMessageInterval = new(0, 10, 0);
+  /// <summary> Minimum amount of chat messages between periodic message can be sent. </summary>
   public static int PeriodicMessageMinChatMessages = 10;
+  /// <summary> Count of chat messages from the last periodic message. </summary>
+  private static int ChatMessagesSinceLastPeriodicMessage;
+  /// <summary> Queue of messages to be sent to the chat. </summary>
   private static readonly List<string> MessageQueue = new();
+  /// <summary> Additional HTTP client used for some Twitch commands. </summary>
   private static readonly HttpClient Client = new();
+  /// <summary> Last modified date and time of response messages file (used for hot reloading). </summary>
   private static DateTime RespMsgFileTimestamp;
+  /// <summary> List of chatters that requested song skip. </summary>
   private static readonly List<SkipSongChatter> SkipSongChatters = new();
-  private static int s_chatMessagesSinceLastPeriodicMessage;
   /// <summary> !vanish chat command enabled </summary>
   public static bool VanishEnabled { get; set; }
 
+  /// <summary> Starts the chat bot. </summary>
   public static void Start()
   {
-    if (Started) return;
-    Started = true;
+    if (IsStarted) return;
+    IsStarted = true;
 
-    MainWindow.ConsoleWarning(">> Starting chat bot.");
+    Log.Information("Starting chat bot.");
     LoadResponseMessages();
     if (!ResponseMessages.TryAdd("!commands", (string.Empty, DateTime.MinValue)))
     {
-      MainWindow.ConsoleWarning(">> Couldn't add !commands response. Maybe something already declared it?");
+      Log.Warning("Couldn't add {command} response. Maybe something already declared it?", "!commands");
     }
     if (!ResponseMessages.TryAdd("!lang", ("Please speak English in the chat, thank you ❤", DateTime.MinValue)))
     {
-      MainWindow.ConsoleWarning(">> Couldn't add !lang response. Maybe something already declared it?");
+      Log.Warning("Couldn't add {command} response. Maybe something already declared it?", "!lang");
     }
 
-    ChatReceiveThread = new Thread(Update)
+    ChatReceiveThread = new Thread(UpdateReceive)
     {
       Name = "Chat receive thread",
       IsBackground = true
@@ -64,555 +84,325 @@ public static class Chat
     ChatSendThread.Start();
   }
 
-  private static void Update()
+  /// <summary> Main update method used by receive thread. </summary>
+  private static void UpdateReceive()
   {
-    byte[] receiveBuffer = new byte[16384]; // Max IRC message is 4096 bytes? let's allocate 4 times that, 2 times max message length wasn't enaugh for really fast chats
-    int zeroBytesReceivedCounter = 0, currentIndex, nextIndex, bytesReceived, messageStartOffset = 0, temp2;
-    string userBadge, userName, customRewardID, temp;
-    long userID;
     List<string> messages = new();
-    /// <summary> message[0] - header, message[1] - body </summary>
-    string[] message = new string[2];
-    (string, DateTime) dictionaryResponse;
-    Chatter chatter;
-    ManualResetEvent receiveEvent = new(false);
+    byte[] receiveBuffer = new byte[16384]; // Max IRC message is 4096 bytes? let's allocate 4 times that, 2 times max message length wasn't enaugh for really fast chats
+    int messageStartOffset = 0, bytesReceived = 0;
+    int zeroBytesReceivedCounter = 0;
+    int temp, temp2;
+
+    string header = string.Empty;
+    string body = string.Empty;
+    MessageMetadata metadata = new();
+
+    IAsyncResult receiveResult = null;
+
     while (true)
     {
+      if (MainWindow.CloseRequested) { return; }
+
       while (ChatSocket?.Connected == true)
       {
-        receiveEvent.Reset();
+        if (MainWindow.CloseRequested) { return; }
 
-        ChatSocket.BeginReceive(receiveBuffer, messageStartOffset, receiveBuffer.Length - messageStartOffset, SocketFlags.None, new AsyncCallback((IAsyncResult ar) =>
+        if (receiveResult is null)
         {
-          try
+          receiveResult = ChatSocket.BeginReceive(receiveBuffer, messageStartOffset, receiveBuffer.Length - messageStartOffset, SocketFlags.None, new AsyncCallback((IAsyncResult ar) =>
           {
-            if (ChatSocket.Connected) bytesReceived = ChatSocket.EndReceive(ar);
-            else bytesReceived = -1;
-          }
-          catch (Exception ex)
-          {
-            MainWindow.ConsoleWarning($">> Chat bot error: {ex.Message}");
-            bytesReceived = -1;
-          }
-
-          if (bytesReceived > 0)
-          {
-            messages.Clear();
-            messages.AddRange(Encoding.UTF8.GetString(receiveBuffer, 0, bytesReceived + messageStartOffset).Split("\r\n", StringSplitOptions.RemoveEmptyEntries));
-
-            if (messageStartOffset > 0)
+            try
             {
-              // For some reason if the missing part of previous message is "\r\n" it's not send on next message
-              // Cut out the new message appended to previous one and insert it as new one
-              if (receiveBuffer[messageStartOffset] == '@')
-              {
-                messages.Insert(1, messages[0].Substring(messageStartOffset));
-                messages[0] = messages[0].Substring(0, messageStartOffset);
-              }
+              bytesReceived = ChatSocket.Connected ? ChatSocket.EndReceive(ar) : -1;
+            }
+            catch (Exception ex)
+            {
+              Log.Error("Chat bot error: {ex}", ex);
+              bytesReceived = -1;
             }
 
-            for (int i = 0; i < messages.Count; i++)
+            if (bytesReceived > 0)
             {
-              // message[0] - header, message[1] - body
-              currentIndex = messages[i].IndexOf($"#{Config.Data[Config.Keys.ChannelName]}");
-              if (currentIndex < 0)
-              {
-                message[0] = messages[i].Trim();
-                message[1] = ":"; // Add fake message
-              }
-              else
-              {
-                message[0] = messages[i].Substring(0, currentIndex).Trim();
-                message[1] = messages[i].Substring(currentIndex + Config.Data[Config.Keys.ChannelName].Length + 1).Trim(); // +1 because of '#' symbol in channel name
-              }
+              messages.Clear();
+              messages.AddRange(Encoding.UTF8.GetString(receiveBuffer, 0, bytesReceived + messageStartOffset).Split("\r\n", StringSplitOptions.RemoveEmptyEntries));
 
-              // Check if received message is incomplete (just for last received message)
-              if ((i == messages.Count - 1) && (receiveBuffer[bytesReceived + messageStartOffset - 1] != (byte)'\n') && (receiveBuffer[bytesReceived + messageStartOffset - 2] != (byte)'\r'))
+              if (messageStartOffset > 0)
               {
-                // Move the message to beginning of receiveBuffer
-                if (messageStartOffset == 0) Array.Clear(receiveBuffer);
-
-                string s = string.Join($"#{Config.Data[Config.Keys.ChannelName]}", message);
-                for (int j = 0; j < s.Length; j++) receiveBuffer[j + messageStartOffset] = (byte)s[j];
-                messageStartOffset += s.Length;
-                continue;
-              }
-              else messageStartOffset = 0;
-
-              // Ping request, let's play PING - PONG with the server :D
-              if (message[0].StartsWith("PING"))
-              {
-                string response = message[0].Replace("PING", "PONG");
-                ChatSocket.Send(Encoding.UTF8.GetBytes(response + "\r\n"));
-                continue;
-              }
-
-              // Standard message without extra tags
-              if (message[0].StartsWith(':') && message[0].EndsWith("PRIVMSG"))
-              {
-                s_chatMessagesSinceLastPeriodicMessage++;
-                MainWindow.ConsoleWriteLine(string.Format(
-                  "{0, 20}{1, 2}{2, -0}",
-                  message[0].Substring(1, message[0].IndexOf('!') - 1) // Username
-                  , ": ",
-                  message[1][1..] // message
-                ));
-              }
-              // Standard message with extra tags
-              else if (message[0].StartsWith("@") && message[0].EndsWith("PRIVMSG"))
-              {
-                // Check if message was from custom reward
-                currentIndex = message[0].IndexOf("custom-reward-id=");
-                if (currentIndex > 0)
+                // For some reason if the missing part of previous message is "\r\n" it's not send on next message
+                // Cut out the new message appended to previous one and insert it as new one
+                if (receiveBuffer[messageStartOffset] == '@')
                 {
-                  currentIndex += 17; // "custom-reward-id=".Length
-                  customRewardID = message[0].Substring(currentIndex, message[0].IndexOf(';', currentIndex) - currentIndex);
-                  if (customRewardID.Length > 0) // For some reason sometimes the message contains empty "custom-reward-id"
-                  {
-                    currentIndex = message[0].IndexOf("display-name=") + 13; // 13 == "display-name=".Length
-                    if (currentIndex >= 0)
-                    {
-                      nextIndex = message[0].IndexOf(';', currentIndex);
-                      userName = message[0].Substring(currentIndex, nextIndex - currentIndex);
-                    }
-                    else { userName = "?"; }
-                    MainWindow.ConsoleWriteLine(string.Concat(
-                      "> ",
-                      userName,
-                      " redeemed custom reward with ID: ",
-                      customRewardID,
-                      ". ",
-                      message[1][1..]
-                    ));
-                    continue;
-                  }
+                  messages.Insert(1, messages[0][messageStartOffset..]);
+                  messages[0] = messages[0][..messageStartOffset];
                 }
+              }
 
-                // Check if message had some bits cheered
-                currentIndex = message[0].IndexOf("bits=");
-                if (currentIndex > 0)
+              for (int i = 0; i < messages.Count; i++)
+              {
+                string msg = messages[i];
+
+                // PING - keepalive message
+                if (msg.StartsWith("PING"))
                 {
-                  currentIndex += 5; // "bits=".Length
-                  MainWindow.ConsoleWriteLine(string.Concat(
-                    "> Cheered with ",
-                    message[0].Substring(currentIndex, message[0].IndexOf(';', currentIndex) - currentIndex),
-                    "bits. ",
-                    message[1][1..]
-                  ));
+                  string response = msg.Replace("PING", "PONG");
+                  ChatSocket.Send(Encoding.UTF8.GetBytes(response + "\r\n"));
                   continue;
                 }
 
-                s_chatMessagesSinceLastPeriodicMessage++;
+                (header, body) = ParseMessage(msg, ref metadata);
 
-                // Read chatter badges
-                currentIndex = message[0].IndexOf("badges=") + 7; // 7 == "badges=".Length
-                userBadge = message[0].Substring(currentIndex, (nextIndex = message[0].IndexOf(';', currentIndex - 1)) - currentIndex);
-                if (userBadge.Contains("broadcaster")) userBadge = "STR";
-                else if (userBadge.Contains("moderator")) userBadge = "MOD";
-                else if (userBadge.Contains("subscriber")) userBadge = "SUB";
-                else if (userBadge.Contains("vip")) userBadge = "VIP";
-                else userBadge = string.Empty;
-                currentIndex = nextIndex;
-
-                // Read chatter name
-                currentIndex = message[0].LastIndexOf("user-id=") + 8; // 8 == "user-id=".Length
-                nextIndex = message[0].IndexOf(';', currentIndex);
-                userID = long.Parse(message[0].Substring(currentIndex, nextIndex - currentIndex));
-                currentIndex = message[0].IndexOf("display-name=") + 13; // 13 == "display-name=".Length
-                nextIndex = message[0].IndexOf(';', currentIndex);
-                userName = message[0].Substring(currentIndex, nextIndex - currentIndex);
-                currentIndex = nextIndex;
-
-                // Print chatter message
-                if (Config.PrintChatMessages)
+                switch (metadata.MessageType)
                 {
-                  MainWindow.ConsoleWriteLine(string.Format(
-                    "{0, -4}{1, 22}{2, 2}{3, -0}",
-                    userBadge,
-                    userName,
-                    ": ",
-                    message[1][1..]
-                  ));
-                }
-
-                chatter = Chatter.GetChatterByID(userID, userName);
-                chatter.LastChatted = DateTime.Now;
-                if (Notifications.WelcomeMessagesEnabled && chatter?.WelcomeMessage?.Length > 0 && chatter.LastWelcomeMessage.Date != DateTime.Now.Date)
-                {
-                  MainWindow.ConsoleWarning($">> Creating {chatter.Name} welcome message TTS.");
-                  chatter.SetLastWelcomeMessageToNow();
-                  Notifications.CreateTTSNotification(chatter.WelcomeMessage);
-                }
-
-                if (message[1][1..].StartsWith("!tts")) // Check if the message starts with !tts key
-                {
-                  if (message[1].Length <= 5) { MainWindow.ConsoleWarning(">> !tts command without a message Susge"); } // No message to read, do nothing
-                  else if (Notifications.ChatTTSEnabled || Chatter.AlwaysReadTTSFromThem.Contains(userName)) { Notifications.CreateTTSNotification(message[1][6..]); } // 6.. - without ":!tts "
-                  else { AddMessageToQueue($"@{userName} TTS disabled peepoSad"); }
-                }
-                else if (message[1][1..].StartsWith("!gamba")) // Check if the message starts with !gamba key
-                {
-                  MinigameGamba.NewGamba(userID, userName, message[1][7..]); // 7.. - without ":!gamba"
-                }
-                else if (message[1][1..].StartsWith("!fight")) // Check if the message starts with !fight key
-                {
-                  MinigameFight.NewFight(userID, userName, message[1][7..]); // 7.. - without ":!fight"
-                }
-                else if (message[1][1..].StartsWith("!rude")) // Check if the message starts with !rude key
-                {
-                  MinigameRude.AddRudePoint(userName, message[1][6..]); // 6.. - without ":!rude"
-                }
-                else if (message[1][1..].StartsWith("!point")) // Check if the message starts with !point key
-                {
-                  if (userBadge.Equals("STR") || message[1].Length == 7) MinigameBackseat.AddBackseatPoint(message[1][7..], 1); // 7.. - without ":!point"
-                  else AddMessageToQueue($"@{userName} That's for the streamer, you shouldn't be using it Madge");
-                }
-                else if (message[1][1..].StartsWith("!unpoint")) // Check if the message starts with !unpoint key
-                {
-                  if (userBadge.Equals("STR")) MinigameBackseat.AddBackseatPoint(message[1][9..], -1); // 9.. - without ":!unpoint"
-                }
-                else if (message[1][1..].StartsWith("!vanish")) // Check if the message starts with !vanish key
-                {
-                  if (!Chat.VanishEnabled) { } // Disabled - do nothing
-                  else if (message[1].Length == 8)
-                  {
-                    // Vanish the command user
-                    if (!userBadge.Equals("STR")) BanChatter("!vanish command", userID, userName);
-                  }
-                  else
-                  {
-                    // Vanish other user, only available for streamer and moderators
-                    if (userBadge.Equals("STR") || userBadge.Equals("MOD"))
+                  case "PRIVMSG":
+                    if (metadata.CustromRewardID.Length > 0)
                     {
-                      BanChatter("!vanish command", -1, message[1][8..]); // 8.. - without ":!vanish"
+                      Log.Information("{userName} redeemed custom reward with ID: {customRewardID}. {msg}",
+                        metadata.UserName,
+                        metadata.CustromRewardID,
+                        body);
                     }
-                  }
-                }
-                else if (message[1][1..].StartsWith("!hug")) // Check if the message starts with !hug key
-                {
-                  Hug(userName, message[1][5..]); // 5.. - without ":!hug"
-                }
-                else if (message[1][1..].StartsWith("!commands")) // Check if the message starts with !commands key
-                {
-                  // Check the timeout
-                  if (DateTime.Now - ResponseMessages["!commands"].Item2 >= CooldownBetweenTheSameMessage)
-                  {
-                    SendCommandsResponse(userName);
-                    ResponseMessages["!commands"] = (string.Empty, DateTime.Now);
-                  }
-                  else { MainWindow.ConsoleWarning(">> Not sending response for \"!commands\" key. Cooldown active."); }
-                }
-                else if (message[1][1..].StartsWith("!welcomemessageclear")) // Check if the message starts with !welcomemessageclear key
-                {
-                  // Clear current welcome message
-                  if (chatter.WelcomeMessage?.Length > 0)
-                  {
-                    chatter.SetWelcomeMessage(null);
-                    AddMessageToQueue($"@{chatter.Name} welcome message was cleared");
-                  }
-                  else { AddMessageToQueue($"@{chatter.Name} your welcome message is empty WeirdDude"); }
-                }
-                else if (message[1][1..].StartsWith("!welcomemessage")) // Check if the message starts with !welcomemessage key
-                {
-                  temp = message[1][16..].Trim();
-                  if (string.IsNullOrWhiteSpace(temp))
-                  {
-                    // Print out current welcome message
-                    if (chatter.WelcomeMessage?.Length > 0) AddMessageToQueue($"@{chatter.Name} current welcome message: {chatter.WelcomeMessage}");
-                    else AddMessageToQueue($"@{chatter.Name} your welcome message is empty peepoSad");
-                  }
-                  else
-                  {
-                    // Set new welcome message
-                    chatter.SetWelcomeMessage(temp);
-                    AddMessageToQueue($"@{chatter.Name} welcome message was updated peepoHappy");
-                  }
-                }
-                else if (message[1][1..].StartsWith("!sounds")) // Check if the message starts with !sounds key
-                {
-                  if (Notifications.AreSoundsAvailable())
-                  {
-                    temp = Notifications.GetSampleSoundsPaste();
-                    AddMessageToQueue($"@{chatter.Name} {temp}");
-                  }
-                  else { AddMessageToQueue($"@{chatter.Name} there are no sounds to use peepoSad"); }
-                }
-                else if (message[1][1..].StartsWith("!previoussong")) // Check if the message starts with !previoussong key
-                {
-                  if (Spotify.Working) { AddMessageToQueue($"@{chatter.Name} {Spotify.GetRecentlyPlayingTracks()}"); }
-                  else { AddMessageToQueue($"@{chatter.Name} the Spotify connection is not working peepoSad"); }
-                }
-                else if (message[1][1..].StartsWith("!songrequest")) // Check if the message starts with !songrequest key
-                {
-                  SongRequest(chatter, message[1][13..]);  // 13.. - without ":!songrequest"
-                }
-                else if (message[1][1..].StartsWith("!sr")) // Check if the message starts with !sr key
-                {
-                  SongRequest(chatter, message[1][4..]); // 4.. - without ":!sr"
-                }
-                else if (message[1][1..].StartsWith("!skipsong")) // Check if the message starts with !skipsong key
-                {
-                  SkipSong(chatter);
-                }
-                else if (message[1][1..].StartsWith("!songqueue")) // Check if the message starts with !songqueue key
-                {
-                  if (Spotify.Working) { AddMessageToQueue($"@{chatter.Name} {Spotify.GetSongQueue()}"); }
-                  else { AddMessageToQueue($"@{chatter.Name} the Spotify connection is not working peepoSad"); }
-                }
-                else if (message[1][1..].StartsWith("!song")) // Check if the message starts with !song key
-                {
-                  if (Spotify.Working) { AddMessageToQueue($"@{chatter.Name} {Spotify.GetCurrentlyPlayingTrack()}"); }
-                  else { AddMessageToQueue($"@{chatter.Name} the Spotify connection is not working peepoSad"); }
-                }
-                else if (ResponseMessages.Count > 0) // Check if message starts with key to get automatic response
-                {
-                  currentIndex = message[1].IndexOf(' ', 1);
-                  if (currentIndex < 0) currentIndex = message[1].Length - 1;
-                  temp = message[1].Substring(1, currentIndex).Trim();
-                  if (ResponseMessages.TryGetValue(temp, out dictionaryResponse))
-                  {
-                    // "!lang" response - "Please speak xxx in the chat...", only usable by the mods or the streamer
-                    if (temp.Equals("!lang"))
+                    else if (metadata.Bits.Length > 0)
                     {
-                      if (userBadge.Equals("MOD") || userBadge.Equals("STR"))
-                      {
-                        if (message[1].Trim().Length - 1 > currentIndex)
-                        {
-                          temp = message[1][currentIndex..].Trim();
-                          if (temp.StartsWith('@')) temp = temp[1..];
-                          AddMessageToQueue($"@{temp} {dictionaryResponse.Item1}");
-                        }
-                        else { AddMessageToQueue($"@{userName} {dictionaryResponse.Item1}"); }
-                      }
-                      continue;
-                    }
-                    // Check if the same message was send not long ago
-                    if (DateTime.Now - dictionaryResponse.Item2 >= CooldownBetweenTheSameMessage)
-                    {
-                      AddMessageToQueue($"@{userName} {dictionaryResponse.Item1}");
-                      ResponseMessages[temp] = (ResponseMessages[temp].Item1, DateTime.Now);
-                    }
-                    else { MainWindow.ConsoleWarning($">> Not sending response for \"{temp}\" key. Cooldown active."); }
-                  }
-                }
-              }
-              // Automated bot response
-              else if (message[0].EndsWith("USERSTATE"))
-              {
-                currentIndex = message[0].IndexOf("display-name=") + 13; // 13 == "display-name=".Length
-                nextIndex = message[0].IndexOf(';', currentIndex);
-                userName = message[0].Substring(currentIndex, nextIndex - currentIndex);
-
-                MainWindow.ConsoleWriteLine(string.Format(
-                  "{0, -4}{1, 20}{2, 2}{3, -0}",
-                  "BOT",
-                  userName,
-                  ": ",
-                  "Automated bot response (message is not available)"));
-              }
-              // Notification visible in chat - sub, announcement, etc.
-              else if (message[0].StartsWith("@") && message[0].EndsWith("USERNOTICE"))
-              {
-                currentIndex = message[0].IndexOf("display-name=") + 13; // 13 == "display-name=".Length
-                nextIndex = message[0].IndexOf(';', currentIndex);
-                userName = message[0].Substring(currentIndex, nextIndex - currentIndex);
-                currentIndex = nextIndex;
-                currentIndex = message[0].IndexOf("msg-id=", currentIndex) + 7; // 13 == "msg-id=".Length
-                switch (message[0].Substring(currentIndex, message[0].IndexOf(';', currentIndex) - currentIndex))
-                {
-                  case "sub":
-                  case "resub":
-                    currentIndex = message[0].IndexOf("system-msg=");
-                    if (currentIndex > 0)
-                    {
-                      currentIndex += 11; // "system-msg=".Length
-                      nextIndex = message[0].IndexOf(";", currentIndex);
-                      MainWindow.ConsoleWriteLine(string.Concat(
-                        "> ",
-                        message[0].Substring(currentIndex, nextIndex - currentIndex).Replace("\\s", " "),
-                        " ",
-                        message[1].Length > 2 ? message[1][1..] : ""
-                      ));
+                      Log.Information("{userName} cheered with {bits} bits. {msg}",
+                        metadata.UserName,
+                        metadata.Bits,
+                        body);
                     }
                     else
                     {
-                      // If the message didn't contain system message part, try the old parser
-                      MainWindow.ConsoleWriteLine(string.Concat(
-                        "> ",
-                        userName,
-                        message[0].Contains("msg-param-was-gifted=true") ? " got gifted sub for " : " subscribed for ",
-                        message[0].Substring(currentIndex = message[0].IndexOf("msg-param-cumulative-months=", currentIndex) + 28, message[0].IndexOf(';', currentIndex) - currentIndex),
-                        " months. ",
-                        message[1].Length > 2 ? message[1][1..] : ""
+                      ChatMessagesSinceLastPeriodicMessage += 1;
+                      if (Config.PrintChatMessages)
+                      {
+                        MainWindow.ConsoleWriteLine(string.Format(
+                          "{0, -4}{1, 22}{2, 2}{3, -0}",
+                          metadata.Badge,
+                        metadata.UserName,
+                        ": ",
+                        body
                       ));
+                      }
+                      CheckForChatCommands(ref metadata, body);
                     }
                     break;
-                  case "subgift":
-                    currentIndex = message[0].IndexOf("msg-param-recipient-display-name=") + 33; // 33 == "msg-param-recipient-display-name=".Length
-                    MainWindow.ConsoleWriteLine(string.Concat(
-                      "> ",
-                      userName,
-                      " gifted a sub for ",
-                      message[0].Substring(currentIndex, message[0].IndexOf(';', currentIndex) - currentIndex),
-                      ". ",
-                      message[1].Length > 2 ? message[1][1..] : ""
-                    ));
+
+                  case "USERNOTICE":
+                    switch (metadata.MsgID)
+                    {
+                      case "sub":
+                        Log.Information("{userName} subscribed! {msg}",
+                          metadata.UserName,
+                          body);
+                        break;
+                      case "resub":
+                        Log.Information("{userName} resubscribed! {msg}",
+                          metadata.UserName,
+                          body);
+                        break;
+                      case "subgift":
+                        string receipent = string.Empty;
+                        temp = header.IndexOf("msg-param-recipient-display-name=");
+                        if (temp >= 0)
+                        {
+                          temp += 33; // 33 == "msg-param-recipient-display-name=".len()
+                          temp2 = header.IndexOf(';', temp);
+                          if (temp2 >= 0) { receipent = header[temp..temp2]; }
+                        }
+                        Log.Information("{userName} gifted sub to {userName2}! {msg}",
+                          metadata.UserName,
+                          receipent,
+                          body);
+                        break;
+                      case "submysterygift":
+                        Log.Information("{userName} gifted some subs to random viewers! {msg}",
+                          metadata.UserName,
+                          body);
+                        break;
+                      case "primepaidupgrade":
+                        Log.Information("{userName} converted prime sub to standard sub! {msg}",
+                          metadata.UserName,
+                          body);
+                        break;
+                      case "giftpaidupgrade":
+                        Log.Information("{userName} continuing sub gifted by another chatter! {msg}",
+                          metadata.UserName,
+                          body);
+                        break;
+                      case "communitypayforward":
+                        Log.Information("{userName} is paying forward sub gifted by another chatter! {msg}",
+                          metadata.UserName,
+                          body);
+                        break;
+                      case "announcement":
+                        Log.Information("{userName} announced that! {msg}",
+                          metadata.UserName,
+                          body);
+                        break;
+                      case "raid":
+                        Log.Information("{userName} raided the channel! {msg}",
+                          metadata.UserName,
+                          body);
+                        break;
+                      case "viewermilestone":
+                        Log.Information("{userName} did something that fired viewer milestone! {msg}",
+                          metadata.UserName,
+                          body);
+                        break;
+                      default:
+                        // Message type not recognized - print the whole message
+                        MainWindow.ConsoleWriteLine(msg);
+                        break;
+                    }
                     break;
-                  case "submysterygift":
-                    currentIndex = message[0].IndexOf("msg-param-mass-gift-count=") + 26; // 26 == "msg-param-mass-gift-count=".Length
-                    MainWindow.ConsoleWriteLine(string.Concat(
-                      "> ",
-                      userName,
-                      " gifting ",
-                      message[0].Substring(currentIndex, message[0].IndexOf(";", currentIndex) - currentIndex),
-                      " subs for random viewers. ",
-                      message[1].Length > 2 ? message[1][1..] : ""
-                    ));
+
+                  case "CLEARCHAT":
+                    if (msg.StartsWith("@ban-duration"))
+                    {
+                      temp = msg.LastIndexOf(':');
+                      temp = temp > 0 ? temp + 1 : msg.Length;
+                      Log.Information("{userName} got banned!", msg[temp..]);
+                    }
+                    else if (body.Length > 0) { Log.Information("{userName} chat messages got cleared", body); }
+                    else { Log.Information("Chat got cleared"); }
                     break;
-                  case "primepaidupgrade":
-                    MainWindow.ConsoleWriteLine(string.Concat(
-                      "> ",
-                      userName,
-                      " converted prime sub to standard sub.",
-                      message[1].Length > 2 ? message[1][1..] : ""
-                    ));
+
+                  case "CLEARMSG":
+                    if (msg.StartsWith("@login="))
+                    {
+                      temp = msg.IndexOf(';');
+                      if (temp < 0) temp = msg.Length;
+                      Log.Information("{userName} perma banned!", msg[7..temp]);
+                    }
+                    else { Log.Information("Someones messages got cleared"); }
                     break;
-                  case "announcement":
-                    MainWindow.ConsoleWriteLine(string.Concat(
-                      "> ",
-                      userName,
-                      " announced that: ",
-                      message[1].Length > 2 ? message[1][1..] : "no message :("
-                    ));
+
+                  case "NOTICE":
+                    switch (metadata.MsgID)
+                    {
+                      case "emote_only_on":
+                        Log.Information("This room is now in emote-only mode.");
+                        break;
+                      case "emote_only_off":
+                        Log.Information("This room is no longer in emote-only mode.");
+                        break;
+                      case "subs_on":
+                        Log.Information("This room is now in subscribers-only mode.");
+                        break;
+                      case "subs_off":
+                        Log.Information("This room is no longer in subscribers-only mode.");
+                        break;
+                      case "followers_on":
+                      case "followers_on_zero":
+                        Log.Information("This room is now in followers-only mode.");
+                        break;
+                      case "followers_off":
+                        Log.Information("This room is no longer in followers-only mode.");
+                        break;
+                      case "msg_followersonly":
+                        Log.Information("This room is in 10 minutes followers-only mode.");
+                        break;
+                      case "slow_on":
+                        Log.Information("This room is now in slow mode.");
+                        break;
+                      case "slow_off":
+                        Log.Information("This room is no longer in slow mode.");
+                        break;
+                      default:
+                        // Message type not recognized - print the whole message
+                        MainWindow.ConsoleWriteLine(msg);
+                        break;
+                    }
                     break;
-                  case "raid":
-                    currentIndex = message[0].IndexOf("msg-param-viewerCount=") + 22; // 22 == "msg-param-viewerCount=".Length
-                    if (!int.TryParse(message[0].Substring(currentIndex, message[0].IndexOf(';', currentIndex) - currentIndex), out temp2)) temp2 = -1;
-                    currentIndex = message[0].LastIndexOf("user-id=") + 8; // 8 == "user-id=".Length
-                    temp = message[0].Substring(currentIndex, message[0].IndexOf(';', currentIndex) - currentIndex);
-                    MainWindow.ConsoleWriteLine(string.Concat(
-                      "> ",
-                      userName,
-                      " raided the channel with ",
-                      temp2,
-                      " viewers."
-                    ));
-                    Notifications.CreateRaidNotification(userName, temp, temp2);
+
+                  case "ROOMSTATE":
+                    // Room state changed - do nothing? This message is always send with another one?
                     break;
+
+                  case "USERSTATE":
+                    if (Config.PrintChatMessages)
+                    {
+                      MainWindow.ConsoleWriteLine($"> Bot message from {metadata.UserName}");
+                    }
+                    break;
+
                   default:
-                    if (message[1].Equals(":")) MainWindow.ConsoleWriteLine(message[0]);
-                    else MainWindow.ConsoleWriteLine(string.Join(" : ", message));
+                    // Not recognized message
+                    MainWindow.ConsoleWriteLine(msg);
                     break;
                 }
               }
-              // Timeout
-              else if (message[0].StartsWith("@ban-duration="))
-              {
-                userName = message[1][1..];
-                MainWindow.ConsoleWriteLine($"> User {userName} got timed out for {message[0].Substring(14, message[0].IndexOf(';') - 14)} sec.");
-              }
-              // Timeout?
-              else if (message[0].StartsWith("@") && message[0].Contains("CLEARMSG"))
-              {
-                userName = message[0].Substring(7, message[0].IndexOf(';') - 7);
-                MainWindow.ConsoleWriteLine($"> User {userName} got banned.");
-              }
-              // Different timeout?
-              else if (message[0].StartsWith("@") && message[0].Contains("CLEARCHAT"))
-              {
-                MainWindow.ConsoleWriteLine($"> Chat got cleared.");
-              }
-              // Emote only activated
-              else if (message[0].StartsWith("@emote-only=1"))
-              {
-                MainWindow.ConsoleWriteLine("> Emote only activated.");
-              }
-              // Emote only deactivated
-              else if (message[0].StartsWith("@emote-only=0"))
-              {
-                MainWindow.ConsoleWriteLine("> Emote only deactivated.");
-              }
-              // Emote only
-              else if (message[0].StartsWith("@msg-id=emote_only_"))
-              {
-                // Switching emote only sends 2 messages - this is a duplicate? Do nothing?
-                // if (message[0].Substring(19, message[0].IndexOf(" :") - 19) == "on") MainWindow.ConsoleWriteLine("> Emote only activated");
-                // else MainWindow.ConsoleWriteLine("> Emote only deactivated");
-              }
-              // Other message type
-              else
-              {
-                if (message[1].Equals(":")) MainWindow.ConsoleWriteLine(message[0]);
-                else MainWindow.ConsoleWriteLine(string.Join(" : ", message));
-              }
+              zeroBytesReceivedCounter = 0;
             }
-            zeroBytesReceivedCounter = 0;
-          }
-          else
-          {
-            MainWindow.ConsoleWarning(">> Chat bot received 0 bytes.");
-            zeroBytesReceivedCounter++;
-            if (zeroBytesReceivedCounter >= 5)
+            else
             {
-              MainWindow.ConsoleWarning(">> Chat bot closing connection.");
-              ChatSocket?.Close(); // Close connection if 5 times in a row received 0 bytes
+              Log.Warning("Chat bot received {amount} bytes", 0);
+              zeroBytesReceivedCounter++;
+              if (zeroBytesReceivedCounter >= 5)
+              {
+                Log.Error("Chat bot closing connection.");
+                ChatSocket?.Close(); // Close connection if 5 times in a row received 0 bytes
+              }
             }
-          }
 
-          receiveEvent.Set();
-        }), null);
+            receiveResult = null;
+          }), null);
+        }
 
-        receiveEvent.WaitOne();
+        Thread.Sleep(10);
       }
 
       if (ChatSocket != null)
       {
         // Connection lost
-        MainWindow.ConsoleWarning(">> Chat bot connection lost, waiting 2 sec to reconnect.");
+        Log.Warning("Chat bot connection lost, waiting 2 sec to reconnect.");
         Thread.Sleep(2000);
       }
 
       // Try to connect
-      MainWindow.ConsoleWarning(">> Chat bot connecting...");
+      Log.Information("Chat bot connecting...");
       ChatSocket = new Socket(SocketType.Stream, ProtocolType.Tcp);
       try { ChatSocket.Connect("irc.chat.twitch.tv", 6667); }
       catch (Exception ex)
       {
-        MainWindow.ConsoleWarning($">> Chat bot connection error: {ex.Message}");
+        Log.Error("Chat bot connection error: {ex}", ex);
         ChatSocket = null;
         Thread.Sleep(2000);
       }
       if (ChatSocket?.Connected == true)
       {
-        MainWindow.ConsoleWarning(">> Chat bot connected.");
+        Log.Information("Chat bot connected.");
         ChatSocket.Send(Encoding.UTF8.GetBytes($"PASS oauth:{Secret.Data[Secret.Keys.OAuthToken]}\r\n"));
         ChatSocket.Send(Encoding.UTF8.GetBytes($"NICK {Secret.Data[Secret.Keys.Name]}\r\n"));
         ChatSocket.Send(Encoding.UTF8.GetBytes($"JOIN #{Config.Data[Config.Keys.ChannelName]},#{Config.Data[Config.Keys.ChannelName]}\r\n"));
         ChatSocket.Send(Encoding.UTF8.GetBytes("CAP REQ :twitch.tv/commands twitch.tv/tags\r\n")); // request extended chat messages
+
+        ChatSocket.ReceiveTimeout = 100;
       }
     }
   }
 
+  /// <summary> Main update method used by the send thread. </summary>
   private static void UpdateSend()
   {
     while (true)
     {
+      if (MainWindow.CloseRequested) { return; }
+
       if (ChatSocket?.Connected == true)
       {
         if (MessageQueue.Count > 0)
         {
           lock (MessageQueue)
           {
-            ChatSocket.Send(Encoding.UTF8.GetBytes($"PRIVMSG #{Config.Data[Config.Keys.ChannelName]} :{MessageQueue[0]}\r\n"));
+            ChatSocket.Send(Encoding.UTF8.GetBytes(MessageQueue[0]));
             MessageQueue.RemoveAt(0);
           }
         }
-        else if ((PeriodicMessages.Count > 0) && (s_chatMessagesSinceLastPeriodicMessage >= PeriodicMessageMinChatMessages) && (DateTime.Now - LastPeriodicMessage >= PeriodicMessageInterval))
+        else if ((PeriodicMessages.Count > 0) && (ChatMessagesSinceLastPeriodicMessage >= PeriodicMessageMinChatMessages) && (DateTime.Now - LastPeriodicMessage >= PeriodicMessageInterval))
         {
-          s_chatMessagesSinceLastPeriodicMessage = 0;
+          ChatMessagesSinceLastPeriodicMessage = 0;
           LastPeriodicMessage = DateTime.Now;
           PeriodicMessageIndex = (PeriodicMessageIndex + 1) % PeriodicMessages.Count;
-          ChatSocket.Send(Encoding.UTF8.GetBytes($"PRIVMSG #{Config.Data[Config.Keys.ChannelName]} :{PeriodicMessages[PeriodicMessageIndex]}\r\n"));
+          AddMessageToQueue(PeriodicMessages[PeriodicMessageIndex]);
         }
       }
 
@@ -620,16 +410,18 @@ public static class Chat
     }
   }
 
+  /// <summary> Loads response messages from the file. </summary>
+  /// <param name="reload">Is the file being reloaded?</param>
   public static void LoadResponseMessages(bool reload = false)
   {
-    if (reload) { MainWindow.ConsoleWarning(">> Reloading response messages."); }
-    else { MainWindow.ConsoleWarning(">> Loading response messages."); }
+    if (reload) { Log.Information("Reloading response messages."); }
+    else { Log.Information("Loading response messages."); }
 
     FileInfo messagesFile = new(RESPONSEMESSAGESPATH);
     // The file doesn't exist - create new one
     if (messagesFile.Exists == false)
     {
-      MainWindow.ConsoleWarning(">> ResponseMessages.csv file not found. Generating new one.");
+      Log.Warning("{file} file not found. Generating new one.", "ResponseMessages.csv");
       if (!messagesFile.Directory.Exists) messagesFile.Directory.Create();
 
       using (StreamWriter writer = new(messagesFile.FullName))
@@ -657,12 +449,12 @@ public static class Chat
       separatorIndex = line.IndexOf(';');
       if (separatorIndex < 0)
       {
-        MainWindow.ConsoleWarning($">> Broken response message in line {lineIndex}.");
+        Log.Warning("Broken response message in line {index}.", lineIndex);
         continue;
       }
 
-      text[0] = line.Substring(0, separatorIndex).Trim();
-      text[1] = line.Substring(separatorIndex + 1).Trim();
+      text[0] = line[..separatorIndex].Trim();
+      text[1] = line[(separatorIndex + 1)..].Trim();
 
       if (text[0].StartsWith("//")) { continue; } // Commented out line - skip it
       else if ((text[0] == "key") && (text[1] == "message")) { continue; } // This is the header, skip it
@@ -676,17 +468,19 @@ public static class Chat
         }
         else if (ResponseMessages.TryAdd(text[0], (text[1].Trim(), new DateTime())))
         {
-          MainWindow.ConsoleWarning($">> Added respoonse to \"{text[0]}\" key.");
+          Log.Information("Added respoonse to \"{key}\" key.", text[0]);
           responseCount++;
         }
-        else MainWindow.ConsoleWarning($">> Redefiniton of \"{text[0]}\" key in line {lineIndex}."); // TryAdd returned false - probably a duplicate
+        else { Log.Warning("Redefiniton of \"{key}\" key in line {index}.", text[0], lineIndex); } // TryAdd returned false - probably a duplicate
       }
     }
-    if (!reload) MainWindow.ConsoleWarning($">> Loaded {responseCount} automated response messages.");
+    if (!reload) { Log.Information("Loaded {count} automated response messages.", responseCount); }
 
     RespMsgFileTimestamp = messagesFile.LastWriteTime;
   }
 
+  /// <summary> Checks if response messages file was updated. </summary>
+  /// <returns><value>true</value> if the file was updated, otherwise <value>false</value></returns>
   public static bool IsRespMsgFileUpdated()
   {
     FileInfo file = new(RESPONSEMESSAGESPATH);
@@ -698,45 +492,79 @@ public static class Chat
     return false;
   }
 
+  /// <summary> Adds chat message to the queue. </summary>
+  /// <param name="message">Message to be sent</param>
   public static void AddMessageToQueue(string message)
   {
-    if (!Started) return;
+    if (!IsStarted) return;
     if (string.IsNullOrWhiteSpace(message)) return;
 
-    List<string> messages = new();
-    if (message.Length <= MESSAGESENTMAXLEN) { messages.Add(message); }
-    else
+    StringBuilder sb = new();
+    int start = 0;
+    int end = message.Length > MESSAGESENTMAXLEN ? MESSAGESENTMAXLEN : message.Length;
+
+    while (true)
     {
-      // Split the message into smaller messages
-      messages.Add(message);
-      int index;
-      while (messages[0].Length > MESSAGESENTMAXLEN)
+      sb.Clear();
+      sb.Append("PRIVMSG #");
+      sb.Append(Config.Data[Config.Keys.ChannelName]);
+      sb.Append(" :");
+      sb.Append(message[start..end]);
+      sb.Append("\r\n");
+
+      lock (MessageQueue)
       {
-        // Find a good breaking point of the message - a space
-        index = messages[0].LastIndexOf(" ", int.Min(MESSAGESENTMAXLEN, messages[0].Length));
-        if (index <= 0)
-        {
-          MainWindow.ConsoleWarning(">> Something went wrong when splitting response message.");
-          return; // Something broke, don't send anything
-        }
-        messages.Add(messages[0][..index].Trim());
-        messages[0] = messages[0].Remove(0, index);
+        MessageQueue.Add(sb.ToString());
       }
 
-      messages[0] = messages[0].Trim();
-      if (messages[0].Length > 0) messages.Add(messages[0]);
-      messages.RemoveAt(0);
+      if (end == message.Length) break;
+      start = end + 1;
+      end += MESSAGESENTMAXLEN;
+      if (end > message.Length) end = message.Length;
     }
+    return;
+  }
 
-    lock (MessageQueue)
+  /// <summary> Adds chat message response to the queue. </summary>
+  /// <param name="message">Message to be sent in response</param>
+  /// <param name="messageID">Message ID of the message we are responding to</param>
+  public static void AddMessageResponseToQueue(string message, string messageID)
+  {
+    if (!IsStarted) return;
+    if (string.IsNullOrWhiteSpace(message)) return;
+
+    StringBuilder sb = new();
+    int start = 0;
+    int end = message.Length > MESSAGESENTMAXLEN ? MESSAGESENTMAXLEN : message.Length;
+
+    while (true)
     {
-      foreach (string s in messages) MessageQueue.Add(s);
+      sb.Clear();
+      sb.Append("@reply-parent-msg-id=");
+      sb.Append(messageID);
+      sb.Append(" PRIVMSG #");
+      sb.Append(Config.Data[Config.Keys.ChannelName]);
+      sb.Append(" :");
+      sb.Append(message[start..end]);
+      sb.Append("\r\n");
+
+      lock (MessageQueue)
+      {
+        MessageQueue.Add(sb.ToString());
+      }
+
+      if (end == message.Length) break;
+      start = end + 1;
+      end += MESSAGESENTMAXLEN;
+      if (end > message.Length) end = message.Length;
     }
   }
 
+  /// <summary> Gets current chatters. </summary>
+  /// <returns>List of chatters that are connected to the chat</returns>
   public static List<(long id, string name)> GetChatters()
   {
-    MainWindow.ConsoleWarning(">> Acquiring chatters.");
+    Log.Information("Acquiring chatters.");
     List<(long, string)> chatters = new();
 
     string uri = $"https://api.twitch.tv/helix/chat/chatters?broadcaster_id={Config.Data[Config.Keys.ChannelID]}&moderator_id={Config.Data[Config.Keys.ChannelID]}&first=1000";
@@ -746,7 +574,7 @@ public static class Chat
 
     string resp;
     try { resp = Client.Send(request).Content.ReadAsStringAsync().Result; }
-    catch (HttpRequestException ex) { MainWindow.ConsoleWarning($">> Acquiring chatters failed. {ex.Message}"); return chatters; }
+    catch (HttpRequestException ex) { Log.Error("Acquiring chatters failed. {ex}", ex); return chatters; }
     var response = GetChattersResponse.Deserialize(resp);
     if (response?.Data?.Length > 0)
     {
@@ -759,17 +587,17 @@ public static class Chat
       }
       if (response.Data.Length > response.Total)
       {
-        MainWindow.ConsoleWarning(">> There were too many chatters to acquire in one request. A loop needs to be implemented here.");
+        Log.Warning("There were too many chatters to acquire in one request. A loop needs to be implemented here.");
       }
     }
-    else
-    {
-      MainWindow.ConsoleWarning(">> Couldn't acquire chatters.");
-    }
+    else { Log.Warning("Couldn't acquire chatters."); }
 
     return chatters;
   }
 
+  /// <summary> Checks if provided chatter name is currently in the chat. </summary>
+  /// <param name="userName">Chatter name to be checked</param>
+  /// <returns><value>true</value> if the chatter is currently in the chat, otherwise <value>false</value></returns>
   public static bool CheckIfChatterIsInChat(string userName)
   {
     var chatters = GetChatters();
@@ -782,6 +610,10 @@ public static class Chat
   }
 
   /// <summary> Bans a chatter. Duration == 0 seconds -> perma ban. </summary>
+  /// <param name="message">Ban message to be displayed (reason)</param>
+  /// <param name="id">ID of the chatter that should be banned</param>
+  /// <param name="userName">(optional) chatter name</param>
+  /// <param name="durSeconds">Duration of the ban (0 sec - perma ban)</param>
   public static void BanChatter(string message, long id, string userName = null, int durSeconds = 15)
   {
     if (id < 0 && (userName is null || userName.Length == 0)) return;
@@ -792,11 +624,15 @@ public static class Chat
     BanChatter(message, c, durSeconds);
   }
 
+  /// <summary> Bans a chatter. Duration == 0 seconds -> perma ban. </summary>
+  /// <param name="message">Ban message to be displayed (reason)</param>
+  /// <param name="chatter">Chatter to be banned</param>
+  /// <param name="durSeconds">Duration of the ban (0 sec - perma ban)</param>
   public static void BanChatter(string message, Chatter chatter, int durSeconds = 15)
   {
     if (chatter is null) return;
 
-    MainWindow.ConsoleWarning($"> Banning {chatter.Name} from chat for {durSeconds} seconds. {message}");
+    Log.Information("Banning {userName} from chat for {duration} seconds. {msg}", chatter.Name, durSeconds, message);
 
     string uri = $"https://api.twitch.tv/helix/moderation/bans?broadcaster_id={Config.Data[Config.Keys.ChannelID]}&moderator_id={Config.Data[Config.Keys.ChannelID]}";
     using HttpRequestMessage request = new(HttpMethod.Post, uri);
@@ -805,15 +641,21 @@ public static class Chat
     request.Headers.Add("Client-Id", Secret.Data[Secret.Keys.CustomerID]);
 
     try { Client.Send(request); } // We don't really need the result, just assume that it worked
-    catch (HttpRequestException ex) { MainWindow.ConsoleWarning($">> Banning chatter failed. {ex.Message}"); }
+    catch (HttpRequestException ex) { Log.Error("Banning chatter failed. {ex}", ex); }
   }
 
+  /// <summary> Creates hug message. </summary>
+  /// <param name="userName">Chatter name that is hugging something</param>
+  /// <param name="message">Name of something that is being hugged</param>
   private static void Hug(string userName, string message)
   {
     AddMessageToQueue($"{userName} peepoHug {message.Trim()} HUGGIES");
   }
 
-  private static void SendCommandsResponse(string userName)
+  /// <summary> Creates `!commands` response and sends it to the chat. </summary>
+  /// <param name="userName">Chatter name that requested the response</param>
+  /// <param name="messageID">Message ID of the message we are responding to</param>
+  private static void SendCommandsResponse(string userName, string messageID)
   {
     StringBuilder sb = new();
     string s;
@@ -836,10 +678,7 @@ public static class Chat
       if (Spotify.RequestEnabled) sb.Append("!songrequest, !sr, ");
       if (Spotify.SkipEnabled) sb.Append("!skipsong, ");
     }
-    if (Chat.VanishEnabled)
-    {
-      sb.Append("!vanish, ");
-    }
+    if (VanishEnabled) { sb.Append("!vanish, "); }
 
     foreach (string key in ResponseMessages.Keys)
     {
@@ -849,14 +688,16 @@ public static class Chat
     s = sb.ToString().Trim();
     if (s.EndsWith(',')) s = s[..^1];
 
-    AddMessageToQueue(s);
+    AddMessageResponseToQueue(s, messageID);
   }
 
+  /// <summary> Creates chat shoutout of the provided chatter. </summary>
+  /// <param name="userID">Chatter ID for which the shoutout should be created</param>
   public static void Shoutout(string userID)
   {
     if (userID is null || userID.Length == 0) return;
 
-    MainWindow.ConsoleWarning($"> Creating shoutout for {userID}.");
+    Log.Information("Creating shoutout for {userID}.", userID);
 
     string uri = $"https://api.twitch.tv/helix/chat/shoutouts?from_broadcaster_id={Config.Data[Config.Keys.ChannelID]}&to_broadcaster_id={userID}&moderator_id={Config.Data[Config.Keys.ChannelID]}";
     using HttpRequestMessage request = new(HttpMethod.Post, uri);
@@ -864,24 +705,29 @@ public static class Chat
     request.Headers.Add("Client-Id", Secret.Data[Secret.Keys.CustomerID]);
 
     try { Client.Send(request); } // We don't really need the result, just assume that it worked
-    catch (HttpRequestException ex) { MainWindow.ConsoleWarning($">> Creating shoutout failed. {ex.Message}"); }
+    catch (HttpRequestException ex) { Log.Error("Creating shoutout failed. {ex}", ex); }
   }
 
-  public static void SongRequest(Chatter chatter, string message, bool fromNotifications = false)
+  /// <summary> Handles song request chat command. </summary>
+  /// <param name="chatter">Chatter that requested the command</param>
+  /// <param name="message">Chat message</param>
+  /// <param name="messageID">Message ID of the message we are responding to</param>
+  /// <param name="fromNotifications">Is the request from notifiactions?</param>
+  public static void SongRequest(Chatter chatter, string message, string messageID, bool fromNotifications = false)
   {
     if (!Spotify.Working)
     {
-      AddMessageToQueue($"@{chatter?.Name} the Spotify connection is not working peepoSad");
+      AddMessageResponseToQueue($"@{chatter?.Name} the Spotify connection is not working peepoSad", messageID);
       return;
     }
     else if (!Spotify.RequestEnabled && !fromNotifications)
     {
-      AddMessageToQueue($"@{chatter?.Name} song requests are disabled peepoSad");
+      AddMessageResponseToQueue($"@{chatter?.Name} song requests are disabled peepoSad", messageID);
       return;
     }
     else if (message is null || message.Length == 0)
     {
-      AddMessageToQueue($"@{chatter?.Name} maybe provide a link to the song? WeirdDude");
+      AddMessageResponseToQueue($"@{chatter?.Name} maybe provide a link to the song? WeirdDude", messageID);
       return;
     }
 
@@ -892,13 +738,13 @@ public static class Chat
       if (tempTimeSpan < Spotify.SongRequestTimeout)
       {
         tempTimeSpan = Spotify.SongRequestTimeout - tempTimeSpan;
-        AddMessageToQueue(string.Concat(
+        AddMessageResponseToQueue(string.Concat(
           "@", chatter.Name, " wait ",
           tempTimeSpan.TotalSeconds < 60 ?
             $"{Math.Ceiling(tempTimeSpan.TotalSeconds)} seconds" :
             $"{Math.Ceiling(tempTimeSpan.TotalMinutes)} minutes",
           " before requesting another song WeirdDude"
-        ));
+        ), messageID);
         return;
       }
     }
@@ -906,13 +752,13 @@ public static class Chat
     int index = message.IndexOf("spotify.com");
     if (index < 0)
     {
-      AddMessageToQueue($"@{chatter?.Name} the link is not recognized, only spotify links are supported");
+      AddMessageResponseToQueue($"@{chatter?.Name} the link is not recognized, only spotify links are supported", messageID);
       return;
     }
     index = message.IndexOf("/track/");
     if (index < 0)
     {
-      AddMessageToQueue($"@{chatter?.Name} the link is not recognized, only spotify links are supported");
+      AddMessageResponseToQueue($"@{chatter?.Name} the link is not recognized, only spotify links are supported", messageID);
       return;
     }
 
@@ -925,18 +771,20 @@ public static class Chat
 
     if (uri.Length == 0)
     {
-      AddMessageToQueue($"@{chatter?.Name} the link is not recognized, only spotify links are supported");
+      AddMessageResponseToQueue($"@{chatter?.Name} the link is not recognized, only spotify links are supported", messageID);
       return;
     }
 
     if (Spotify.AddTrackToQueue(uri))
     {
       if (!fromNotifications) chatter.LastSongRequest = DateTime.Now;
-      AddMessageToQueue($"@{chatter?.Name} track added to the queue peepoHappy");
+      AddMessageResponseToQueue($"@{chatter?.Name} track added to the queue peepoHappy", messageID);
     }
-    else { AddMessageToQueue($"@{chatter?.Name} something went wrong when adding the track to the queue peepoSad"); }
+    else { AddMessageResponseToQueue($"@{chatter?.Name} something went wrong when adding the track to the queue peepoSad", messageID); }
   }
 
+  /// <summary> Handles song skip command. </summary>
+  /// <param name="chatter">Chatter that requested the song skip</param>
   public static void SkipSong(Chatter chatter)
   {
     if (!Spotify.SkipEnabled) { AddMessageToQueue($"@{chatter.Name} song skips are disabled peepoSad"); }
@@ -972,5 +820,258 @@ public static class Chat
       //   " required to skip the song."
       // ));
     }
+  }
+
+  /// <summary> Parses received raw chat message. </summary>
+  /// <param name="msg">Raw chat message</param>
+  /// <param name="metadata">Metadata of the message to be updated</param>
+  /// <returns>Tuple of the header and body parts of the message</returns>
+  static (string header, string body) ParseMessage(string msg, ref MessageMetadata metadata)
+  {
+    metadata.Clear();
+    string header = string.Empty;
+    string body = string.Empty;
+
+    int temp, temp2;
+
+    // Find header <-> body "separator"
+    temp = msg.IndexOf("tmi.twitch.tv");
+    if (temp < 0)
+    {
+      Log.Error("Chat message not parsed correctly\n{msg}", msg);
+      return (header, body);
+    }
+
+    // Get message header
+    header = msg[..temp];
+    temp += 14; // 14 == "tmi.twitch.tv ".len()
+
+    // Get message type
+    temp2 = msg[temp..].IndexOf(' ');
+    if (temp2 < 0) { temp2 = msg.Length - temp; }
+    metadata.MessageType = msg[temp..(temp + temp2)];
+    temp2 += 1 + temp;
+
+    // Get message body
+    temp = msg[temp2..].IndexOf(':');
+    if (temp > 0) body = msg[(temp + 1 + temp2)..];
+
+    // Get header data
+    var headerData = header.Split(';', ' ');
+    foreach (var data in headerData)
+    {
+      if (data.StartsWith("id=")) { metadata.MessageID = data[3..]; } // 3 == "id=".len()
+      else if (data.StartsWith("badges="))
+      {
+        // Badge
+        var badge = data[7..]; // 7 == "badges=".len()
+        if (badge.StartsWith("broadcaster")) { metadata.Badge = "STR"; }
+        else if (badge.StartsWith("moderator")) { metadata.Badge = "MOD"; }
+        else if (badge.StartsWith("subscriber")) { metadata.Badge = "SUB"; }
+        else if (badge.StartsWith("vip")) { metadata.Badge = "VIP"; }
+      }
+      else if (data.StartsWith("display-name=")) { metadata.UserName = data[13..]; } // 13 == "display-name=".len()
+      else if (data.StartsWith("user-id=")) { _ = long.TryParse(data[8..], out metadata.UserID); } // 8 == "user-id=".len()
+      else if (data.StartsWith("custom-reward-id=")) { metadata.CustromRewardID = data[17..]; } // 17 == "custom-reward-id=".len()
+      else if (data.StartsWith("bits=")) { metadata.Bits = data[5..]; } // 5 == "bits=".len()
+      else if (data.StartsWith("@msg-id=")) { metadata.MsgID = data[8..]; } // 8 == "@msg-id=".len(), msg_id - special message type, being it's own message
+      else if (data.StartsWith("msg-id=")) { metadata.MsgID = data[7..]; } // 7 == "msg-id=".len(), msg_id - special message type, attached to normal message
+    }
+
+    return (header, body);
+  }
+
+  /// <summary> Checks chat message for commands. </summary>
+  /// <param name="metadata">Metadata of the chat message</param>
+  /// <param name="msg">Message body to be checked</param>
+  static void CheckForChatCommands(ref MessageMetadata metadata, string msg)
+  {
+    var chatter = Chatter.GetChatterByID(metadata.UserID, metadata.UserName);
+    chatter.LastChatted = DateTime.Now;
+    if (Notifications.WelcomeMessagesEnabled && chatter.WelcomeMessage?.Length > 0 && chatter.LastWelcomeMessage.Date != DateTime.Now.Date)
+    {
+      Log.Information("Creating {userName} welcome message TTS.", metadata.UserName);
+      chatter.SetLastWelcomeMessageToNow();
+      Notifications.CreateTTSNotification(chatter.WelcomeMessage);
+    }
+
+    if (msg.StartsWith("!tts")) // Check if the message starts with !tts key
+    {
+      if (msg.Length <= 5) { Log.Warning("!tts command without a message Susge"); } // No message to read, do nothing
+      else if (Notifications.ChatTTSEnabled || Chatter.AlwaysReadTTSFromThem.Contains(metadata.UserName)) { Notifications.CreateTTSNotification(msg[5..]); } // 5.. - without "!tts "
+      else { AddMessageResponseToQueue($"@{metadata.UserName} TTS disabled peepoSad", metadata.MessageID); }
+    }
+    else if (msg.StartsWith("!gamba")) // Check if the message starts with !gamba key
+    {
+      MinigameGamba.NewGamba(metadata.UserID, metadata.UserName, msg[6..]); // 6.. - without "!gamba"
+    }
+    else if (msg.StartsWith("!fight")) // Check if the message starts with !fight key
+    {
+      MinigameFight.NewFight(metadata.UserID, metadata.UserName, msg[6..]); // 6.. - without "!fight"
+    }
+    else if (msg.StartsWith("!rude")) // Check if the message starts with !rude key
+    {
+      MinigameRude.AddRudePoint(metadata.UserName, msg[5..]); // 5.. - without "!rude"
+    }
+    else if (msg.StartsWith("!point")) // Check if the message starts with !point key
+    {
+      if (metadata.Badge.Equals("STR") || msg.Length == 6) MinigameBackseat.AddBackseatPoint(msg[6..], 1); // 6.. - without "!point"
+      else AddMessageResponseToQueue($"@{metadata.UserName} That's for the streamer, you shouldn't be using it Madge", metadata.MessageID);
+    }
+    else if (msg.StartsWith("!unpoint")) // Check if the message starts with !unpoint key
+    {
+      if (metadata.Badge.Equals("STR")) MinigameBackseat.AddBackseatPoint(msg[8..], -1); // 8.. - without "!unpoint"
+      else AddMessageResponseToQueue($"@{metadata.UserName} That's for the streamer, you shouldn't be using it Madge", metadata.MessageID);
+    }
+    else if (msg.StartsWith("!vanish")) // Check if the message starts with !vanish key
+    {
+      if (!VanishEnabled) { } // Disabled - do nothing
+      else if (msg.Length == 7)
+      {
+        // Vanish the command user
+        if (!metadata.Badge.Equals("STR")) BanChatter("!vanish command", metadata.UserID, metadata.UserName);
+      }
+      else
+      {
+        // Vanish other user, only available for streamer and moderators
+        if (metadata.Badge.Equals("STR") || metadata.Badge.Equals("MOD"))
+        {
+          BanChatter("!vanish command", -1, msg[7..]); // 7.. - without "!vanish"
+        }
+      }
+    }
+    else if (msg.StartsWith("!hug")) // Check if the message starts with !hug key
+    {
+      Hug(metadata.UserName, msg[4..]); // 4.. - without "!hug"
+    }
+    else if (msg.StartsWith("!commands")) // Check if the message starts with !commands key
+    {
+      // Check the timeout
+      if (ResponseMessages.TryGetValue("!commands", out var rm) && (DateTime.Now - rm.lastUsed) >= CooldownBetweenTheSameMessage)
+      {
+        SendCommandsResponse(metadata.UserName, metadata.MessageID);
+        ResponseMessages["!commands"] = (rm.response, DateTime.Now);
+      }
+      else { Log.Warning("Not sending response for {command} key. Cooldown active.", "!commands"); }
+    }
+    else if (msg.StartsWith("!welcomemessageclear")) // Check if the message starts with !welcomemessageclear key
+    {
+      // Clear current welcome message
+      if (chatter.WelcomeMessage?.Length > 0)
+      {
+        chatter.SetWelcomeMessage(null);
+        AddMessageResponseToQueue($"@{metadata.UserName} welcome message was cleared", metadata.MessageID);
+      }
+      else { AddMessageResponseToQueue($"@{metadata.UserName} your welcome message is empty WeirdDude", metadata.MessageID); }
+    }
+    else if (msg.StartsWith("!welcomemessage")) // Check if the message starts with !welcomemessage key
+    {
+      string newMsg = msg[15..].Trim();
+      if (newMsg.Length == 0)
+      {
+        // Print out current welcome message
+        if (chatter.WelcomeMessage?.Length > 0) AddMessageResponseToQueue($"@{metadata.UserName} current welcome message: {chatter.WelcomeMessage}", metadata.MessageID);
+        else AddMessageResponseToQueue($"@{metadata.UserName} your welcome message is empty peepoSad", metadata.MessageID);
+      }
+      else
+      {
+        // Set new welcome message
+        chatter.SetWelcomeMessage(newMsg);
+        AddMessageResponseToQueue($"@{metadata.UserName} welcome message was updated peepoHappy", metadata.MessageID);
+      }
+    }
+    else if (msg.StartsWith("!sounds")) // Check if the message starts with !sounds key
+    {
+      if (Notifications.AreSoundsAvailable())
+      {
+        string paste = Notifications.GetSampleSoundsPaste();
+        AddMessageResponseToQueue($"@{metadata.UserName} {paste}", metadata.MessageID);
+      }
+      else { AddMessageResponseToQueue($"@{metadata.UserName} there are no sounds to use peepoSad", metadata.MessageID); }
+    }
+    else if (msg.StartsWith("!previoussong")) // Check if the message starts with !previoussong key
+    {
+      if (Spotify.Working) { AddMessageResponseToQueue($"@{metadata.UserName} {Spotify.GetRecentlyPlayingTracks()}", metadata.MessageID); }
+      else { AddMessageResponseToQueue($"@{metadata.UserName} the Spotify connection is not working peepoSad", metadata.MessageID); }
+    }
+    else if (msg.StartsWith("!songrequest")) // Check if the message starts with !songrequest key
+    {
+      SongRequest(chatter, msg[12..], metadata.MessageID);  // 12.. - without "!songrequest"
+    }
+    else if (msg.StartsWith("!sr")) // Check if the message starts with !sr key
+    {
+      SongRequest(chatter, msg[3..], metadata.MessageID); // 3.. - without "!sr"
+    }
+    else if (msg.StartsWith("!skipsong")) // Check if the message starts with !skipsong key
+    {
+      SkipSong(chatter);
+    }
+    else if (msg.StartsWith("!songqueue")) // Check if the message starts with !songqueue key
+    {
+      if (Spotify.Working) { AddMessageResponseToQueue($"@{metadata.UserName} {Spotify.GetSongQueue()}", metadata.MessageID); }
+      else { AddMessageResponseToQueue($"@{metadata.UserName} the Spotify connection is not working peepoSad", metadata.MessageID); }
+    }
+    else if (msg.StartsWith("!song")) // Check if the message starts with !song key
+    {
+      if (Spotify.Working) { AddMessageResponseToQueue($"@{metadata.UserName} {Spotify.GetCurrentlyPlayingTrack()}", metadata.MessageID); }
+      else { AddMessageResponseToQueue($"@{metadata.UserName} the Spotify connection is not working peepoSad", metadata.MessageID); }
+    }
+    else if (ResponseMessages.Count > 0) // Check if message starts with key to get automatic response
+    {
+      int temp = msg.IndexOf(' ');
+      string command = temp > 0 ? msg[..temp] : msg;
+      if (ResponseMessages.TryGetValue(command, out var rm))
+      {
+        // "!lang" response - "Please speak xxx in the chat...", only usable by the mods or the streamer
+        if (command.Equals("!lang"))
+        {
+          if (metadata.Badge.Equals("MOD") || metadata.Badge.Equals("STR"))
+          {
+            if (temp > 0)
+            {
+              string name = msg[temp..].Trim();
+              if (name.StartsWith('@')) name = name[1..];
+              AddMessageToQueue($"@{name} {rm.response}");
+            }
+            else { AddMessageResponseToQueue($"@{metadata.UserName} {rm.response}", metadata.MessageID); }
+          }
+        }
+        // Check if the same message was send not long ago
+        else if (DateTime.Now - rm.lastUsed >= CooldownBetweenTheSameMessage)
+        {
+          AddMessageResponseToQueue($"@{metadata.UserName} {rm.response}", metadata.MessageID);
+          ResponseMessages[command] = (rm.response, DateTime.Now);
+        }
+        else { Log.Warning("Not sending response for \"{command}\" key. Cooldown active.", command); }
+      }
+    }
+  }
+}
+
+/// <summary> Chat message metadata. </summary>
+class MessageMetadata
+{
+  /// <summary> Type of the chat message. </summary>
+  public string MessageType = string.Empty;
+  /// <summary> Badge of the chatter. </summary>
+  public string Badge = string.Empty;
+  /// <summary> Name of the chatter. </summary>
+  public string UserName = string.Empty;
+  /// <summary> Chatter ID. </summary>
+  public long UserID = -1;
+  /// <summary> Message ID. </summary>
+  public string MessageID = string.Empty;
+  /// <summary> Custom reward ID that created the chat message. </summary>
+  public string CustromRewardID = string.Empty;
+  /// <summary> Amount of bits. </summary>
+  public string Bits = string.Empty;
+  /// <summary> Type of special chat message (like "sub", "emote_only_on"). </summary>
+  public string MsgID = string.Empty;
+
+  /// <summary> Resets current metadata to default state. </summary>
+  public void Clear()
+  {
+    MessageType = Badge = UserName = MessageID = CustromRewardID = Bits = MsgID = string.Empty;
+    UserID = -1;
   }
 }

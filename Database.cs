@@ -5,6 +5,8 @@ using System.Globalization;
 using System.IO;
 using System.Threading.Tasks;
 
+using Serilog;
+
 namespace AbevBot;
 
 public static class Database
@@ -13,7 +15,7 @@ public static class Database
   {
     Version,
     TwitchOAuth, TwitchOAuthRefresh,
-    VolumeTTS, VolumeSounds, VolumeVideos,
+    VolumeAudio, VolumeVideo,
     EnabledChatTTS,
     EnabledGamba, EnabledGambaLife, EnabledGambaAnimations,
     EnabledFight,
@@ -32,13 +34,13 @@ public static class Database
 
   public static bool Init()
   {
-    MainWindow.ConsoleWarning(">> Initializing database.");
+    Log.Information("Initializing database.");
 
     // Check if database file exist
     FileInfo file = new(DATABASEPATH);
     if (!file.Exists)
     {
-      MainWindow.ConsoleWarning(">> Creating new database file.");
+      Log.Information("Creating new database file.");
 
       // Create file
       SQLiteConnection.CreateFile(DATABASEPATH);
@@ -47,7 +49,7 @@ public static class Database
 
       if (!file.Exists)
       {
-        MainWindow.ConsoleWarning($">> Failed to create '{DATABASEPATH}' database file!");
+        Log.Error("Failed to create '{file}' database file!", DATABASEPATH);
         return true;
       }
 
@@ -56,7 +58,7 @@ public static class Database
       int affected = command.ExecuteNonQuery();
       if (affected != 0)
       {
-        MainWindow.ConsoleWarning($">> Creating Config tablie in '{DATABASEPATH}' database returned wrong result!");
+        Log.Error("Creating Config tablie in '{file}' database returned wrong result!", DATABASEPATH);
         return true;
       }
 
@@ -81,9 +83,8 @@ public static class Database
     DateTime.TryParse(GetValueOrCreateFromConfig(Keys.DiscordOAuthExpiration, DateTime.MinValue.ToString()), out AccessTokens.DiscordOAuthTokenExpiration);
 
     // Get sound slider values
-    Config.VolumeTTS = float.Parse(GetValueOrCreateFromConfig(Keys.VolumeTTS, "0,4"), new NumberFormatInfo() { NumberDecimalSeparator = "," });
-    Config.VolumeSounds = float.Parse(GetValueOrCreateFromConfig(Keys.VolumeSounds, "0,3"), new NumberFormatInfo() { NumberDecimalSeparator = "," });
-    Config.VolumeVideos = float.Parse(GetValueOrCreateFromConfig(Keys.VolumeVideos, "0,8"), new NumberFormatInfo() { NumberDecimalSeparator = "," });
+    Config.VolumeAudio = float.Parse(GetValueOrCreateFromConfig(Keys.VolumeAudio, "0,4"), new NumberFormatInfo() { NumberDecimalSeparator = "," });
+    Config.VolumeVideo = float.Parse(GetValueOrCreateFromConfig(Keys.VolumeVideo, "0,8"), new NumberFormatInfo() { NumberDecimalSeparator = "," });
     MainWindow.I.SetVolumeSliderValues();
 
     // Get checkbox states
@@ -120,7 +121,7 @@ public static class Database
       if (reader.Read()) { result = reader.IsDBNull("Value") ? string.Empty : reader.GetString("Value"); }
       else
       {
-        MainWindow.ConsoleWarning($">> Error when reading database for key {name}");
+        Log.Warning("Error when reading database for key {name}", name);
         result = string.Empty;
       }
       reader.Close();
@@ -134,7 +135,7 @@ public static class Database
       affected = command.ExecuteNonQuery();
       if (affected != 1)
       {
-        MainWindow.ConsoleWarning($">> Couldn't add {name} to database Config table!");
+        Log.Warning("Couldn't add {name} to database Config table!", name);
         return string.Empty;
       }
       else { return defaultValue; }
@@ -148,7 +149,7 @@ public static class Database
     if (result is null)
     {
       // Row doesn't exist
-      MainWindow.ConsoleWarning($">> Name {name} doesn't exist in database Config table!");
+      Log.Warning("Name {name} doesn't exist in database Config table!", name);
       return string.Empty;
     }
     return result;
@@ -156,7 +157,7 @@ public static class Database
 
   public static async Task<bool> UpdateValueInConfig(Keys name, object value)
   {
-    MainWindow.ConsoleWarning($">> Updating '{name}' in Config database.");
+    Log.Information("Updating '{name}' in Config database.", name);
     if (Connection.State == ConnectionState.Closed) Connection.Open();
 
     SQLiteCommand command = new($"UPDATE Config SET Value='{value}' WHERE Name='{name}';", Connection);
@@ -166,7 +167,7 @@ public static class Database
 
     if (affected != 1)
     {
-      MainWindow.ConsoleWarning($">> Couldn't update {name} in database Config table!");
+      Log.Warning("Couldn't update {name} in database Config table!", name);
       return false;
     }
     return true;

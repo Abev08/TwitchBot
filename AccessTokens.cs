@@ -5,6 +5,8 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
 
+using Serilog;
+
 namespace AbevBot;
 
 /// <summary> Everything related to access tokens. </summary>
@@ -144,7 +146,7 @@ public static class AccessTokens
   /// <summary> Request new access token. </summary>
   private static void GetNewOAuthToken()
   {
-    MainWindow.ConsoleWarning(">> Requesting new Twitch OAuth token.");
+    Log.Information("Requesting new Twitch OAuth token.");
 
     string uri = string.Concat(
       "https://id.twitch.tv/oauth2/authorize?",
@@ -196,7 +198,7 @@ public static class AccessTokens
         // Something went really wrong, we were requesting new token with fresh authentication and the response was corrupted
         throw new Exception("Response was empty or didn't received access token!\nProbably ClientID or ClientPassowrd doesn't match!");
       }
-      MainWindow.ConsoleWarning(response.ToString());
+      Log.Information(response.ToString());
       // Read information from received data
       Secret.Data[Secret.Keys.OAuthToken] = response.Token;
       Secret.Data[Secret.Keys.OAuthRefreshToken] = response.RefreshToken;
@@ -218,19 +220,19 @@ public static class AccessTokens
 
     string resp;
     try { resp = Client.Send(request).Content.ReadAsStringAsync().Result; }
-    catch (HttpRequestException ex) { MainWindow.ConsoleWarning($">> Twitch OAuth token validation failed. {ex.Message}"); return false; }
+    catch (HttpRequestException ex) { Log.Error("Twitch OAuth token validation failed. {ex}", ex); return false; }
     var response = AccessTokenValidationResponse.Deserialize(resp);
     if (response?.ClientID?.Equals(Secret.Data[Secret.Keys.CustomerID]) == true && response?.ExpiresIn > 0)
     {
-      if (response?.Scopes?.Length != TwitchScopes.Length) { MainWindow.ConsoleWarning(">> Current Twitch OAuth token is missing some scopes."); }
+      if (response?.Scopes?.Length != TwitchScopes.Length) { Log.Warning("Current Twitch OAuth token is missing some scopes."); }
       else
       {
         BotOAuthTokenExpiration = DateTime.Now + TimeSpan.FromSeconds(response.ExpiresIn.Value) - OAuthTokenExpirationSomething;
-        MainWindow.ConsoleWarning($">> Twitch OAuth token validation succeeded. Token expiries in {response.ExpiresIn.Value / 3600f} hours.");
+        Log.Information("Twitch OAuth token validation succeeded. Token expiries in {time} hours.", MathF.Round(response.ExpiresIn.Value / 3600f, 2));
         return true;
       }
     }
-    else { MainWindow.ConsoleWarning(">> Twitch OAuth token validation failed."); }
+    else { Log.Error("Twitch OAuth token validation failed."); }
 
     return false;
   }
@@ -241,7 +243,7 @@ public static class AccessTokens
   {
     if (DateTime.Now < BotOAuthTokenExpiration) return false;
 
-    MainWindow.ConsoleWarning(">> Refreshing Twitch OAuth token.");
+    Log.Information("Refreshing Twitch OAuth token.");
     using HttpRequestMessage request = new(HttpMethod.Post, "https://id.twitch.tv/oauth2/token");
     request.Content = new StringContent(string.Concat(
         "client_id=", Secret.Data[Secret.Keys.CustomerID],
@@ -253,14 +255,14 @@ public static class AccessTokens
 
     string resp;
     try { resp = Client.Send(request).Content.ReadAsStringAsync().Result; }
-    catch (HttpRequestException ex) { MainWindow.ConsoleWarning($">> Twitch OAuth token refresh failed. {ex.Message}"); return false; }
+    catch (HttpRequestException ex) { Log.Error("Twitch OAuth token refresh failed. {ex}", ex); return false; }
     var response = AccessTokenResponse.Deserialize(resp);
     if (response is null || response.Token is null || response.RefreshToken is null)
     {
-      MainWindow.ConsoleWarning(">> Twitch OAuth token refresh failed. Response was empty or didn't received access token!");
+      Log.Error("Twitch OAuth token refresh failed. Response was empty or didn't received access token!");
       return false;
     }
-    MainWindow.ConsoleWarning(response.ToString());
+    Log.Information(response.ToString());
     // Read information from received data
     Secret.Data[Secret.Keys.OAuthToken] = response.Token;
     Secret.Data[Secret.Keys.OAuthRefreshToken] = response.RefreshToken;
@@ -272,7 +274,7 @@ public static class AccessTokens
   /// <summary> Requests new Spotify OAuth token using Authorization Code Flow. </summary>
   private static void GetNewSpotifyOAuthToken()
   {
-    MainWindow.ConsoleWarning(">> Requesting new Spotify OAuth token.");
+    Log.Information("Requesting new Spotify OAuth token.");
 
     string uri = string.Concat(
       "https://accounts.spotify.com/authorize?",
@@ -321,15 +323,15 @@ public static class AccessTokens
 
       string resp;
       try { resp = Client.Send(request).Content.ReadAsStringAsync().Result; }
-      catch (HttpRequestException ex) { MainWindow.ConsoleWarning($">> Spotify OAuth token request failed. {ex.Message}"); return; }
+      catch (HttpRequestException ex) { Log.Error("Spotify OAuth token request failed. {ex}", ex); return; }
       SpotifyAccessTokenResponse response = SpotifyAccessTokenResponse.Deserialize(resp);
       if (response is null || response.Token is null || response.RefreshToken is null)
       {
-        MainWindow.ConsoleWarning(">> Spotify OAuth token request failed. Response was empty or didn't received access token!\nProbably ClientID or ClientPassowrd doesn't match!");
+        Log.Warning("Spotify OAuth token request failed. Response was empty or didn't received access token!\nProbably ClientID or ClientPassowrd doesn't match!");
       }
       else
       {
-        MainWindow.ConsoleWarning(response.ToString());
+        Log.Information(response.ToString());
         // Read information from received data
         Secret.Data[Secret.Keys.SpotifyOAuthToken] = response.Token;
         Secret.Data[Secret.Keys.SpotifyOAuthRefreshToken] = response.RefreshToken;
@@ -339,7 +341,7 @@ public static class AccessTokens
     else
     {
       // Something went wrong
-      MainWindow.ConsoleWarning(">> Spotify OAuth token request failed. Something went wrong! Response url didn't include code part!");
+      Log.Warning("Spotify OAuth token request failed. Something went wrong! Response url didn't include code part!");
     }
   }
 
@@ -357,7 +359,7 @@ public static class AccessTokens
     if (!Spotify.Working && !forceRefresh) return false;
     if (DateTime.Now < SpotifyOAuthTokenExpiration) return false;
 
-    MainWindow.ConsoleWarning(">> Refreshing Spotify access token.");
+    Log.Information("Refreshing Spotify access token.");
     using HttpRequestMessage request = new(HttpMethod.Post, "https://accounts.spotify.com/api/token");
     request.Content = new StringContent(string.Concat(
         "grant_type=refresh_token",
@@ -368,16 +370,16 @@ public static class AccessTokens
 
     string resp;
     try { resp = Client.Send(request).Content.ReadAsStringAsync().Result; }
-    catch (HttpRequestException ex) { MainWindow.ConsoleWarning($">> Spotify OAuth token refresh failed. {ex.Message}"); return false; }
+    catch (HttpRequestException ex) { Log.Error("Spotify OAuth token refresh failed. {ex}", ex); return false; }
     SpotifyAccessTokenResponse response = SpotifyAccessTokenResponse.Deserialize(resp);
     if (response is null || response.Token is null)
     {
-      MainWindow.ConsoleWarning(">> Spotify OAuth token refresh failed. Response was empty or didn't received access token!\nProbably ClientID or ClientPassowrd doesn't match!");
+      Log.Warning("Spotify OAuth token refresh failed. Response was empty or didn't received access token!\nProbably ClientID or ClientPassowrd doesn't match!");
       return false;
     }
     else
     {
-      MainWindow.ConsoleWarning(response.ToString());
+      Log.Information(response.ToString());
       // Read information from received data
       Secret.Data[Secret.Keys.SpotifyOAuthToken] = response.Token;
       // When refreshing refresh token stays the same??
@@ -390,7 +392,7 @@ public static class AccessTokens
   /// <summary> Request new access token. </summary>
   private static void GetNewDiscordOAuthToken()
   {
-    MainWindow.ConsoleWarning(">> Requesting new Discord OAuth token.");
+    Log.Information("Requesting new Discord OAuth token.");
 
     string uri = string.Concat(
       "https://discord.com/oauth2/authorize?",
@@ -440,11 +442,11 @@ public static class AccessTokens
 
       string resp;
       try { resp = Client.Send(request).Content.ReadAsStringAsync().Result; }
-      catch (HttpRequestException ex) { MainWindow.ConsoleWarning($">> Discord OAuth token request failed. {ex.Message}"); return; }
+      catch (HttpRequestException ex) { Log.Error("Discord OAuth token request failed. {ex}", ex); return; }
       var response = DiscordTokenResponse.Deserialize(resp);
       if (response is null || response.Token is null || response.RefreshToken is null)
       {
-        MainWindow.ConsoleWarning(">> Discord OAuth token request failed. Response was empty or didn't received access token!\nProbably ClientID or ClientPassowrd doesn't match!");
+        Log.Warning("Discord OAuth token request failed. Response was empty or didn't received access token!\nProbably ClientID or ClientPassowrd doesn't match!");
       }
       // Read information from received data
       Secret.Data[Secret.Keys.DiscordOAuthToken] = response.Token;
@@ -454,7 +456,7 @@ public static class AccessTokens
     else
     {
       // Something went wrong
-      MainWindow.ConsoleWarning(">> Discord OAuth token request failed. Response url didn't include code part!");
+      Log.Warning("Discord OAuth token request failed. Response url didn't include code part!");
     }
   }
 
@@ -473,7 +475,7 @@ public static class AccessTokens
     if (!Discord.Working && !forceRefresh) return false;
     if (DiscordOAuthTokenExpiration == DateTime.MinValue || DateTime.Now < DiscordOAuthTokenExpiration) return false;
 
-    MainWindow.ConsoleWarning(">> Refreshing Discord OAuth token.");
+    Log.Information("Refreshing Discord OAuth token.");
     using HttpRequestMessage request = new(HttpMethod.Post, "https://discord.com/api/v10/oauth2/token");
     request.Content = new StringContent(string.Concat(
         "client_id=", Secret.Data[Secret.Keys.DiscrodClientID],
@@ -485,19 +487,19 @@ public static class AccessTokens
 
     string resp;
     try { resp = Client.Send(request).Content.ReadAsStringAsync().Result; }
-    catch (HttpRequestException ex) { MainWindow.ConsoleWarning($">> Discord OAuth token refresh failed. {ex.Message}"); return false; }
+    catch (HttpRequestException ex) { Log.Error("Discord OAuth token refresh failed. {ex}", ex); return false; }
     if (string.IsNullOrEmpty(resp) || resp.StartsWith("{\"error"))
     {
-      MainWindow.ConsoleWarning($">> Discord OAuth token refresh failed. Response contained an error! Discord integration won't work! Message:\n{resp}");
+      Log.Warning("Discord OAuth token refresh failed. Response contained an error! Discord integration won't work! Message:\n{resp}", resp);
       return false;
     }
     var response = DiscordTokenResponse.Deserialize(resp);
     if (response is null || response.Token is null || response.RefreshToken is null)
     {
-      MainWindow.ConsoleWarning(">> Discord OAuth token refresh failed. Response was empty or didn't received access token! Discord integration won't work!");
+      Log.Warning("Discord OAuth token refresh failed. Response was empty or didn't received access token! Discord integration won't work!");
       return false;
     }
-    MainWindow.ConsoleWarning(response.ToString());
+    Log.Information(response.ToString());
     // Read information from received data
     Secret.Data[Secret.Keys.DiscordOAuthToken] = response.Token;
     Secret.Data[Secret.Keys.DiscordOAuthRefreshToken] = response.RefreshToken;
@@ -514,16 +516,16 @@ public static class AccessTokens
     request.Headers.Add("Authorization", $"Bearer {Secret.Data[Secret.Keys.DiscordOAuthToken]}");
     string resp;
     try { resp = Client.Send(request).Content.ReadAsStringAsync().Result; }
-    catch (HttpRequestException ex) { MainWindow.ConsoleWarning($">> Discrod OAuth token validation failed. {ex.Message}"); return false; }
+    catch (HttpRequestException ex) { Log.Error("Discrod OAuth token validation failed. {ex}", ex); return false; }
     var response = DiscordMeResponse.Deserialize(resp);
     if (response?.ID?.Length > 0 && response?.UserName?.Length > 0)
     {
-      MainWindow.ConsoleWarning($">> Discord OAuth token validation succeeded.");
+      Log.Information("Discord OAuth token validation succeeded.");
       return true;
     }
     else
     {
-      MainWindow.ConsoleWarning(">> Discrod OAuth token validation failed.");
+      Log.Warning("Discrod OAuth token validation failed.");
       return false;
     }
   }

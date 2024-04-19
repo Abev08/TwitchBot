@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 
+using Serilog;
+
 namespace AbevBot;
 
 /// <summary> Secret configuration stuff. </summary>
@@ -68,7 +70,7 @@ public static class Secret
 
   public static bool ParseSecretFile()
   {
-    MainWindow.ConsoleWarning($">> Reading {FILENAME} file.");
+    Log.Information("Reading {file} file.", FILENAME);
 
     // Create example Secrets.ini
     FileInfo secretsFile = new("Secrets_example.ini");
@@ -95,7 +97,7 @@ public static class Secret
           string[] text = line.Split(';')[0].Split('=', StringSplitOptions.TrimEntries);
           if (text.Length < 2 || string.IsNullOrWhiteSpace(text[1]))
           {
-            // MainWindow.ConsoleWarning($">> Bad {FILENAME} line: {lineIndex}.");
+            // Log.Warning("Bad {file} line: {index}.", FILENAME, lineIndex);
             continue;
           }
           object key;
@@ -105,22 +107,18 @@ public static class Secret
             {
               default:
                 if (Data.ContainsKey((Keys)key)) { Data[(Keys)key] = text[1].Trim(); }
-                else { MainWindow.ConsoleWarning($">> Not recognized key '{text[0]}' on line {lineIndex} in {FILENAME} file."); }
+                else { Log.Warning("Not recognized key '{key}' on line {index} in {file} file.", text[0], lineIndex, FILENAME); }
                 break;
             }
           }
-          else { MainWindow.ConsoleWarning($">> Not recognized key '{text[0]}' on line {lineIndex} in {FILENAME} file."); }
+          else { Log.Warning("Not recognized key '{key}' on line {index} in {file} file.", text[0], lineIndex, FILENAME); }
         }
       }
 
       // Check if all needed data was read
       if (Data[Keys.Name].Length == 0 || Data[Keys.CustomerID].Length == 0 || Data[Keys.Password].Length == 0)
       {
-        MainWindow.ConsoleWarning(string.Concat(
-          $">> Missing required information in {FILENAME} file.", Environment.NewLine,
-          $"Look inside \"Required information in {FILENAME}\" section in README for help.", Environment.NewLine,
-          $"You can delete {FILENAME} file to generate new one. ! WARNING - ALL DATA INSIDE IT WILL BE LOST !"
-        ));
+        Log.Error("Missing required information in {file} file.\r\nLook inside \"Required information in {file}\" section in README for help.\r\nYou can delete {file} file to generate new one. ! WARNING - ALL DATA INSIDE IT WILL BE LOST !", FILENAME, FILENAME, FILENAME);
         return true;
       }
     }
@@ -215,11 +213,7 @@ public static class Secret
     if (!example)
     {
       // Notify the user
-      MainWindow.ConsoleWarning(string.Concat(
-        $">> Missing required info in {FILENAME} file.", Environment.NewLine,
-        "The file was generated.", Environment.NewLine,
-        "Please fill it up and restart the bot."
-      ));
+      Log.Error("Missing required info in {file} file.\r\nThe file was generated.\r\nPlease fill it up and restart the bot.", FILENAME);
     }
   }
 }

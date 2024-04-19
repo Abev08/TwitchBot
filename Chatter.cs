@@ -4,6 +4,8 @@ using System.IO;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
+using Serilog;
+
 namespace AbevBot
 {
   public class Chatter
@@ -42,9 +44,9 @@ namespace AbevBot
 
     public void AddGambaPoints(int points)
     {
-      if (points > 0) Gamba.Wins++;
-      else if (points < 0) Gamba.Looses++;
-      else MainWindow.ConsoleWarning($"> Gamba: {Name} gambler won {points} points. Something is not right Hmm.");
+      if (points > 0) { Gamba.Wins++; }
+      else if (points < 0) { Gamba.Looses++; }
+      else { Log.Warning("Gamba: {Name} gambler won {points} points. Something is not right Hmm.", Name, points); }
 
       Gamba.Points += points;
       if (Gamba.Points <= 0)
@@ -135,7 +137,7 @@ namespace AbevBot
       if (Chatters is null || Chatters.Count == 0) LoadChattersFile();
       if (userName is null || userName.Length == 0)
       {
-        MainWindow.ConsoleWarning($">> Provided empty user name!");
+        Log.Warning("Get chatter by name provided empty user name!");
         return null;
       }
 
@@ -157,7 +159,7 @@ namespace AbevBot
         }
       }
 
-      MainWindow.ConsoleWarning($">> Chatter {userName.Trim()} not found!");
+      Log.Warning("Chatter {name} not found!", userName.Trim());
       return null;
     }
 
@@ -167,7 +169,7 @@ namespace AbevBot
       UpdateRequired = false;
       if (Chatters is null || Chatters.Count == 0) return;
 
-      MainWindow.ConsoleWarning(">> Updating chatters file.");
+      Log.Information("Updating chatters file.");
 
       string data;
       lock (Chatters)
@@ -186,9 +188,10 @@ namespace AbevBot
       }
 
       try { File.WriteAllText(CHATTERSFILE, data); }
-      catch (Exception ex) { MainWindow.ConsoleWarning($">> {ex.Message}"); }
+      catch (Exception ex) { Log.Error("Error when updating chatters file: {ex}", ex); }
     }
 
+    /// <summary> Loads chatters from chatters file. </summary>
     public static void LoadChattersFile()
     {
       if (Chatters?.Count > 0) return;
@@ -229,7 +232,7 @@ namespace AbevBot
     /// <para> Then bans find users for 10 hours, deletes them from Chatters array and deletes follow notifications. </para></summary>
     public static void StopFollowBots()
     {
-      MainWindow.ConsoleWarning(">> Stop follow bots clicked!");
+      Log.Warning("Stop follow bots clicked!");
       TimeSpan followedLimit = TimeSpan.FromSeconds(20);
       var now = DateTime.Now;
 

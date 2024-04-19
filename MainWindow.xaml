@@ -67,12 +67,10 @@
       <!-- Enable checkboxes -->
       <Border Padding="4,10,4,10" Margin="2,10,4,0" BorderThickness="1" BorderBrush="Black" CornerRadius="10">
         <StackPanel>
-          <TextBlock x:Name="tbVolumeTTS" Text="TTS Volume: 40%" HorizontalAlignment="Center" ToolTip="TTS notifications volume"/>
-          <Slider x:Name="volumeTTS" Maximum="100" SmallChange="1" Value="40" ValueChanged="VolumeTTSChanged" IsSnapToTickEnabled="True" MouseWheel="VolumeChange"/>
-          <TextBlock x:Name="tbVolumeSounds" Text="Sounds Volume: 30%" HorizontalAlignment="Center" ToolTip="Sound notifications volume"/>
-          <Slider x:Name="volumeSounds" Maximum="100" SmallChange="1" Value="30" ValueChanged="VolumeSoundsChanged" IsSnapToTickEnabled="True" MouseWheel="VolumeChange"/>
-          <TextBlock x:Name="tbVolumeVideos" Text="Videos Volume: 80%" HorizontalAlignment="Center" ToolTip="Video notifications volume"/>
-          <Slider x:Name="volumeVideos" Maximum="100" SmallChange="1" Value="80" ValueChanged="VolumeVideosChanged" IsSnapToTickEnabled="True" MouseWheel="VolumeChange"/>
+          <TextBlock x:Name="tbVolumeAudio" Text="Sounds Volume: 30%" HorizontalAlignment="Center" ToolTip="Audio notifications volume"/>
+          <Slider x:Name="volumeAudio" Maximum="100" SmallChange="1" Value="30" ValueChanged="VolumeAudioChanged" IsSnapToTickEnabled="True" MouseWheel="VolumeChange"/>
+          <TextBlock x:Name="tbVolumeVideo" Text="Videos Volume: 80%" HorizontalAlignment="Center" ToolTip="Video notifications volume"/>
+          <Slider x:Name="volumeVideo" Maximum="100" SmallChange="1" Value="80" ValueChanged="VolumeVideoChanged" IsSnapToTickEnabled="True" MouseWheel="VolumeChange"/>
 
           <CheckBox x:Name="chkEnableTTS" Content="!tts enabled (chat)" VerticalContentAlignment="Center" IsChecked="True" Checked="ChkTTS_CheckChanged" Unchecked="ChkTTS_CheckChanged" ToolTip="TTS commands in chat"/>
           <CheckBox x:Name="chkEnableGamba" Content="!gamba enabled" VerticalContentAlignment="Center" IsChecked="True" Checked="ChkGamba_CheckChanged" Unchecked="ChkGamba_CheckChanged" ToolTip="Gamba minigame"/>

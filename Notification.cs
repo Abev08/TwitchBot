@@ -1,7 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+
 using NAudio.Wave;
+
+using Serilog;
 
 namespace AbevBot
 {
@@ -16,13 +19,13 @@ namespace AbevBot
     public Notifications.TextPosition TextToDisplayPosition { get; init; } = Notifications.TextPosition.TOP;
     public double TextToDisplaySize { get; init; }
     public string TextToRead { get; init; }
-    public float TTSVolume { get; init; } = 1f;
     public string SoundPath { get; init; }
-    public float SoundVolume { get; init; } = 1f;
+    public float AudioVolume { get; init; } = 1f;
     public string VideoPath { get; init; }
     public float VideoVolume { get; init; } = 1f;
     private bool VideoEnded;
     private bool VideoStarted;
+    private bool VideoPaused;
     private bool TextDisplayed;
     private bool TextCleared;
     private bool SoundPlayed;
@@ -52,11 +55,10 @@ namespace AbevBot
         }
       }
       else { TextToRead = string.Format(config.TextToSpeech, data).Replace("\\n", Environment.NewLine).Replace("#", ""); } // Remove '#' symbols - they are not allowed in TTS request messages
-      TTSVolume = Config.VolumeTTS;
       SoundPath = config.SoundToPlay;
-      SoundVolume = Config.VolumeSounds;
+      AudioVolume = Config.VolumeAudio;
       VideoPath = config.VideoToPlay;
-      VideoVolume = Config.VolumeVideos;
+      VideoVolume = Config.VolumeVideo;
       VideoParams = config.VideoParams;
       Redemption = redemption;
       Type = config.Type;
@@ -76,16 +78,16 @@ namespace AbevBot
       KeysPressed = Redemption is null || Redemption.KeysToPress.Count == 0;
       Keys2Pressed = Redemption is null || Redemption.KeysToPressAfterTime.Count == 0;
 
+      List<ISampleProvider> sounds = new();
       if (!TTSPlayed)
       {
         // There is TTS to play, find all of the voices in the message and split the message to be read by different voices
         var sampleSounds = Notifications.GetSampleSounds();
-        List<ISampleProvider> sounds = new();
         List<string> text = new();
         int index;
         text.AddRange(TextToRead.Split(':'));
 
-        if (text.Count == 0) { MainWindow.ConsoleWarning($">> Nothing to read: {TextToRead}"); } // Nothing to read? Do nothing
+        if (text.Count == 0) { Log.Warning("Notification has nothing to read: {text}", TextToRead); } // Nothing to read? Do nothing
         else if (text.Count == 1) { NoIdeaForTheName(text[^1], ref sampleSounds, ref sounds, "StreamElements", "Brian"); } // Just text, read with default voice
         else
         {
@@ -138,16 +140,20 @@ namespace AbevBot
           else if (text.Count != 0)
           {
             // Something bad happened
-            MainWindow.ConsoleWarning(">> Something bad happened with TTS generation");
+            Log.Warning("Something bad happened with TTS generation");
           }
         }
+      }
+      if (!SoundPlayed) { Audio.AddToSampleProviderList(SoundPath, ref sounds, 0); }
 
-        if (sounds.Count > 0) AudioToPlay.Insert(0, Audio.GetSound(sounds, TTSVolume));
-      }
-      if (!SoundPlayed)
+      // Create sound to play from samples
+      if (sounds.Count > 0)
       {
-        AudioToPlay.Insert(0, Audio.GetSound(SoundPath, SoundVolume));
+        Server.CurrentAudio = Audio.GetSoundData(sounds);
+
+        AudioToPlay.Add(Audio.GetSound(Server.CurrentAudio, AudioVolume));
       }
+      else { Server.CurrentAudio = null; }
 
       if (ExtraActionAtStartup != null) ExtraActionAtStartup();
 
@@ -162,7 +168,7 @@ namespace AbevBot
 
       if (DateTime.Now - StartTime > MaximumNotificationTime)
       {
-        MainWindow.ConsoleWarning(">> Maximum notification time reached, something went wrong, to not block other notificaitons force closing this one!");
+        Log.Warning("Maximum notification time reached, something went wrong, to not block other notificaitons force closing this one!");
         MainWindow.I.ClearTextDisplayed();
         MainWindow.I.StopVideoPlayer();
         foreach (var audio in AudioToPlay)
@@ -171,6 +177,7 @@ namespace AbevBot
           audio?.Dispose();
         }
         AudioToPlay.Clear();
+        Server.ClearAll();
         return true;
       }
 
@@ -211,13 +218,6 @@ namespace AbevBot
         }
       }
 
-      // Display text
-      if (!TextDisplayed && !Notifications.NotificationsPaused && !Notifications.SkipNotification)
-      {
-        TextDisplayed = true;
-        MainWindow.I.SetTextDisplayed(TextToDisplay, TextToDisplayPosition, TextToDisplaySize, VideoParams);
-      }
-
       if (!VideoEnded)
       {
         if (!VideoStarted && !Notifications.SkipNotification)
@@ -225,21 +225,53 @@ namespace AbevBot
           // Start the video
           VideoStarted = true;
           MainWindow.I.StartVideoPlayer(VideoPath, VideoVolume, VideoParams);
+          Server.PlayVideo(VideoPath,
+            VideoParams != null ? (float)VideoParams.Left : -1f,
+            VideoParams != null ? (float)VideoParams.Top : -1f,
+            VideoParams != null ? (float)VideoParams.Width : -1f,
+            VideoParams != null ? (float)VideoParams.Height : -1f,
+            VideoVolume);
         }
         else if (Notifications.SkipNotification)
         {
+          Server.ClearVideo();
           MainWindow.I.StopVideoPlayer();
           VideoEnded = true;
         }
+        else if (Notifications.NotificationsPaused)
+        {
+          if (!VideoPaused)
+          {
+            VideoPaused = true;
+            MainWindow.I.PauseVideoPlayer();
+            Server.Pause();
+          }
+        }
+        else if (VideoPaused)
+        {
+          VideoPaused = false;
+          MainWindow.I.ResumeVideoPlayer();
+          Server.Resume();
+        }
         else if (MainWindow.VideoEnded) { VideoEnded = true; }
-        if (!VideoEnded) return false;
       }
+
+      // Display text
+      if (!TextDisplayed && !Notifications.NotificationsPaused && !Notifications.SkipNotification)
+      {
+        TextDisplayed = true;
+        MainWindow.I.SetTextDisplayed(TextToDisplay, TextToDisplayPosition, TextToDisplaySize, VideoParams);
+        Server.DisplayText(TextToDisplay, TextToDisplayPosition, TextToDisplaySize);
+      }
+
+      if (!VideoEnded) return false;
 
       // Clear displayed text
       if (!TextCleared && (DateTime.Now - StartTime >= MinimumNotificationTime))
       {
         TextCleared = true;
         MainWindow.I.ClearTextDisplayed();
+        Server.ClearText();
       }
 
       // Play the audio
@@ -254,22 +286,25 @@ namespace AbevBot
             audio?.Dispose();
           }
           AudioToPlay.Clear();
+          Server.ClearAudio();
         }
         else if (AudioToPlay[0] is null)
         {
           // For some reason the GetXXXSound returned null - skip the sound
-          MainWindow.ConsoleWarning("> null WaveOut reference in AudioToPlay list!");
+          Log.Warning("Notifiaction audio to play: null WaveOut reference in AudioToPlay list!");
           AudioToPlay.RemoveAt(0);
         }
         else if (Notifications.NotificationsPaused && AudioToPlay[0]?.PlaybackState == PlaybackState.Playing)
         {
           // Pause notification active and the sound is playing - pause it
           AudioToPlay[0].Pause();
+          Server.Pause();
         }
         else if (!Notifications.NotificationsPaused && AudioToPlay[0]?.PlaybackState == PlaybackState.Paused)
         {
           // Pause notification not active and the sound is not playing - play it
           AudioToPlay[0].Play();
+          Server.Resume();
         }
         else if (AudioToPlay[0].PlaybackState == PlaybackState.Stopped)
         {
@@ -278,6 +313,7 @@ namespace AbevBot
           {
             AudioToPlay[0].Play();
             AudioStarted = true;
+            Server.PlayAudio(AudioVolume);
           }
           else
           {
@@ -296,6 +332,7 @@ namespace AbevBot
       // The notification is over, clear after it
       if (!Notifications.SkipNotification && (DateTime.Now - StartTime < MinimumNotificationTime)) return false;
       MainWindow.I.ClearTextDisplayed(); // Clear displayed text, again just to be sure
+      Server.ClearAll();
 
       return true; // return true when notification has ended
     }
@@ -331,7 +368,7 @@ namespace AbevBot
               // Add text before the sample to be read
               if (supplier.Equals("StreamElements")) { Audio.AddToSampleProviderList(StreamElements.GetTTS(text[..index].Trim(), voice), ref newAudio); }
               else if (supplier.Equals("TikTok")) { Audio.AddToSampleProviderList(TikTok.GetTTS(text[..index].Trim(), voice), ref newAudio); }
-              else { MainWindow.ConsoleWarning($">> TTS supplier {supplier} not recognized!"); }
+              else { Log.Warning("TTS supplier {supplier} not recognized!", supplier); }
 
               // Add sample sound
               Audio.AddToSampleProviderList(sampleSounds[maybeSample], ref newAudio);
@@ -364,7 +401,7 @@ namespace AbevBot
                   // Add text before the sample to be read
                   if (supplier.Equals("StreamElements")) { Audio.AddToSampleProviderList(StreamElements.GetTTS(text[..index].Trim(), voice), ref newAudio); }
                   else if (supplier.Equals("TikTok")) { Audio.AddToSampleProviderList(TikTok.GetTTS(text[..index].Trim(), voice), ref newAudio); }
-                  else { MainWindow.ConsoleWarning($">> TTS supplier {supplier} not recognized!"); }
+                  else { Log.Warning("TTS supplier {supplier} not recognized!", supplier); }
 
                   // Add sample sound
                   if (maybeUpSample) { Audio.AddToSampleProviderList(Audio.GetUpOrDownSample(sampleSounds[maybeSample], false), ref newAudio); }
@@ -385,7 +422,7 @@ namespace AbevBot
           // No sample found, add text to be read, clear the remainder of the text
           if (supplier.Equals("StreamElements")) { Audio.AddToSampleProviderList(StreamElements.GetTTS(text.Trim(), voice), ref newAudio); }
           else if (supplier.Equals("TikTok")) { Audio.AddToSampleProviderList(TikTok.GetTTS(text.Trim(), voice), ref newAudio); }
-          else { MainWindow.ConsoleWarning($">> TTS supplier {supplier} not recognized!"); }
+          else { Log.Warning("TTS supplier {supplier} not recognized!", supplier); }
           text = string.Empty;
         }
       }
@@ -393,7 +430,7 @@ namespace AbevBot
       // Insert new audio to sounds list
       for (int i = newAudio.Count - 1; i >= 0; i--)
       {
-        if (newAudio[i] is null) { MainWindow.ConsoleWarning(">> Some TTS request returned null audio player!"); }
+        if (newAudio[i] is null) { Log.Warning("Some TTS request returned null audio player!"); }
         else { sounds.Insert(0, newAudio[i]); }
       }
     }

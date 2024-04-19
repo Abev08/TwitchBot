@@ -2,6 +2,8 @@ using System;
 using System.Net.Http;
 using System.Text;
 
+using Serilog;
+
 namespace AbevBot
 {
   /// <summary> Spotify integration. </summary>
@@ -26,8 +28,8 @@ namespace AbevBot
       request.Headers.Add("Authorization", $"Bearer {Secret.Data[Secret.Keys.SpotifyOAuthToken]}");
       string resp;
       try { resp = Notifications.Client.Send(request).Content.ReadAsStringAsync().Result; }
-      catch (HttpRequestException ex) { MainWindow.ConsoleWarning($">> Spotify request for current tracks failed. {ex.Message}"); return null; }
-      if (resp is null) { MainWindow.ConsoleWarning(">> Spotify request for current tracks failed."); }
+      catch (HttpRequestException ex) { Log.Error("Spotify request for current tracks failed. {ex}", ex); return null; }
+      if (resp is null) { Log.Warning("Spotify request for current tracks failed."); }
       else if (resp.Length == 0) { return "Nothing is currently playing"; }
       else
       {
@@ -41,7 +43,7 @@ namespace AbevBot
           if (response2 is null) return null;
           if (response2.Error?.Status == 401)
           {
-            MainWindow.ConsoleWarning(">> Spotify OAuth token expiried");
+            Log.Warning("Spotify OAuth token expiried");
             if (AccessTokens.RefreshSpotifyAccessToken())
             {
               // Refresh was succesfull - call get current song again.
@@ -50,7 +52,7 @@ namespace AbevBot
             }
             return null;
           }
-          MainWindow.ConsoleWarning($">> Spotify API error: {response2.Error.Message}");
+          Log.Warning("Spotify API error: {msg}", response2.Error.Message);
           return null;
         }
 
@@ -111,8 +113,8 @@ namespace AbevBot
       request.Headers.Add("Authorization", $"Bearer {Secret.Data[Secret.Keys.SpotifyOAuthToken]}");
       string resp;
       try { resp = Notifications.Client.Send(request).Content.ReadAsStringAsync().Result; }
-      catch (HttpRequestException ex) { MainWindow.ConsoleWarning($">> Spotify request for recent tracks failed. {ex.Message}"); return null; }
-      if (resp is null) { MainWindow.ConsoleWarning(">> Spotify request for recent tracks failed."); }
+      catch (HttpRequestException ex) { Log.Error("Spotify request for recent tracks failed. {ex}", ex); return null; }
+      if (resp is null) { Log.Warning("Spotify request for recent tracks failed."); }
       else if (resp.Length == 0) { return "Nothing was recently playing"; }
       else
       {
@@ -185,14 +187,14 @@ namespace AbevBot
       request.Headers.Add("Authorization", $"Bearer {Secret.Data[Secret.Keys.SpotifyOAuthToken]}");
       string resp;
       try { resp = Notifications.Client.Send(request).Content.ReadAsStringAsync().Result; }
-      catch (HttpRequestException ex) { MainWindow.ConsoleWarning($">> Spotify add song to queue failed. {ex.Message}"); return false; }
+      catch (HttpRequestException ex) { Log.Error("Spotify add song to queue failed. {ex}", ex); return false; }
       if (resp is null) return false; // Something went wrong
       if (resp.Length != 0)
       {
         SpotifyResponse response = SpotifyResponse.Deserialize(resp);
         if (response is null || response.Error?.Status != 204)
         {
-          MainWindow.ConsoleWarning($">> Couldn't add track to Spotify queue. {response.Error?.Message}");
+          Log.Warning("Couldn't add track to Spotify queue. {msg}", response.Error?.Message);
           return false;
         }
       }
@@ -207,7 +209,7 @@ namespace AbevBot
       request.Headers.Add("Authorization", $"Bearer {Secret.Data[Secret.Keys.SpotifyOAuthToken]}");
       string resp;
       try { resp = Notifications.Client.Send(request).Content.ReadAsStringAsync().Result; } // Assume that it worked
-      catch (HttpRequestException ex) { MainWindow.ConsoleWarning($">> Spotify song skip failed. {ex.Message}"); }
+      catch (HttpRequestException ex) { Log.Error("Spotify song skip failed. {ex}", ex); }
     }
 
     /// <summary> Gets songs in the queue. </summary>
@@ -219,7 +221,7 @@ namespace AbevBot
       try { resp = Notifications.Client.Send(request).Content.ReadAsStringAsync().Result; }
       catch (HttpRequestException ex)
       {
-        MainWindow.ConsoleWarning($">> Spotify song queue request failed. {ex.Message}");
+        Log.Error("Spotify song queue request failed. {ex}", ex);
         return "Something went wrong peepoSad";
       }
 
@@ -230,7 +232,7 @@ namespace AbevBot
         try { response = SpotifyQueueResponse.Deserialize(resp); }
         catch (Exception ex)
         {
-          MainWindow.ConsoleWarning(ex.Message);
+          Log.Error("{ex}", ex);
           return "Something went wrong peepoSad";
         }
         if (response.Queue is null || response.Queue.Length == 0) return "Nothing is queued";

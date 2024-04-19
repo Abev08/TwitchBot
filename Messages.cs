@@ -127,7 +127,7 @@ public class AccessTokenResponse
 
   public override string ToString()
   {
-    return string.Concat(">> Got ", TokenType, " token that expires in ", ExpiresIn, " seconds (", ExpiresIn / 3600f, " hours).");
+    return string.Concat("Got ", TokenType, " token that expires in ", ExpiresIn, " seconds (", ExpiresIn / 3600f, " hours).");
   }
 }
 
@@ -706,7 +706,7 @@ public class SpotifyAccessTokenResponse
 
   public override string ToString()
   {
-    return string.Concat(">> Got ", TokenType, " token that expires in ", ExpiresIn, " seconds (", ExpiresIn / 3600f, " hours).");
+    return string.Concat("Got ", TokenType, " token that expires in ", ExpiresIn, " seconds (", ExpiresIn / 3600f, " hours).");
   }
 }
 
@@ -975,7 +975,7 @@ public class DiscordTokenResponse
 
   public override string ToString()
   {
-    return string.Concat(">> Got ", TokenType, " token that expires in ", ExpiresIn, " seconds (", ExpiresIn / 3600f, " hours).");
+    return string.Concat("Got ", TokenType, " token that expires in ", ExpiresIn, " seconds (", ExpiresIn / 3600f, " hours).");
   }
 }
 

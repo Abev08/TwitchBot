@@ -4,6 +4,8 @@ using System.IO;
 using System.Net.Http;
 using System.Text;
 
+using Serilog;
+
 namespace AbevBot
 {
   public static class TikTok
@@ -210,16 +212,16 @@ namespace AbevBot
 
       string resp;
       try { resp = Notifications.Client.Send(request).Content.ReadAsStringAsync().Result; }
-      catch (HttpRequestException ex) { MainWindow.ConsoleWarning($">> TikTok TTS request failed. {ex.Message}"); return null; }
+      catch (HttpRequestException ex) { Log.Error("TikTok TTS request failed. {ex}", ex); return null; }
       var result = TikTokTTSResponse.Deserialize(resp);
       if (result?.StatusCode != 0)
       {
-        MainWindow.ConsoleWarning($">> TikTok TTS request status: {result?.StatusCode}, error: {result?.StatusMessage}");
+        Log.Warning("TikTok TTS request status: {status}, error: {msg}", result?.StatusCode, result?.StatusMessage);
         return null;
       }
       else if (result?.Data?.Duration?.Length is null || string.IsNullOrEmpty(result?.Data?.VStr))
       {
-        MainWindow.ConsoleWarning(">> TikTok TTS request returned sound with length 0.");
+        Log.Warning("TikTok TTS request returned sound with length 0.");
         return null;
       }
 

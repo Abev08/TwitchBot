@@ -7,6 +7,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Input;
 
+using Serilog;
+
 namespace AbevBot
 {
   public static class Notifications
@@ -26,7 +28,8 @@ namespace AbevBot
     private static bool SoundsAvailable;
     private static string s_soundsSamplePasteLink;
     /// <summary> Supported video formats by WPF MediaElement. </summary>
-    private static readonly string[] SupportedVideoFormats = new[] { ".avi", ".gif", ".mkv", ".mov", ".mp4", ".wmv" };
+    public static readonly string[] SupportedVideoFormats = new[] { ".avi", ".gif", ".mkv", ".mov", ".mp4", ".wmv" };
+    public static readonly string[] SupportedAudioFormats = new[] { ".wav", ".mp3", ".ogg" };
 
     public static NotificationsConfig ConfigFollow { get; set; } = new(NotificationType.FOLLOW);
     public static NotificationsConfig ConfigSubscription { get; set; } = new(NotificationType.SUBSCRIPTION);
@@ -49,7 +52,7 @@ namespace AbevBot
     {
       if (Started) return;
       Started = true;
-      MainWindow.ConsoleWarning(">> Starting notifications thread.");
+      Log.Information("Starting notifications thread.");
 
       CreateVoicesPaste();
       // CreateVoicesResponse();
@@ -67,6 +70,8 @@ namespace AbevBot
       bool notificationEnded = false;
       while (true)
       {
+        if (MainWindow.CloseRequested) { return; }
+
         if ((NotificationQueue.Count > 0) && (!NotificationsPaused || NotificationQueue[0].Started))
         {
           lock (NotificationQueue)
@@ -263,7 +268,7 @@ namespace AbevBot
       if (Config.Data[Config.Keys.ChannelRedemption_RandomVideo_ID].Equals(redemptionID)) { CreateRandomVideoNotification(msgID); }
       else if (Config.Data[Config.Keys.ChannelRedemption_SongRequest_ID].Equals(redemptionID))
       {
-        Chat.SongRequest(Chatter.GetChatterByName(userName), message, true);
+        Chat.SongRequest(Chatter.GetChatterByName(userName), message, null, true);
         if (Config.Data[Config.Keys.ChannelRedemption_SongRequest_MarkAsFulfilled].Equals("True")) MarkRedemptionAsFulfilled(redemptionID, msgID);
       }
       else if (Config.Data[Config.Keys.ChannelRedemption_SongSkip_ID].Equals(redemptionID))
@@ -300,7 +305,7 @@ namespace AbevBot
       AddNotification(new Notification()
       {
         TextToRead = text.Replace("#", ""), // Remove '#' symbols - they are not allowed in TTS request messages
-        TTSVolume = Config.VolumeTTS
+        AudioVolume = Config.VolumeAudio
       });
     }
 
@@ -333,7 +338,7 @@ namespace AbevBot
       AddNotification(new Notification()
       {
         VideoPath = videos[Random.Shared.Next(0, videos.Count)].FullName,
-        VideoVolume = Config.VolumeVideos,
+        VideoVolume = Config.VolumeVideo,
         VideoParams = RandomVideoParameters,
 
         ExtraActionAtStartup = () =>
@@ -382,7 +387,7 @@ namespace AbevBot
     {
       if (Chat.ResponseMessages.ContainsKey("!voices"))
       {
-        MainWindow.ConsoleWarning(">> Couldn't add respoonse to \"!voices\" key - the key is already present in response messages.");
+        Log.Warning("Couldn't add respoonse to \"{key}\" key - the key is already present in response messages.", "!voices");
         return;
       }
 
@@ -402,7 +407,7 @@ namespace AbevBot
 
       string resp;
       try { resp = Client.Send(request).Content.ReadAsStringAsync().Result; }
-      catch (HttpRequestException ex) { MainWindow.ConsoleWarning($">> !voices response creation failed. {ex.Message}"); return; }
+      catch (HttpRequestException ex) { Log.Error("{key} response creation failed. {ex}", "!voices", ex); return; }
       var response = GlotResponse.Deserialize(resp);
       if (response?.Url?.Length > 0)
       {
@@ -410,7 +415,7 @@ namespace AbevBot
       }
 
       Chat.ResponseMessages.Add("!voices", ($"TTS Voices: {VoicesLink}", new DateTime()));
-      MainWindow.ConsoleWarning(">> Added respoonse to \"!voices\" key.");
+      Log.Information("Added respoonse to \"{key}\" key.", "!voices");
     }
 
     private static void CreateVoicesResponse()
@@ -426,11 +431,11 @@ namespace AbevBot
           "StreamElements: ", "https://github.com/Abev08/TwitchBot/blob/main/StreamElements.cs ",
           "TikTok: ", "https://github.com/Abev08/TwitchBot/blob/main/TikTok.cs"
         ), new DateTime()));
-        MainWindow.ConsoleWarning(">> Added respoonse to \"!voices\" key.");
+        Log.Information("Added respoonse to \"{key}\" key.", "!voices");
       }
       else
       {
-        MainWindow.ConsoleWarning(">> Couldn't add respoonse to \"!voices\" key - the key is already present in response messages.");
+        Log.Warning("Couldn't add respoonse to \"{key}\" key - the key is already present in response messages.", "!voices");
       }
     }
 
@@ -459,7 +464,7 @@ namespace AbevBot
       {
         foreach (var file in dir.GetFiles())
         {
-          if (file.Extension.Equals(".mp3") || file.Extension.Equals(".wav"))
+          if (Array.IndexOf(SupportedAudioFormats, file.Extension) >= 0)
           {
             sounds.Add(file.Name.Replace(file.Extension, "").ToLower(), file);
           }
@@ -553,12 +558,12 @@ namespace AbevBot
 
       string resp;
       try { resp = Client.Send(request).Content.ReadAsStringAsync().Result; }
-      catch (HttpRequestException ex) { MainWindow.ConsoleWarning($">> !voices response creation failed. {ex.Message}"); return string.Empty; }
+      catch (HttpRequestException ex) { Log.Error("{key} response creation failed. {ex}", "!sounds", ex); return string.Empty; }
       var response = GlotResponse.Deserialize(resp);
       if (response?.Url?.Length > 0)
       {
         s_soundsSamplePasteLink = response.Url.Replace("api/", ""); // Remove "api/" part
-        MainWindow.ConsoleWarning(">> Created respoonse link to \"!sounds\" key.");
+        Log.Information("Created respoonse link to \"{key}\" key.", "!sounds");
         return s_soundsSamplePasteLink;
       }
       else
@@ -614,7 +619,7 @@ namespace AbevBot
 
       string resp;
       try { resp = Client.Send(request).Content.ReadAsStringAsync().Result; }      // Assume that it worked
-      catch (HttpRequestException ex) { MainWindow.ConsoleWarning($">> Marking redemption as fulfilled failed. {ex.Message}"); }
+      catch (HttpRequestException ex) { Log.Error("Marking redemption as fulfilled failed. {ex}", ex); }
     }
   }
 

@@ -1,6 +1,8 @@
 using System.Net.Http;
 using System.Text;
 
+using Serilog;
+
 namespace AbevBot;
 
 public static class Discord
@@ -18,7 +20,7 @@ public static class Discord
     if (!Working) return;
     if (string.IsNullOrEmpty(Secret.Data[Secret.Keys.DiscordChannelID])) return;
 
-    MainWindow.ConsoleWarning(">> Sending Discord Online message.");
+    Log.Information("Sending Discord Online message.");
 
     string message;
     if (CustomOnlineMessage?.Length > 0) message = CustomOnlineMessage;
@@ -33,6 +35,6 @@ public static class Discord
     request.Headers.Add("Authorization", $"Bot {Secret.Data[Secret.Keys.DiscordBotToken]}");
     string resp;
     try { resp = Notifications.Client.Send(request).Content.ReadAsStringAsync().Result; }    // Assume that it worked
-    catch (HttpRequestException ex) { MainWindow.ConsoleWarning($">> Sending Discord Online message failed. {ex.Message}"); }
+    catch (HttpRequestException ex) { Log.Error("Sending Discord Online message failed. {ex}", ex); }
   }
 }
