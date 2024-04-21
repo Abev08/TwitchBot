@@ -300,7 +300,7 @@ public partial class MainWindow : Window
           Height = videoParams.Height
         };
 
-        if (videoParams.Left == 0 && videoParams.Top == 0)
+        if (videoParams.Left <= 0 && videoParams.Top <= 0)
         {
           video.Left += MainGrid.ActualWidth / 2d;
           video.Top += MainGrid.ActualHeight / 2d;
@@ -423,15 +423,15 @@ public partial class MainWindow : Window
       ResetVideoPlayer();
       if (videoParams != null)
       {
-        if (videoParams.Left != 0 || videoParams.Top != 0)
+        if (videoParams.Left >= 0 || videoParams.Top >= 0)
         {
           VideoPlayer.HorizontalAlignment = HorizontalAlignment.Left;
           VideoPlayer.VerticalAlignment = VerticalAlignment.Top;
           playerDesiredPosition.Left = videoParams.Left;
           playerDesiredPosition.Top = videoParams.Top;
         }
-        VideoPlayer.Height = videoParams.Height;
-        VideoPlayer.Width = videoParams.Width;
+        VideoPlayer.Height = videoParams.Height > 0 ? videoParams.Height : double.NaN;
+        VideoPlayer.Width = videoParams.Width > 0 ? videoParams.Width : double.NaN;
       }
 
       if (VideoPlayer.Source != null)
@@ -776,6 +776,7 @@ public class VideoParameters
 
   public void Reset()
   {
-    Width = Height = Left = Top = 0;
+    Left = Top = -1;
+    Width = Height = 0;
   }
 }

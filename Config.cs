@@ -69,9 +69,9 @@ public static class Config
     else { Log.Information("Reading {file} file.", FILENAME); }
 
     // Create resources folders just for user convenience (if they don't exist)
-    DirectoryInfo dir = new("Resources/Sounds");
+    DirectoryInfo dir = new(Notifications.SOUNDS_PATH);
     if (!dir.Exists) dir.Create();
-    dir = new DirectoryInfo("Resources/Videos");
+    dir = new DirectoryInfo(Notifications.RANDOM_VIDEO_PATH);
     if (!dir.Exists) dir.Create();
 
     Chat.PeriodicMessages.Clear(); // Clear previous preiodic messages
@@ -638,10 +638,10 @@ public static class Config
 
       writer.WriteLine();
       writer.WriteLine();
-      writer.WriteLine("; Sound samples such as farts, laughs, applauses, etc. should be placed in the \"Resources/Sounds\" folder,");
+      writer.WriteLine($"; Sound samples such as farts, laughs, applauses, etc. should be placed in the \"{Notifications.SOUNDS_PATH}\" folder,");
       writer.WriteLine("; to be used in TTS messages like this \"!tts -laugh\" - calling the file name with \"-\" symbol in front of it.");
       writer.WriteLine(";");
-      writer.WriteLine("; Videos that can be played via random video channel point redemption should be placed in the \"Resources/Videos\" folder.");
+      writer.WriteLine($"; Videos that can be played via random video channel point redemption should be placed in the \"{Notifications.RANDOM_VIDEO_PATH}\" folder.");
 
       writer.WriteLine();
       writer.WriteLine();
@@ -836,7 +836,7 @@ public static class Config
       writer.WriteLine("; the message will get printed to the bot's console window.");
       writer.WriteLine("; You can search the message for the ID and configure propper notification for it.");
       writer.WriteLine("; If the console window is not visible search for 'ConsoleVisible' field in this configuration file.");
-      writer.WriteLine("; ----- Plays random video from Resources/Videos folder.");
+      writer.WriteLine($"; ----- Plays random video from {Notifications.RANDOM_VIDEO_PATH} folder.");
       writer.WriteLine(string.Concat(Keys.ChannelRedemption_RandomVideo_ID.ToString(), " = "));
       writer.WriteLine(string.Concat(Keys.ChannelRedemption_RandomVideo_MarkAsFulfilled.ToString(), " = false"));
       writer.WriteLine(string.Concat(Keys.ChannelRedemption_RandomVideo_Position.ToString(), " = "));

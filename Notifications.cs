@@ -13,6 +13,10 @@ namespace AbevBot
 {
   public static class Notifications
   {
+    /// <summary> Path to random videos directory. </summary>
+    public const string RANDOM_VIDEO_PATH = "Resources/Videos";
+    /// <summary> Path to directory with sound samples. </summary>
+    public const string SOUNDS_PATH = "Resources/Sounds";
     /// <summary> Notifications thread started. </summary>
     public static bool Started { get; private set; }
     public static bool NotificationsPaused { get; set; }
@@ -337,7 +341,7 @@ namespace AbevBot
 
       AddNotification(new Notification()
       {
-        VideoPath = videos[Random.Shared.Next(0, videos.Count)].FullName,
+        VideoPath = $"{RANDOM_VIDEO_PATH}/{videos[Random.Shared.Next(0, videos.Count)].Name}",
         VideoVolume = Config.VolumeVideo,
         VideoParams = RandomVideoParameters,
 
@@ -459,7 +463,7 @@ namespace AbevBot
     {
       // Get all sound files
       Dictionary<string, FileInfo> sounds = new();
-      DirectoryInfo dir = new("Resources/Sounds");
+      DirectoryInfo dir = new(SOUNDS_PATH);
       if (dir.Exists)
       {
         foreach (var file in dir.GetFiles())
@@ -585,7 +589,7 @@ namespace AbevBot
       lock (RandomVideos)
       {
         RandomVideos.Clear();
-        DirectoryInfo dir = new("Resources/Videos");
+        DirectoryInfo dir = new(RANDOM_VIDEO_PATH);
         if (dir.Exists)
         {
           foreach (FileInfo file in dir.GetFiles())
