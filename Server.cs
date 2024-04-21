@@ -586,6 +586,27 @@ public static class Server
       WsSendQueue.Add(msg);
     }
   }
+
+  /// <summary> Sends "gamba animation" command to every connected HTTP client. </summary>
+  /// <param name="animationFilePath">Relative path to a file with animation that should be played</param>
+  /// <param name="name">Name of a chatter that does the gamba</param>
+  /// <param name="value">Amount of gambled points</param>
+  public static void GambaAnimation(string animationFilePath, string name, int points_rolled, int points_received)
+  {
+    var msg = Encoding.UTF8.GetBytes(new JsonObject()
+      {
+        { "type", "gamba_animation" },
+        { "gamba", animationFilePath },
+        { "gamba_name", name },
+        { "gamba_points_rolled", points_rolled },
+        { "gamba_points_received", points_received },
+      }.ToJsonString());
+
+    lock (WsSendQueue)
+    {
+      WsSendQueue.Add(msg);
+    }
+  }
 }
 
 /// <summary> HTTP server WebSocket "wrapper". </summary>
