@@ -60,6 +60,8 @@ public static class Config
   public static readonly List<Key> HotkeysForPauseNotification = new();
   public static readonly List<Key> HotkeysForSkipNotification = new();
   public static bool PrintChatMessages { get; private set; } = true;
+  /// <summary> Is audio output of main window disabled? </summary>
+  public static bool WindowAudioDisabled { get; set; }
 
   public static bool ParseConfigFile(bool reload = false)
   {

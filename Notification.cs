@@ -311,6 +311,7 @@ namespace AbevBot
           // Audio is stopped, it wasn't started yet or it finished playing
           if (!AudioStarted)
           {
+            if (Config.WindowAudioDisabled) { AudioToPlay[0].Volume = 0f; } // Override audio volume
             AudioToPlay[0].Play();
             AudioStarted = true;
             Server.PlayAudio(AudioVolume);

@@ -449,7 +449,7 @@ public partial class MainWindow : Window
 
       VideoEnded = false;
       VideoPlayer.Source = new Uri(file.FullName);
-      VideoPlayer.Volume = volume;
+      VideoPlayer.Volume = Config.WindowAudioDisabled ? 0 : volume; // Override audio volume
       VideoPlayer.Play();
     }));
   }
@@ -541,6 +541,12 @@ public partial class MainWindow : Window
   {
     Chat.VanishEnabled = ((CheckBox)sender).IsChecked == true;
     if (FinishedLoading) await Database.UpdateValueInConfig(Database.Keys.EnabledVanish, Chat.VanishEnabled);
+  }
+
+  private async void ChkWindowAudio_CheckChanged(object sender, RoutedEventArgs e)
+  {
+    Config.WindowAudioDisabled = ((CheckBox)sender).IsChecked == true;
+    if (FinishedLoading) await Database.UpdateValueInConfig(Database.Keys.WindowAudioDisabled, Config.WindowAudioDisabled);
   }
 
   private void MainVideoEnded(object sender, RoutedEventArgs e)
@@ -639,6 +645,7 @@ public partial class MainWindow : Window
     chkEnableSongSkip.IsChecked = Spotify.SkipEnabled;
     chkEnableSongRequest.IsChecked = Spotify.RequestEnabled;
     chkEnableVanish.IsChecked = Chat.VanishEnabled;
+    chkDisableWindowAudio.IsChecked = Config.WindowAudioDisabled;
   }
 
   public void GambaAnimationStart(FileInfo videoPath, string userName, int points, int pointsResult)

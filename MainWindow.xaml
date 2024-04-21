@@ -81,6 +81,7 @@
           <CheckBox x:Name="chkEnableSongSkip" Content="!skipsong enabled (chat)" VerticalContentAlignment="Center" IsChecked="True" Checked="ChkSkip_CheckChanged" Unchecked="ChkSkip_CheckChanged" ToolTip="Song skip"/>
           <CheckBox x:Name="chkEnableSongRequest" Content="!sr enabled (chat)" VerticalContentAlignment="Center" IsChecked="True" Checked="ChkRequest_CheckChanged" Unchecked="ChkRequest_CheckChanged" ToolTip="Song request"/>
           <CheckBox x:Name="chkEnableVanish" Content="!vanish enabled (chat)" VerticalContentAlignment="Center" IsChecked="True" Checked="ChkVanish_CheckChanged" Unchecked="ChkVanish_CheckChanged" ToolTip="'!vanish' command (self timeout)"/>
+          <CheckBox x:Name="chkDisableWindowAudio" Content="Window audio disabled" VerticalContentAlignment="Center" IsChecked="False" Checked="ChkWindowAudio_CheckChanged" Unchecked="ChkWindowAudio_CheckChanged" ToolTip="Disables window audio. Intended for use with browser notification view."/>
         </StackPanel>
       </Border>
     </StackPanel>
