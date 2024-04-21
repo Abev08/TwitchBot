@@ -253,7 +253,7 @@ namespace AbevBot
           MainWindow.I.ResumeVideoPlayer();
           Server.Resume();
         }
-        else if (MainWindow.VideoEnded) { VideoEnded = true; }
+        else if (MainWindow.VideoEnded && Server.VideoEnded) { VideoEnded = true; }
       }
 
       // Display text
@@ -316,7 +316,7 @@ namespace AbevBot
             AudioStarted = true;
             Server.PlayAudio(AudioVolume);
           }
-          else
+          else if (Server.AudioEnded)
           {
             AudioToPlay[0].Dispose();
             AudioToPlay.RemoveAt(0);

@@ -11,12 +11,16 @@ function loaded() {
   conn_err = document.getElementById('conn_err');
   content = document.getElementById('content');
   audio_player = document.createElement('audio');
+  audio_player.addEventListener('ended', (event) => {
+    clear_audio();
+    ws.send('audio_end');
+  });
   video_player = document.createElement('video');
   video_player.style.position = 'absolute';
   video_player.addEventListener('ended', (event) => {
     clear_video();
-    // If the video ended also clear text?
     clear_text();
+    ws.send('video_end');
   });
   video_player.addEventListener('loadedmetadata', (event) => {
     update_video_player();
@@ -155,7 +159,7 @@ function resume() {
 
 function display_text(data) {
   let addBr = false;
-  data.text.split("\r\n").forEach((element) => {
+  data.text.split('\r\n').forEach((element) => {
     if (addBr) {
       text.appendChild(document.createElement('br'));
     }

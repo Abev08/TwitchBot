@@ -34,6 +34,14 @@ public static class Server
   private static readonly List<byte[]> WsSendQueue = new();
   /// <summary> Current audio data that should be played. </summary>
   public static byte[] CurrentAudio { get; set; }
+  /// <summary> Browser views video playing ended. </summary>
+  public static bool VideoEnded { get; private set; } = true;
+  /// <summary> Amount of browser views on which the video playing has ended. </summary>
+  private static int VideoEndedCounter;
+  /// <summary> Browser views audio playing ended. </summary>
+  public static bool AudioEnded { get; private set; } = true;
+  /// <summary> Amount of browser views on which the audio playing has ended. </summary>
+  private static int AudioEndedCounter;
 
   /// <summary> Starts the HTTP server. </summary>
   public static void Start()
@@ -356,6 +364,8 @@ public static class Server
             {
               if (ws.SendTask != null && ws.SendTask.IsCompleted) { ws.SendTask = null; }
             }
+            else if (msg == "video_end") { VideoEndedCounter += 1; }
+            else if (msg == "audio_end") { AudioEndedCounter += 1; }
           }
           ws.ReceiveTask = null;
         }
@@ -374,6 +384,9 @@ public static class Server
       }
       wsSendBuffer = null;
 
+      VideoEnded = VideoEndedCounter >= wsConnections.Count;
+      AudioEnded = AudioEndedCounter >= wsConnections.Count;
+
       Thread.Sleep(10);
     }
   }
@@ -385,6 +398,9 @@ public static class Server
       {
         { "type", "clear_all" },
       }.ToJsonString());
+
+    VideoEndedCounter = int.MaxValue;
+    AudioEndedCounter = int.MaxValue;
 
     lock (WsSendQueue)
     {
@@ -400,6 +416,8 @@ public static class Server
         { "type", "clear_video" },
       }.ToJsonString());
 
+    VideoEndedCounter = int.MaxValue;
+
     lock (WsSendQueue)
     {
       WsSendQueue.Add(msg);
@@ -413,6 +431,8 @@ public static class Server
       {
         { "type", "clear_audio" },
       }.ToJsonString());
+
+    AudioEndedCounter = int.MaxValue;
 
     lock (WsSendQueue)
     {
@@ -474,6 +494,8 @@ public static class Server
       return;
     }
 
+    VideoEndedCounter = 0;
+
     var msg = Encoding.UTF8.GetBytes(new JsonObject()
       {
         { "type", "new_notification" },
@@ -510,6 +532,8 @@ public static class Server
         { "audio_volume", volume }
       }.ToJsonString());
 
+    AudioEndedCounter = 0;
+
     lock (WsSendQueue)
     {
       WsSendQueue.Add(msg);
@@ -526,6 +550,8 @@ public static class Server
         { "audio", "audio" },
         { "audio_volume", volume }
       }.ToJsonString());
+
+    AudioEndedCounter = 0;
 
     lock (WsSendQueue)
     {

@@ -553,6 +553,8 @@ public partial class MainWindow : Window
   {
     VideoPlayer.Source = null;
     VideoEnded = true;
+
+    ClearTextDisplayed();
   }
 
   private void VideoTest(object sender, RoutedEventArgs e)
