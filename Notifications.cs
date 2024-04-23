@@ -28,7 +28,8 @@ namespace AbevBot
     public static readonly HttpClient Client = new();
     public static string VoicesLink { get; private set; }
     private static readonly Dictionary<string, FileInfo> SampleSounds = new();
-    private static readonly List<FileInfo> RandomVideos = new();
+    /// <summary> Recently played list of random videos. </summary>
+    private static readonly List<FileInfo> RandomVideosRecentlyPlayed = new();
     private static bool SoundsAvailable;
     private static string s_soundsSamplePasteLink;
     /// <summary> Supported video formats by WPF MediaElement. </summary>
@@ -335,13 +336,13 @@ namespace AbevBot
     /// <summary> Creates and adds to queue Random Video notification. </summary>
     public static void CreateRandomVideoNotification(string messageID)
     {
-      var videos = GetRandomVideos();
-      if (videos is null || videos.Count == 0) return;
+      var video = GetRandomVideoNotPlayedRecently();
+      if (video is null || !video.Exists) return;
       string msgID = messageID;
 
       AddNotification(new Notification()
       {
-        VideoPath = $"{RANDOM_VIDEO_PATH}/{videos[Random.Shared.Next(0, videos.Count)].Name}",
+        VideoPath = $"{RANDOM_VIDEO_PATH}/{video.Name}",
         VideoVolume = Config.VolumeVideo,
         VideoParams = RandomVideoParameters,
 
@@ -583,26 +584,68 @@ namespace AbevBot
       return SoundsAvailable;
     }
 
-    public static List<FileInfo> GetRandomVideos()
+    /// <summary> Gets all of the random videos in RANDOM_VIDEO_PATH directory. </summary>
+    /// <returns>List of FileInfo objects describing all of the random videos</returns>
+    public static List<FileInfo> GetRandomVideosAll()
     {
       // Load random videos
-      lock (RandomVideos)
+      var videos = new List<FileInfo>();
+      DirectoryInfo dir = new(RANDOM_VIDEO_PATH);
+      if (dir.Exists)
       {
-        RandomVideos.Clear();
-        DirectoryInfo dir = new(RANDOM_VIDEO_PATH);
-        if (dir.Exists)
+        foreach (FileInfo file in dir.GetFiles())
         {
-          foreach (FileInfo file in dir.GetFiles())
+          if (Array.IndexOf(SupportedVideoFormats, file.Extension) >= 0)
           {
-            if (Array.IndexOf(SupportedVideoFormats, file.Extension) >= 0)
-            {
-              RandomVideos.Add(file);
-            }
+            videos.Add(file);
           }
         }
       }
 
-      return RandomVideos;
+      return videos;
+    }
+
+    /// <summary> Gets random videos not played recently. </summary>
+    /// <returns>List of FileInfo objects describing random videos</returns>
+    public static List<FileInfo> GetRandomVideosToPlay()
+    {
+      var videosAll = GetRandomVideosAll();
+      var videosToPlay = new List<FileInfo>();
+      videosToPlay.AddRange(videosAll);
+
+      foreach (var v in RandomVideosRecentlyPlayed)
+      {
+        for (int i = videosToPlay.Count - 1; i >= 0; i--)
+        {
+          if (v.FullName == videosToPlay[i].FullName)
+          {
+            videosToPlay.RemoveAt(i);
+            break;
+          }
+        }
+      }
+
+      if (videosToPlay.Count == 0)
+      {
+        videosToPlay.AddRange(videosAll);
+        RandomVideosRecentlyPlayed.Clear();
+      }
+
+      return videosToPlay;
+    }
+
+    /// <summary> Gets random video from a pool of videos not played recently. </summary>
+    /// <returns>FileInfo object describing a random video</returns>
+    public static FileInfo GetRandomVideoNotPlayedRecently()
+    {
+      var videos = GetRandomVideosToPlay();
+      int index = Random.Shared.Next(0, videos.Count);
+      if (index < 0) return null;
+
+      var video = videos[index];
+      RandomVideosRecentlyPlayed.Add(video);
+      videos.RemoveAt(index);
+      return video;
     }
 
     /// <summary> Marks provided redemption from provided message ID as fulfilled. </summary>
