@@ -801,7 +801,11 @@ public static class Chat
 
       if (SkipSongChatters[j].TimeRequested < minTime) SkipSongChatters.RemoveAt(j);
     }
-    if (!handled) SkipSongChatters.Add(new() { ChatterID = chatter.ID, TimeRequested = DateTime.Now });
+    if (!handled)
+    {
+      SkipSongChatters.Add(new() { ChatterID = chatter.ID, TimeRequested = DateTime.Now });
+      Log.Information("{userName} requested song skip!", chatter.Name);
+    }
 
     // 5 Users requested to skip the song, skip it
     if (SkipSongChatters.Count >= Spotify.REQUIREDSKIPS)

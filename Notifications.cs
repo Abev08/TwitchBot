@@ -404,7 +404,7 @@ namespace AbevBot
       sb.AppendLine("TikTok voices:");
       TikTok.AppendVoices(ref sb, 70);
 
-      GlotPaste paste = new() { Language = "plaintext", Title = "TTS Voices" };
+      GlotPaste paste = new() { Language = "assembly", Title = "TTS Voices" };
       paste.Files.Add(new GlotFile() { Name = "TTS Voices", Content = sb.ToString() });
 
       using HttpRequestMessage request = new(HttpMethod.Post, "https://glot.io/api/snippets");
