@@ -51,9 +51,7 @@ public partial class MainWindow : Window
     // Catch all unhandled exceptions and print them into a file
     AppDomain.CurrentDomain.UnhandledException += (sender, ex) =>
     {
-      using StreamWriter writer = new("lasterror.log");
-      writer.WriteLine(DateTime.Now);
-      writer.WriteLine(ex.ExceptionObject);
+      LogError("UnhandledException", ex.ExceptionObject as Exception);
     };
 
     // Configure the logger
@@ -262,6 +260,26 @@ public partial class MainWindow : Window
   {
     if (ConsoleFreed) return;
     Console.WriteLine(msg);
+  }
+
+  /// <summary> Writes error message to 'lasterror.log' file. </summary>
+  /// <param name="msg">Error message</param>
+  public static void LogError(string msg)
+  {
+    var file = new FileInfo("lasterror.log");
+    var clearContents = file.Exists && file.LastWriteTime.Date != DateTime.Now.Date;
+    using StreamWriter writer = clearContents ? file.CreateText() : file.AppendText();
+    file.LastWriteTime = DateTime.Now - TimeSpan.FromDays(1);
+    writer.WriteLine(DateTime.Now);
+    writer.WriteLine(msg);
+    writer.WriteLine();
+  }
+
+  /// <summary> Writes exception message to 'lasterror.log' file. </summary>
+  /// <param name="ex">Exception object</param>
+  public static void LogError(string header, Exception ex)
+  {
+    LogError($"{header}: {ex.Message}\r\n{ex.StackTrace}");
   }
 
   private void PauseNotificationsClicked(object sender, RoutedEventArgs e)
