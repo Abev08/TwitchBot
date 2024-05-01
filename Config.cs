@@ -59,7 +59,6 @@ public static class Config
   public static TimeSpan BroadcasterOfflineTimeout { get; } = TimeSpan.FromMinutes(30);
   public static readonly List<Key> HotkeysForPauseNotification = new();
   public static readonly List<Key> HotkeysForSkipNotification = new();
-  public static bool PrintChatMessages { get; private set; } = true;
   /// <summary> Is audio output of main window disabled? </summary>
   public static bool WindowAudioDisabled { get; set; }
 
@@ -220,7 +219,7 @@ public static class Config
               break;
 
             case Keys.PrintChatMessagesToConsole:
-              if (bool.TryParse(text[1], out result)) PrintChatMessages = result;
+              if (bool.TryParse(text[1], out result)) Chat.PrintChatMessages = result;
               break;
 
             case Keys.HotkeyNotificationPause:

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Net.Http;
 using System.Text;
+using System.Text.Json.Nodes;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Input;
@@ -172,6 +173,30 @@ namespace AbevBot
       NotificationData[3] = streak.ToString();
       NotificationData[5] = cumulative.ToString();
       NotificationData[7] = message.Text; // TODO: Create message to read - remove emotes from the message using message.Emotes[], don't read them
+      NotificationData[10] = duration > 1 ? "s" : string.Empty;
+      NotificationData[11] = streak > 1 ? "s" : string.Empty;
+      NotificationData[13] = cumulative > 1 ? "s" : string.Empty;
+
+      Chat.AddMessageToQueue(string.Format(ConfigSubscriptionExt.ChatMessage, NotificationData));
+      AddNotification(new Notification(ConfigSubscriptionExt, NotificationData));
+    }
+
+    /// <summary> This is more advanced CreateSubscriptionNotification version - more info in message variable. </summary>
+    public static void CreateSubscriptionNotification(string userName, string tier, int duration, int streak, int cumulative, JsonNode message)
+    {
+      if (!ConfigSubscriptionExt.Enable) return;
+
+      string chatter;
+      if (string.IsNullOrWhiteSpace(userName)) chatter = "Anonymous";
+      else chatter = userName?.Trim();
+
+      Array.Clear(NotificationData);
+      NotificationData[0] = chatter;
+      NotificationData[1] = tier[..1];
+      NotificationData[2] = duration.ToString();
+      NotificationData[3] = streak.ToString();
+      NotificationData[5] = cumulative.ToString();
+      NotificationData[7] = message["text"]?.ToString(); // TODO: Create message to read - remove emotes from the message using message.Emotes[], don't read them
       NotificationData[10] = duration > 1 ? "s" : string.Empty;
       NotificationData[11] = streak > 1 ? "s" : string.Empty;
       NotificationData[13] = cumulative > 1 ? "s" : string.Empty;
@@ -419,7 +444,7 @@ namespace AbevBot
         VoicesLink = response.Url.Replace("api/", ""); // Remove "api/" part
       }
 
-      Chat.ResponseMessages.Add("!voices", ($"TTS Voices: {VoicesLink}", new DateTime()));
+      Chat.ResponseMessages.Add("!voices", ($"TTS Voices: {VoicesLink}", false, new DateTime()));
       Log.Information("Added respoonse to \"{key}\" key.", "!voices");
     }
 
@@ -435,7 +460,7 @@ namespace AbevBot
           "TTS Voices: ",
           "StreamElements: ", "https://github.com/Abev08/TwitchBot/blob/main/StreamElements.cs ",
           "TikTok: ", "https://github.com/Abev08/TwitchBot/blob/main/TikTok.cs"
-        ), new DateTime()));
+        ), false, new DateTime()));
         Log.Information("Added respoonse to \"{key}\" key.", "!voices");
       }
       else

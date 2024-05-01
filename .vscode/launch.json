@@ -14,7 +14,7 @@
               "--consoleVisible"
             ],
             "cwd": "${workspaceFolder}/bin/Debug/net7.0-windows/win-x64/",
-            "console": "internalConsole",
+            "console": "integratedTerminal",
             "stopAtEntry": false
         },
         {

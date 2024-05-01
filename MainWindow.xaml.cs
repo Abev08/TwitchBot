@@ -94,11 +94,11 @@ public partial class MainWindow : Window
     {
       try
       {
-        var result = Notifications.Client.Send(new(HttpMethod.Head, "http://www.google.com"));
+        var result = Notifications.Client.Send(new(HttpMethod.Get, "https://www.twitch.tv"));
         if (result.IsSuccessStatusCode) break;
       }
       catch { }
-      Log.Warning("Internet connection not active. Waiting 5 s and trying out again.");
+      Log.Warning("Internet connection not active. Waiting 5s and trying out again.");
       Thread.Sleep(5000);
     } while (true);
 
