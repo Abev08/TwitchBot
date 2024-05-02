@@ -11,6 +11,9 @@ Because WPF is used can be built only for Windows.
 To remove the 'greenscreen', chroma key filter for green and similarity value ~340 should be added to the OBS input.<br>
 The 'greenscreen' solution is not perfect and will affect the display of videos and clips that use the color green.
 
+Instead of using window display with 'greenscreen' filter as OBS input you can use browser source (<i>currently in beta phase - some functionalities may not work!</i>) hosted by the bot at http://127.0.0.1:40000.  
+<p align="center"><img src="ReadmeImages/OBSBrowserInput.png" alt="OBS browser input configuration" height="300"></p>
+
 The bot's control elements are located on the left side of the window.<br>
 They can be used to control the behavior of the bot while it is running (without restarts).<br>
 If you don't know what the control element is doing try hovering over it to see the tooltip message.
@@ -57,7 +60,7 @@ Both files are generated automatically when the bot is launched.
     - Subscribes to subscriptions notifications events (there are multiple subscription types),
     - Subscribes to bits cheer event,
     - Subscribes to channel points custom rewards redemptions events,
-    - Uses StreamElements api for TTS generation.
+    - Uses StreamElements and TikTok api for TTS generation.
 
 3. Implements chat interactions / commands:
     - Text To Speech (`!tts`),
