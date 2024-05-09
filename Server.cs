@@ -261,7 +261,7 @@ public static class Server
             }
             else if (metadata[1].StartsWith("/Resources"))
             {
-              FileInfo file = new(metadata[1][1..]);
+              FileInfo file = new(Uri.UnescapeDataString(metadata[1][1..]));
               bool error = !file.Exists;
 
               // do {} while (false) loop for easy breaks
@@ -309,13 +309,6 @@ public static class Server
               } while (false);
 
               if (error) { response = Encoding.UTF8.GetBytes("HTTP/1.1 404 Not Found\r\n\r\n"); }
-            }
-            else if (metadata[1] == "/nothing")
-            {
-              response = Encoding.UTF8.GetBytes(string.Concat(
-                "HTTP/1.1 200 OK\r\n",
-                "Content-Length: 0\r\n",
-                "Content-Type: media\r\n\r\n"));
             }
             else { response = Encoding.UTF8.GetBytes("HTTP/1.1 404 Not Found\r\n\r\n"); }
 

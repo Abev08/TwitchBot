@@ -1,12 +1,12 @@
-const ws = new WebSocket('ws://' + window.location.hostname + ':' + window.location.port);
-let conn_err;
-let content;
-let audio_player;
-let video_player;
-let text;
-let audio_should_play = false;
-let video_should_play = false;
-let gamba_player, gamba_text_name, gamba_text_value;
+let ws; // WebSocket connection
+let conn_err; // Div containing elements that should be displayed on WebSocket connection error
+let content; // Div for elements to be displayed with notifications
+let audio_player; // Audio player
+let video_player; // Video player
+let text; // Notification text
+let audio_should_play = false; // Should audio be played?
+let video_should_play = false; // Shoud video be played?
+let gamba_player, gamba_text_name, gamba_text_value; // Gamba elements (video player, text, other text)
 
 function loaded() {
   conn_err = document.getElementById('conn_err');
@@ -90,25 +90,50 @@ function loaded() {
         text-wrap: nowrap;
       }
     </style>`;
+
+  connect();
+
+  setInterval(function () {
+    // try to reconnect every 5 sec
+    if (ws.readyState != 1) {
+      if (ws != null && ws.readyState == 0) {
+        ws.close();
+      }
+      connect();
+    }
+  }, 5000);
 }
 
 window.addEventListener('load', loaded);
 
-ws.addEventListener('open', () => {
-  console.log('WebSocket connection established!');
-  conn_err.hidden = true;
-  content.hidden = false;
-})
+function connect() {
+  ws = new WebSocket('ws://' + window.location.hostname + ':' + window.location.port);
 
-ws.addEventListener('close', () => {
-  console.log('WebSocket connection closed!');
-  conn_err.hidden = false;
-  content.hidden = true;
-  clear_content();
-});
+  ws.addEventListener('open', () => {
+    console.log('WebSocket connection established!');
+    conn_err.hidden = true;
+    content.hidden = false;
+  })
 
-ws.addEventListener('message', (e) => {
-  let data = JSON.parse(e.data);
+  ws.addEventListener('close', () => {
+    console.log('WebSocket connection closed!');
+    conn_err.hidden = false;
+    content.hidden = true;
+    clear_content();
+  });
+
+  ws.addEventListener('message', (e) => {
+    parse_message(e.data);
+  });
+
+  ws.addEventListener('error', (err) => {
+    console.error('Socket encountered error: ', err.message);
+    ws.close();
+  });
+}
+
+function parse_message(d) {
+  let data = JSON.parse(d);
   // console.log(data);
 
   // Clear all of the content
@@ -150,7 +175,7 @@ ws.addEventListener('message', (e) => {
   }
 
   ws.send('message_parsed');
-});
+}
 
 function clear_content() {
   clear_audio();
