@@ -39,6 +39,7 @@ namespace AbevBot
     public VideoParameters VideoParams;
     public DateTime StartAfter;
     public string Sender = string.Empty;
+    public DateTime RelevanceTime;
 
     public Notification() { }
 

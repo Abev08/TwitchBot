@@ -351,9 +351,10 @@ public static class Events
   {
     try
     {
-      System.IO.File.AppendAllText($"eventlog_{DateTime.Now:d}.log", $"{DateTime.Now:G}\r\n");
-      System.IO.File.AppendAllText($"eventlog_{DateTime.Now:d}.log", msg);
-      System.IO.File.AppendAllText($"eventlog_{DateTime.Now:d}.log", "\r\n\r\n");
+      var fileDate = DateTime.Now.ToString("d");
+      System.IO.File.AppendAllText($"eventlog_{fileDate}.log", $"{DateTime.Now:G}\r\n");
+      System.IO.File.AppendAllText($"eventlog_{fileDate}.log", msg);
+      System.IO.File.AppendAllText($"eventlog_{fileDate}.log", "\r\n\r\n");
     }
     catch { }
   }

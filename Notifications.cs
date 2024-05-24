@@ -24,7 +24,13 @@ namespace AbevBot
     public static bool SkipNotification { get; set; }
     public static bool ChatTTSEnabled { get; set; }
     public static bool WelcomeMessagesEnabled { get; set; }
+    /// <summary> Queue of notifiactions. </summary>
     static readonly List<Notification> NotificationQueue = new();
+    /// <summary> Collection of past notifications.
+    /// When notification ends it should be added to this collection and cleared from it after some time. </summary>
+    static readonly List<Notification> PastNotifications = new();
+    /// <summary> Collection of maybe notifications - notifications that come from different sources than events.
+    /// After some time (if correct event message doesn't appear) notifications from this list are moved to correct notification queue. </summary>
     static readonly List<Notification> MaybeNotificationQueue = new();
     private static Thread NotificationsThread;
     public static readonly HttpClient Client = new();
@@ -79,6 +85,16 @@ namespace AbevBot
       {
         if (MainWindow.CloseRequested) { return; }
 
+        // Clean up past notifications
+        if (PastNotifications.Count > 0 && DateTime.Now >= PastNotifications[0].RelevanceTime)
+        {
+          lock (PastNotifications)
+          {
+            // The notification ended more than 30 sec ago, remove it from past notifications collection
+            PastNotifications.RemoveAt(0);
+          }
+        }
+
         // Check maybe notifications
         if (MaybeNotificationQueue.Count > 0)
         {
@@ -95,6 +111,16 @@ namespace AbevBot
               }
             }
           }
+          else if (NotificationQueue.Count == 0 && SkipNotification)
+          {
+            // No real notifications to skip - skip queued maybe notification
+            lock (MaybeNotificationQueue)
+            {
+              SkipNotification = false;
+              MaybeNotificationQueue.RemoveAt(0);
+              MainWindow.I.SetNotificationQueueCount(NotificationQueue.Count, MaybeNotificationQueue.Count);
+            }
+          }
         }
 
         if ((NotificationQueue.Count > 0) && (!NotificationsPaused || NotificationQueue[0].Started))
@@ -108,7 +134,13 @@ namespace AbevBot
             }
             if (NotificationQueue[0].Update())
             {
+              SkipNotification = false;
               // Update returned true == notificaion has ended, remove it from queue
+              lock (PastNotifications)
+              {
+                PastNotifications.Add(NotificationQueue[0]);
+                PastNotifications[^1].RelevanceTime = DateTime.Now.AddSeconds(30);
+              }
               NotificationQueue.RemoveAt(0);
               notificationEnded = true;
               MainWindow.I.SetNotificationQueueCount(NotificationQueue.Count, MaybeNotificationQueue.Count);
@@ -160,11 +192,33 @@ namespace AbevBot
     /// <summary> Adds notification to the queue. </summary>
     public static void AddMaybeNotification(Notification notification)
     {
+      if (Config.MaybeNotificationsDisabled) { return; }
+
       Task.Run(() =>
       {
+        // Check previous / current notifications - maybe the notification was or already is being played
+        lock (NotificationQueue)
+        {
+          for (int i = 0; i < NotificationQueue.Count; i++)
+          {
+            var n = NotificationQueue[i];
+            // Notification type and sender name is the same - it has to be the same notification?
+            if (n.Type == notification.Type && n.Sender == notification.Sender) { return; }
+          }
+          lock (PastNotifications)
+          {
+            for (int i = 0; i < PastNotifications.Count; i++)
+            {
+              var n = PastNotifications[i];
+              // Notification type and sender name is the same - it has to be the same notification?
+              if (n.Type == notification.Type && n.Sender == notification.Sender) { return; }
+            }
+          }
+        }
+
         lock (MaybeNotificationQueue)
         {
-          notification.StartAfter = DateTime.Now.AddSeconds(5); // Lets give 5 sec, maybe propper event message will come?
+          notification.StartAfter = DateTime.Now.AddSeconds(5); // Lets give it 5 sec, maybe propper event message will come?
           MaybeNotificationQueue.Add(notification);
           MainWindow.I.SetNotificationQueueCount(NotificationQueue.Count, MaybeNotificationQueue.Count);
         }

@@ -568,6 +568,12 @@ public partial class MainWindow : Window
     if (FinishedLoading) await Database.UpdateValueInConfig(Database.Keys.WindowAudioDisabled, Config.WindowAudioDisabled);
   }
 
+  private async void ChkMaybeNotif_CheckChanged(object sender, RoutedEventArgs e)
+  {
+    Config.MaybeNotificationsDisabled = ((CheckBox)sender).IsChecked == true;
+    // if (FinishedLoading) await Database.UpdateValueInConfig(Database.Keys.WindowAudioDisabled, Config.WindowAudioDisabled);
+  }
+
   private void MainVideoEnded(object sender, RoutedEventArgs e)
   {
     VideoPlayer.Source = null;
