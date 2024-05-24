@@ -804,11 +804,15 @@ public static class Chat
             Log.Information("{userName} subscribed! {msg}",
               metadata.UserName,
               body);
+            Notifications.CreateMaybeSubscriptionNotification(metadata.UserName, "", body);
+            Events.LogEventToFile(msg); // I need few sub messages to test it out
             break;
           case "resub":
             Log.Information("{userName} resubscribed! {msg}",
               metadata.UserName,
               body);
+            Notifications.CreateMaybeSubscriptionNotification(metadata.UserName, "", body);
+            Events.LogEventToFile(msg); // I need few sub messages to test it out
             break;
           case "subgift":
             Log.Information("{userName} gifted sub to {userName2}! {msg}",
@@ -825,16 +829,22 @@ public static class Chat
             Log.Information("{userName} converted prime sub to standard sub! {msg}",
               metadata.UserName,
               body);
+            Notifications.CreateMaybeSubscriptionNotification(metadata.UserName, "", body);
+            Events.LogEventToFile(msg); // I need few sub messages to test it out
             break;
           case "giftpaidupgrade":
             Log.Information("{userName} continuing sub gifted by another chatter! {msg}",
               metadata.UserName,
               body);
+            Notifications.CreateMaybeSubscriptionNotification(metadata.UserName, "", body);
+            Events.LogEventToFile(msg); // I need few sub messages to test it out
             break;
           case "communitypayforward":
             Log.Information("{userName} is paying forward sub gifted by another chatter! {msg}",
               metadata.UserName,
               body);
+            Notifications.CreateMaybeSubscriptionNotification(metadata.UserName, "", body);
+            Events.LogEventToFile(msg); // I need few sub messages to test it out
             break;
           case "announcement":
             Log.Information("{userName} announced that! {msg}",

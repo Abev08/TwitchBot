@@ -25,6 +25,7 @@ namespace AbevBot
     public static bool ChatTTSEnabled { get; set; }
     public static bool WelcomeMessagesEnabled { get; set; }
     static readonly List<Notification> NotificationQueue = new();
+    static readonly List<Notification> MaybeNotificationQueue = new();
     private static Thread NotificationsThread;
     public static readonly HttpClient Client = new();
     public static string VoicesLink { get; private set; }
@@ -78,6 +79,24 @@ namespace AbevBot
       {
         if (MainWindow.CloseRequested) { return; }
 
+        // Check maybe notifications
+        if (MaybeNotificationQueue.Count > 0)
+        {
+          if (DateTime.Now >= MaybeNotificationQueue[0].StartAfter)
+          {
+            lock (MaybeNotificationQueue)
+            {
+              lock (NotificationQueue)
+              {
+                // Maybe notification should start - move it to the real queue
+                NotificationQueue.Add(MaybeNotificationQueue[0]);
+                MaybeNotificationQueue.RemoveAt(0);
+                MainWindow.I.SetNotificationQueueCount(NotificationQueue.Count, MaybeNotificationQueue.Count);
+              }
+            }
+          }
+        }
+
         if ((NotificationQueue.Count > 0) && (!NotificationsPaused || NotificationQueue[0].Started))
         {
           lock (NotificationQueue)
@@ -92,7 +111,7 @@ namespace AbevBot
               // Update returned true == notificaion has ended, remove it from queue
               NotificationQueue.RemoveAt(0);
               notificationEnded = true;
-              MainWindow.I.SetNotificationQueueCount(NotificationQueue.Count);
+              MainWindow.I.SetNotificationQueueCount(NotificationQueue.Count, MaybeNotificationQueue.Count);
             }
           }
 
@@ -117,8 +136,37 @@ namespace AbevBot
       {
         lock (NotificationQueue)
         {
+          // Check if maybe notification was created with the same data
+          lock (MaybeNotificationQueue)
+          {
+            for (int i = MaybeNotificationQueue.Count - 1; i >= 0; i--)
+            {
+              var n = MaybeNotificationQueue[i];
+              if (n.Type == notification.Type && n.Sender == notification.Sender)
+              {
+                // Notification type and sender name is the same - it has to be the same notification?
+                MaybeNotificationQueue.RemoveAt(i);
+                break;
+              }
+            }
+          }
+
           NotificationQueue.Add(notification);
-          MainWindow.I.SetNotificationQueueCount(NotificationQueue.Count);
+          MainWindow.I.SetNotificationQueueCount(NotificationQueue.Count, MaybeNotificationQueue.Count);
+        }
+      });
+    }
+
+    /// <summary> Adds notification to the queue. </summary>
+    public static void AddMaybeNotification(Notification notification)
+    {
+      Task.Run(() =>
+      {
+        lock (MaybeNotificationQueue)
+        {
+          notification.StartAfter = DateTime.Now.AddSeconds(5); // Lets give 5 sec, maybe propper event message will come?
+          MaybeNotificationQueue.Add(notification);
+          MainWindow.I.SetNotificationQueueCount(NotificationQueue.Count, MaybeNotificationQueue.Count);
         }
       });
     }
@@ -413,6 +461,27 @@ namespace AbevBot
       AddNotification(new Notification(ConfigBan, NotificationData));
     }
 
+    /// <summary> Creates and adds to queue Subscription notification. </summary>
+    public static void CreateMaybeSubscriptionNotification(string userName, string tier, string message)
+    {
+      if (!ConfigSubscriptionExt.Enable) return;
+
+      string chatter;
+      if (string.IsNullOrWhiteSpace(userName)) chatter = "Anonymous";
+      else chatter = userName?.Trim();
+
+      Array.Clear(NotificationData);
+      NotificationData[0] = chatter;
+      NotificationData[1] = tier;
+      NotificationData[2] = "int value overflow";
+      NotificationData[3] = "i have no idea";
+      NotificationData[5] = "maybe more than one";
+      NotificationData[7] = message;
+
+      // Chat.AddMessageToQueue(string.Format(ConfigSubscriptionExt.ChatMessage, NotificationData));
+      AddMaybeNotification(new Notification(ConfigSubscriptionExt, NotificationData));
+    }
+
     private static void CreateVoicesPaste()
     {
       if (Chat.ResponseMessages.ContainsKey("!voices"))
@@ -481,7 +550,7 @@ namespace AbevBot
             NotificationQueue.RemoveAt(i);
           }
         }
-        MainWindow.I.SetNotificationQueueCount(NotificationQueue.Count);
+        MainWindow.I.SetNotificationQueueCount(NotificationQueue.Count, MaybeNotificationQueue.Count);
       }
     }
 

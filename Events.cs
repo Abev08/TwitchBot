@@ -347,7 +347,7 @@ public static class Events
     return false;
   }
 
-  private static void LogEventToFile(string msg)
+  public static void LogEventToFile(string msg)
   {
     try
     {

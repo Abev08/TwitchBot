@@ -37,11 +37,14 @@ namespace AbevBot
     public NotificationType Type { get; }
     public Action ExtraActionAtStartup { get; set; }
     public VideoParameters VideoParams;
+    public DateTime StartAfter;
+    public string Sender = string.Empty;
 
     public Notification() { }
 
     public Notification(NotificationsConfig config, string[] data, ChannelRedemption redemption = null)
     {
+      Sender = data[0];
       TextToDisplay = string.Format(config.TextToDisplay, data).Replace("\\n", Environment.NewLine);
       TextToDisplayPosition = config.TextPosition;
       TextToDisplaySize = config.TextSize;

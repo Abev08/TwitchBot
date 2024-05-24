@@ -499,11 +499,12 @@ public partial class MainWindow : Window
     }));
   }
 
-  public void SetNotificationQueueCount(int count)
+  public void SetNotificationQueueCount(int count, int maybeCount)
   {
     Dispatcher.Invoke(new Action(() =>
     {
-      tbNotificationsQueue.Text = $"Notifications in queue: {count}";
+      tbNotificationsQueue.Text = string.Concat("Notifications in queue: ", count,
+       maybeCount > 0 ? $" ({maybeCount})" : "");
     }));
   }
 
@@ -623,6 +624,10 @@ public partial class MainWindow : Window
 
       case "Random video":
         Notifications.CreateRandomVideoNotification(string.Empty);
+        break;
+
+      case "Chat sub message":
+        Notifications.CreateMaybeSubscriptionNotification("Chatter", "", "This is test sub received in chat");
         break;
     }
   }

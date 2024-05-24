@@ -108,6 +108,7 @@
             <ComboBoxItem Content="Cheer" ToolTip="Cheer notification"/>
             <ComboBoxItem Content="Discord message" ToolTip="Discord notification (the stream went online)"/>
             <ComboBoxItem Content="Random video" ToolTip="Random video"/>
+            <ComboBoxItem Content="Chat sub message" ToolTip="Subscription message send in the chat"/>
           </ComboBox>
           <Button x:Name="btnTestNotification" Content="Test Notification" Click="NotificationTestClicked" ToolTip="Queues selected above test notification"/>
         </StackPanel>
