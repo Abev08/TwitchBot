@@ -351,11 +351,14 @@ public static class Events
   {
     try
     {
-      var fileDate = DateTime.Now.ToString("d");
-      System.IO.File.AppendAllText($"eventlog_{fileDate}.log", $"{DateTime.Now:G}\r\n");
-      System.IO.File.AppendAllText($"eventlog_{fileDate}.log", msg);
-      System.IO.File.AppendAllText($"eventlog_{fileDate}.log", "\r\n\r\n");
+      var date = DateTime.Now;
+      var fileName = string.Concat("eventlog_",
+        date.Day.ToString("00"), "_", date.Month.ToString("00"), "_", date.Year.ToString("0000"),
+        ".log");
+      System.IO.File.AppendAllText(fileName, $"{date:G}\r\n");
+      System.IO.File.AppendAllText(fileName, msg);
+      System.IO.File.AppendAllText(fileName, "\r\n\r\n");
     }
-    catch { }
+    catch { } // For now I don't care about the error, it's eventlog mostly for testing
   }
 }

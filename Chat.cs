@@ -692,7 +692,7 @@ public static class Chat
 
     // Get message type
     temp2 = msg.IndexOf(' ', temp);
-    if (temp2 < 0) { temp2 = msg.Length - temp; }
+    if (temp2 < 0) { temp2 = msg.Length; }
     metadata.MessageType = msg[temp..temp2];
     temp2++;
 
