@@ -743,6 +743,24 @@ public static class Chat
           case "msg-param-recipient-display-name":
             metadata.Receipent = s;
             break;
+          case "msg-param-sub-plan":
+            metadata.Sub.Tier = s.ToLower() switch
+            {
+              "1000" => "1",
+              "2000" => "2",
+              "3000" => "3",
+              _ => s
+            };
+            break;
+          case "msg-param-multimonth-duration":
+            metadata.Sub.DurationInAdvance = s;
+            break;
+          case "msg-param-streak-months":
+            metadata.Sub.Streak = s;
+            break;
+          case "msg-param-cumulative-months":
+            metadata.Sub.CumulativeMonths = s;
+            break;
         }
         temp = temp2 + 1;
 
@@ -804,14 +822,18 @@ public static class Chat
             Log.Information("{userName} subscribed! {msg}",
               metadata.UserName,
               body);
-            Notifications.CreateMaybeSubscriptionNotification(metadata.UserName, "", body);
+            Notifications.CreateMaybeSubscriptionNotification(metadata.UserName,
+              metadata.Sub.Tier, metadata.Sub.DurationInAdvance, metadata.Sub.Streak, metadata.Sub.CumulativeMonths,
+              body);
             Events.LogEventToFile(msg); // I need few sub messages to test it out
             break;
           case "resub":
             Log.Information("{userName} resubscribed! {msg}",
               metadata.UserName,
               body);
-            Notifications.CreateMaybeSubscriptionNotification(metadata.UserName, "", body);
+            Notifications.CreateMaybeSubscriptionNotification(metadata.UserName,
+              metadata.Sub.Tier, metadata.Sub.DurationInAdvance, metadata.Sub.Streak, metadata.Sub.CumulativeMonths,
+              body);
             Events.LogEventToFile(msg); // I need few sub messages to test it out
             break;
           case "subgift":
@@ -829,21 +851,27 @@ public static class Chat
             Log.Information("{userName} converted prime sub to standard sub! {msg}",
               metadata.UserName,
               body);
-            Notifications.CreateMaybeSubscriptionNotification(metadata.UserName, "", body);
+            Notifications.CreateMaybeSubscriptionNotification(metadata.UserName,
+              metadata.Sub.Tier, metadata.Sub.DurationInAdvance, metadata.Sub.Streak, metadata.Sub.CumulativeMonths,
+              body);
             Events.LogEventToFile(msg); // I need few sub messages to test it out
             break;
           case "giftpaidupgrade":
             Log.Information("{userName} continuing sub gifted by another chatter! {msg}",
               metadata.UserName,
               body);
-            Notifications.CreateMaybeSubscriptionNotification(metadata.UserName, "", body);
+            Notifications.CreateMaybeSubscriptionNotification(metadata.UserName,
+              metadata.Sub.Tier, metadata.Sub.DurationInAdvance, metadata.Sub.Streak, metadata.Sub.CumulativeMonths,
+              body);
             Events.LogEventToFile(msg); // I need few sub messages to test it out
             break;
           case "communitypayforward":
             Log.Information("{userName} is paying forward sub gifted by another chatter! {msg}",
               metadata.UserName,
               body);
-            Notifications.CreateMaybeSubscriptionNotification(metadata.UserName, "", body);
+            Notifications.CreateMaybeSubscriptionNotification(metadata.UserName,
+              metadata.Sub.Tier, metadata.Sub.DurationInAdvance, metadata.Sub.Streak, metadata.Sub.CumulativeMonths,
+              body);
             Events.LogEventToFile(msg); // I need few sub messages to test it out
             break;
           case "announcement":
@@ -1129,11 +1157,15 @@ class MessageMetadata
   /// <summary> Type of special chat message (like "sub", "emote_only_on"). </summary>
   public string MsgID = string.Empty;
   public string Receipent = string.Empty;
+  /// <summary> Information about sub message received in chat. </summary>
+  public (string Tier, string DurationInAdvance, string Streak, string CumulativeMonths) Sub = (string.Empty, string.Empty, string.Empty, string.Empty);
 
   /// <summary> Resets current metadata to default state. </summary>
   public void Clear()
   {
     MessageType = Badge = UserName = MessageID = CustomRewardID = Bits = MsgID = Receipent = string.Empty;
     UserID = -1;
+
+    Sub.Tier = Sub.DurationInAdvance = Sub.Streak = Sub.CumulativeMonths = string.Empty;
   }
 }

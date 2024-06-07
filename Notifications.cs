@@ -192,8 +192,6 @@ namespace AbevBot
     /// <summary> Adds notification to the queue. </summary>
     public static void AddMaybeNotification(Notification notification)
     {
-      if (Config.MaybeNotificationsDisabled) { return; }
-
       Task.Run(() =>
       {
         // Check previous / current notifications - maybe the notification was or already is being played
@@ -516,7 +514,7 @@ namespace AbevBot
     }
 
     /// <summary> Creates and adds to queue Subscription notification. </summary>
-    public static void CreateMaybeSubscriptionNotification(string userName, string tier, string message)
+    public static void CreateMaybeSubscriptionNotification(string userName, string tier, string durationInAdvance, string streak, string cumulativeMonths, string message)
     {
       if (!ConfigSubscriptionExt.Enable) return;
 
@@ -524,13 +522,17 @@ namespace AbevBot
       if (string.IsNullOrWhiteSpace(userName)) chatter = "Anonymous";
       else chatter = userName?.Trim();
 
+      int temp;
       Array.Clear(NotificationData);
       NotificationData[0] = chatter;
       NotificationData[1] = tier;
-      NotificationData[2] = "int value overflow";
-      NotificationData[3] = "i have no idea";
-      NotificationData[5] = "maybe more than one";
+      NotificationData[2] = durationInAdvance;
+      NotificationData[3] = streak;
+      NotificationData[5] = cumulativeMonths;
       NotificationData[7] = message;
+      if (int.TryParse(durationInAdvance, out temp) && temp > 1) { NotificationData[10] = "s"; }
+      if (int.TryParse(streak, out temp) && temp > 1) { NotificationData[11] = "s"; }
+      if (int.TryParse(cumulativeMonths, out temp) && temp > 1) { NotificationData[13] = "s"; }
 
       // Chat.AddMessageToQueue(string.Format(ConfigSubscriptionExt.ChatMessage, NotificationData));
       AddMaybeNotification(new Notification(ConfigSubscriptionExt, NotificationData));

@@ -568,12 +568,6 @@ public partial class MainWindow : Window
     if (FinishedLoading) await Database.UpdateValueInConfig(Database.Keys.WindowAudioDisabled, Config.WindowAudioDisabled);
   }
 
-  private async void ChkMaybeNotif_CheckChanged(object sender, RoutedEventArgs e)
-  {
-    Config.MaybeNotificationsDisabled = ((CheckBox)sender).IsChecked == true;
-    // if (FinishedLoading) await Database.UpdateValueInConfig(Database.Keys.WindowAudioDisabled, Config.WindowAudioDisabled);
-  }
-
   private void MainVideoEnded(object sender, RoutedEventArgs e)
   {
     VideoPlayer.Source = null;
@@ -633,7 +627,9 @@ public partial class MainWindow : Window
         break;
 
       case "Chat sub message":
-        Notifications.CreateMaybeSubscriptionNotification("Chatter", "", "This is test sub received in chat");
+        Notifications.CreateMaybeSubscriptionNotification("Chatter",
+          "prime", "1", "2", "3",
+          "This is test sub received in chat");
         break;
     }
   }

@@ -61,7 +61,6 @@ public static class Config
   public static readonly List<Key> HotkeysForSkipNotification = new();
   /// <summary> Is audio output of main window disabled? </summary>
   public static bool WindowAudioDisabled { get; set; }
-  public static bool MaybeNotificationsDisabled { get; set; }
 
   public static bool ParseConfigFile(bool reload = false)
   {
