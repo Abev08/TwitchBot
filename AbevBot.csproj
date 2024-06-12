@@ -13,8 +13,8 @@
 
   <ItemGroup>
     <PackageReference Include="NAudio" Version="2.2.1" />
-    <PackageReference Include="Serilog" Version="3.1.1" />
-    <PackageReference Include="Serilog.Sinks.Console" Version="5.0.1" />
+    <PackageReference Include="Serilog" Version="4.0.0" />
+    <PackageReference Include="Serilog.Sinks.Console" Version="6.0.0" />
     <PackageReference Include="System.Data.SQLite.Core" Version="1.0.118" />
     <PackageReference Include="SoundTouch.Net.NAudioSupport.Core" Version="2.3.2" />
   </ItemGroup>
@@ -33,6 +33,12 @@
   <ItemGroup>
     <EmbeddedResource Include="server\client.html" />
     <EmbeddedResource Include="server\client.js" />
+    <EmbeddedResource Include="server\counter.html" />
+    <EmbeddedResource Include="server\counter.js" />
+  </ItemGroup>
+  <!-- Also copy them to output dir -->
+  <ItemGroup>
+    <None Include="server\**" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <!-- Copy config and runtime files to output directory -->

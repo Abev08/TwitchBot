@@ -43,6 +43,7 @@ namespace AbevBot
     /// <summary> Supported video formats by WPF MediaElement. </summary>
     public static readonly string[] SupportedVideoFormats = new[] { ".avi", ".gif", ".mkv", ".mov", ".mp4", ".wmv" };
     public static readonly string[] SupportedAudioFormats = new[] { ".wav", ".mp3", ".ogg" };
+    public static readonly string[] SupportedImageFormats = new[] { ".png", ".jpg", ".bmp" };
 
     public static NotificationsConfig ConfigFollow { get; set; } = new(NotificationType.FOLLOW);
     public static NotificationsConfig ConfigSubscription { get; set; } = new(NotificationType.SUBSCRIPTION);

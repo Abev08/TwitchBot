@@ -70,6 +70,7 @@ public partial class MainWindow : Window
       Log.Information("Bot close requested");
       Chatter.UpdateChattersFile(true);
       Config.UpdateVolumes();
+      Database.Connection.Close();
       ConsoleFreed = true;
       FreeConsole();
     };
@@ -116,6 +117,7 @@ public partial class MainWindow : Window
     Events.Start(); // Start events bot
     Notifications.Start(); // Start notifications on MainWindow
     Server.Start(); // Start http server
+    Counter.Start(); // Start on screen counters
 
     // Wait for window to be loaded (visible) to start a demo video
     Loaded += (sender, e) =>

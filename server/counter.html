@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <title>AbevBot - Counter</title>
+  <script src="counter.js"></script>
+  <style>
+    div {
+      padding-left: 0.2rem;
+      padding-right: 0.2rem;
+      text-align: right;
+      align-content: center;
+    }
+
+    img {
+      max-width: 32px;
+    }
+
+    p {
+      color: deepskyblue;
+      font-size: 32px;
+      font-family: Calibri;
+      -webkit-text-stroke: 0.5px black;
+      text-wrap: nowrap;
+      margin: 0;
+      padding-left: 0.5rem;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="conn_err">
+    <p style="color: red; font-size: 48px; font-weight: bold; margin: 50px;">CONNECTION ERROR!</p>
+  </div>
+
+  <div id="content" style="display: grid; grid-template-columns: auto min-content min-content;"></div>
+</body>
+
+</html>

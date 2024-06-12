@@ -18,16 +18,13 @@ namespace AbevBot;
 /// <summary> HTTP server with WebSocket connection to play notifications (instead of in the main window). </summary>
 public static class Server
 {
+  public static bool IsStarted { get; private set; }
   /// <summary> HTTP server address. </summary>
   public static IPAddress IP { get; private set; } = IPAddress.Parse("127.0.0.1");
   /// <summary> HTTP server port. </summary>
   public static ushort Port { get; private set; } = 40000;
   /// <summary> Server thread. </summary>
   private static readonly Thread ServerThread = new(Update) { IsBackground = true };
-  /// <summary> Main html page send to the connected client. </summary>
-  private static string ClientHTML = string.Empty;
-  /// <summary> Main JS script send to the connected client. </summary>
-  private static string ClientJS = string.Empty;
   /// <summary> Is HTTP server required? </summary>
   private static bool IsServerRestartRequired = true;
   /// <summary> WebSocket message send queue. </summary>
@@ -46,7 +43,8 @@ public static class Server
   /// <summary> Starts the HTTP server. </summary>
   public static void Start()
   {
-    if (!LoadServerFiles()) { return; }
+    if (IsStarted) { return; }
+    IsStarted = true;
 
     // If everything is ok, start the server
     ServerThread.Start();
@@ -94,43 +92,6 @@ public static class Server
     }
 
     IsServerRestartRequired = true;
-  }
-
-  /// <summary> Loads files used by the http server. </summary>
-  /// <returns><value>true</value> if loading was successful, otherwise <value>false</value></returns>
-  private static bool LoadServerFiles()
-  {
-    var assembly = Assembly.GetExecutingAssembly();
-
-    // Load main http page content from a file
-    var file = new FileInfo("server/client.html");
-    if (file.Exists) { ClientHTML = File.ReadAllText(file.FullName); }
-    else
-    {
-      using var stream = assembly.GetManifestResourceStream("AbevBot.server.client.html");
-      if (stream is null)
-      {
-        Log.Error("File {file} not found!", file.FullName);
-        return false;
-      }
-      using var reader = new StreamReader(stream);
-      ClientHTML = reader.ReadToEnd();
-    }
-    file = new FileInfo("server/client.js");
-    if (file.Exists) { ClientJS = File.ReadAllText(file.FullName); }
-    else
-    {
-      using var stream = assembly.GetManifestResourceStream("AbevBot.server.client.js");
-      if (stream is null)
-      {
-        Log.Error("File {file} not found!", file.FullName);
-        return false;
-      }
-      using var reader = new StreamReader(stream);
-      ClientJS = reader.ReadToEnd();
-    }
-
-    return true;
   }
 
   /// <summary> Main update method used by the HTTP server thread. </summary>
@@ -201,6 +162,7 @@ public static class Server
 
           if (secWebSocketKey.Length > 0)
           {
+            // Upgrade tcp connection to websocket
             Log.Information("HTTP server new request: {request}", "WebSocket upgrade");
             var key = secWebSocketKey + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
             byte[] keyHashed = SHA1.HashData(Encoding.UTF8.GetBytes(key));
@@ -216,7 +178,22 @@ public static class Server
 
             var ws = new WebSocketConnection(
               WebSocket.CreateFromStream(stream, true, null, TimeSpan.FromSeconds(1)));
-            wsConnections.Add(ws);
+
+            switch (metadata[1])
+            {
+              case "/":
+                // Websocket connection to main notification view
+                wsConnections.Add(ws);
+                break;
+              case "/counter":
+                // Websocket connection to counter view
+                Counter.AddNewWebsocketConnection(ref ws);
+                break;
+              default:
+                // Unrecognized websocket connection? Just close it
+                stream.Close();
+                break;
+            }
           }
           else
           {
@@ -225,20 +202,22 @@ public static class Server
 
             if (metadata[1] == "/")
             {
+              var html = GetFileOrEmbedded("client.html");
               response = Encoding.UTF8.GetBytes(string.Concat(
                 "HTTP/1.1 200 OK\r\n",
-                "Content-Length: ", ClientHTML.Length, "\r\n",
+                "Content-Length: ", html.Length, "\r\n",
                 "Content-Type: text/html\r\n\r\n",
-                ClientHTML,
+                html,
                 "\r\n\r\n"));
             }
             else if (metadata[1] == "/client.js")
             {
+              var js = GetFileOrEmbedded("client.js");
               response = Encoding.UTF8.GetBytes(string.Concat(
                 "HTTP/1.1 200 OK\r\n",
-                "Content-Length: ", ClientJS.Length, "\r\n",
+                "Content-Length: ", js.Length, "\r\n",
                 "Content-Type: text/javascript\r\n\r\n",
-                ClientJS,
+                js,
                 "\r\n\r\n"));
             }
             else if (metadata[1] == "/favicon.ico")
@@ -289,6 +268,7 @@ public static class Server
                 string contentType;
                 if (Array.IndexOf(Notifications.SupportedVideoFormats, file.Extension) >= 0) { contentType = "video"; }
                 else if (Array.IndexOf(Notifications.SupportedAudioFormats, file.Extension) >= 0) { contentType = "audio"; }
+                else if (Array.IndexOf(Notifications.SupportedImageFormats, file.Extension) >= 0) { contentType = "image"; }
                 else
                 {
                   error = true;
@@ -309,6 +289,26 @@ public static class Server
               } while (false);
 
               if (error) { response = Encoding.UTF8.GetBytes("HTTP/1.1 404 Not Found\r\n\r\n"); }
+            }
+            else if (metadata[1] == "/counter")
+            {
+              var html = GetFileOrEmbedded("counter.html");
+              response = Encoding.UTF8.GetBytes(string.Concat(
+                "HTTP/1.1 200 OK\r\n",
+                "Content-Length: ", html.Length, "\r\n",
+                "Content-Type: text/html\r\n\r\n",
+                html,
+                "\r\n\r\n"));
+            }
+            else if (metadata[1] == "/counter.js")
+            {
+              var js = GetFileOrEmbedded("counter.js");
+              response = Encoding.UTF8.GetBytes(string.Concat(
+                "HTTP/1.1 200 OK\r\n",
+                "Content-Length: ", js.Length, "\r\n",
+                "Content-Type: text/javascript\r\n\r\n",
+                js,
+                "\r\n\r\n"));
             }
             else { response = Encoding.UTF8.GetBytes("HTTP/1.1 404 Not Found\r\n\r\n"); }
 
@@ -600,10 +600,29 @@ public static class Server
       WsSendQueue.Add(msg);
     }
   }
+
+  public static string GetFileOrEmbedded(string name)
+  {
+    string data = string.Empty;
+    var file = new FileInfo($"server/{name}");
+    // If the file exists return it's content, otherwise get embedded data
+    if (file.Exists) { data = File.ReadAllText(file.FullName); }
+    else
+    {
+      using var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream($"AbevBot.server.{name}");
+      if (stream is null) { Log.Error("File {file} not found!", file.FullName); }
+      else
+      {
+        using var reader = new StreamReader(stream);
+        data = reader.ReadToEnd();
+      }
+    }
+    return data;
+  }
 }
 
 /// <summary> HTTP server WebSocket "wrapper". </summary>
-class WebSocketConnection
+public class WebSocketConnection
 {
   /// <summary> The connection. </summary>
   public WebSocket Conn { get; init; }

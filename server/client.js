@@ -7,6 +7,8 @@ let text; // Notification text
 let audio_should_play = false; // Should audio be played?
 let video_should_play = false; // Shoud video be played?
 let gamba_player, gamba_text_name, gamba_text_value; // Gamba elements (video player, text, other text)
+let static_url = 'http://127.0.0.1:40000/'; // Static default address
+let static_ws = 'ws://127.0.0.1:40000/'
 
 function loaded() {
   conn_err = document.getElementById('conn_err');
@@ -104,10 +106,19 @@ function loaded() {
   }, 5000);
 }
 
+// Check if the html page was loaded from the server or static file
+if (window.location.protocol != "file:") {
+  static_url = ''; // For html received from the server reset static url and ws
+  static_ws = '';
+}
 window.addEventListener('load', loaded);
 
 function connect() {
-  ws = new WebSocket('ws://' + window.location.hostname + ':' + window.location.port);
+  if (static_ws.length > 0) {
+    ws = new WebSocket(static_ws);
+  } else {
+    ws = new WebSocket('ws://' + window.location.hostname + ':' + window.location.port);
+  }
 
   ws.addEventListener('open', () => {
     console.log('WebSocket connection established!');
@@ -309,7 +320,7 @@ function play_audio(data) {
 
   audio_player.pause();
   audio_player.volume = data.audio_volume;
-  audio_player.src = data.audio;
+  audio_player.src = static_url + data.audio;
   audio_player.play();
 }
 
@@ -319,7 +330,7 @@ function play_video(data) {
   video_player.hidden = false;
   video_player.pause();
   video_player.volume = data.video_volume;
-  video_player.src = data.video;
+  video_player.src = static_url + data.video;
 
   // Set video position
   if (data.video_position[0] >= 0) {
@@ -352,7 +363,7 @@ function play_video(data) {
 
 function play_gamba(data) {
   gamba_player.hidden = false;
-  gamba_player.src = data.gamba;
+  gamba_player.src = static_url + data.gamba;
   gamba_player.play();
 
   gamba_text_name.childNodes[0].textContent = data.gamba_name;

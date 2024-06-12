@@ -31,7 +31,7 @@ public static class Database
   private const string DATABASEVERSION = "1.0";
   private const string DATABASEPATH = ".db";
   private const string DBCONNECTIONSTRING = $"Data Source={DATABASEPATH}; Version=3;";
-  private static readonly SQLiteConnection Connection = new(DBCONNECTIONSTRING);
+  public static readonly SQLiteConnection Connection = new(DBCONNECTIONSTRING);
 
   public static bool Init()
   {
@@ -53,21 +53,14 @@ public static class Database
         Log.Error("Failed to create '{file}' database file!", DATABASEPATH);
         return true;
       }
-
-      // Create tables
-      SQLiteCommand command = new("CREATE TABLE Config (ID INTEGER NOT NULL UNIQUE, Name TEXT, Value TEXT, PRIMARY KEY(ID AUTOINCREMENT));", Connection);
-      int affected = command.ExecuteNonQuery();
-      if (affected != 0)
-      {
-        Log.Error("Creating Config tablie in '{file}' database returned wrong result!", DATABASEPATH);
-        return true;
-      }
-
     }
     else { Connection.Open(); }
 
-    string result;
+    // Try to create tables, if they already exists, "CREATE TABLE" will return an error if (CreateTable("CREATE TABLE death_counter (id INTEGER NOT NULL UNIQUE, name TEXT, counters TEXT, PRIMARY KEY(id AUTOINCREMENT));")) { return true; }
+    if (CreateTable("Config", "(ID INTEGER NOT NULL UNIQUE, Name TEXT, Value TEXT, PRIMARY KEY(ID AUTOINCREMENT))")) { return true; }
+    if (CreateTable("counters", "(id INTEGER NOT NULL UNIQUE, name TEXT, counters TEXT, PRIMARY KEY(id AUTOINCREMENT))")) { return true; }
 
+    string result;
     // Get database version
     result = GetValueOrCreateFromConfig(Keys.Version, DATABASEVERSION);
     if (result?.Length == 0) { return true; }
@@ -101,7 +94,7 @@ public static class Database
     Config.WindowAudioDisabled = bool.Parse(GetValueOrCreateFromConfig(Keys.WindowAudioDisabled, "False"));
     MainWindow.I.SetEnabledStatus();
 
-    Connection.Close();
+    // Connection.Close();
     return false;
   }
 
@@ -165,7 +158,7 @@ public static class Database
     SQLiteCommand command = new($"UPDATE Config SET Value='{value}' WHERE Name='{name}';", Connection);
     int affected = await command.ExecuteNonQueryAsync();
 
-    Connection.Close();
+    // Connection.Close();
 
     if (affected != 1)
     {
@@ -173,5 +166,76 @@ public static class Database
       return false;
     }
     return true;
+  }
+
+  /// <summary> Creates table in the database according to provided sql command. </summary>
+  /// <returns><value>true</value> if an error occured, otherwise <value>false</value></returns>
+  private static bool CreateTable(string name, string columns)
+  {
+    SQLiteCommand cmd = new($"CREATE TABLE {name} {columns};", Connection);
+    try
+    {
+      if (cmd.ExecuteNonQuery() != 0)
+      {
+        Log.Error("Creating '{name}' table in '{file}' database returned wrong result!", name, DATABASEPATH);
+        return true;
+      }
+    }
+    catch (SQLiteException ex)
+    {
+      if (ex.ErrorCode == 1) { } // Table already exists
+      else
+      {
+        Log.Error("Creating '{name}' table in '{file}' database returned an error: {ex}", name, DATABASEPATH, ex.Message);
+        return true;
+      }
+    }
+    return false;
+  }
+
+  public static void UpdateCounterData(Counters counter)
+  {
+    counter.Dirty = true;
+
+    Task.Run(() =>
+    {
+      Log.Information("Updating '{name}' in counters database.", counter.Name);
+      var data = counter.GetCountersData();
+      if (Connection.State == ConnectionState.Closed) Connection.Open();
+
+      SQLiteCommand command = new($"UPDATE counters SET counters='{data}' WHERE name='{counter.Name}';", Connection);
+      int affected = command.ExecuteNonQuery();
+      if (affected == 0)
+      {
+        // Nothing was affected, so probably the counter doesn't exist, add it
+        command = new($"INSERT INTO counters (name, counters) VALUES ('{counter.Name}', '{data}');", Connection);
+        affected = command.ExecuteNonQuery();
+        if (affected != 1) { Log.Warning("Couldn't add {name} to database counters table!", counter.Name); }
+      }
+    });
+  }
+
+  public static Counters GetLastCounters()
+  {
+    if (Connection.State == ConnectionState.Closed) Connection.Open();
+    Counters c = null;
+    SQLiteCommand command = new("SELECT * FROM counters ORDER BY id DESC LIMIT 1;", Connection);
+    var reader = command.ExecuteReader();
+    if (reader.HasRows && reader.Read())
+    {
+      c = new();
+      for (int i = 0; i < reader.FieldCount; i++)
+      {
+        if (reader.GetFieldType(i) == typeof(string))
+        {
+          var s = reader.GetString(i);
+          if (i == 1) { c.Name = s; }
+          else if (i == 2) { c.ParseCountersData(s); }
+        }
+      }
+    }
+
+    reader.Close();
+    return c;
   }
 }

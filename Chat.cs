@@ -1105,6 +1105,15 @@ public static class Chat
       if (Spotify.Working) { AddMessageResponseToQueue(Spotify.GetCurrentlyPlayingTrack(), metadata.MessageID); }
       else { AddMessageResponseToQueue("Spotify connection is not working peepoSad", metadata.MessageID); }
     }
+    else if (msg.StartsWith("!counter")) // Check if message starts with !counter key
+    {
+      if (Counter.IsStarted)
+      {
+        if (metadata.Badge == "STR" || metadata.Badge == "MOD") { Counter.ParseChatMessage(msg[8..].Trim()); }
+        else { AddMessageResponseToQueue("Only the streamer or mods can update counters!", metadata.MessageID); }
+      }
+      else { AddMessageResponseToQueue("Counters are not working peepoSad", metadata.MessageID); }
+    }
     else if (ResponseMessages.Count > 0) // Check if message starts with key to get automatic response
     {
       int temp = msg.IndexOf(' ');
