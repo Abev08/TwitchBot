@@ -11,7 +11,7 @@ Because WPF is used can be built only for Windows.
 To remove the 'greenscreen', chroma key filter for green and similarity value ~340 should be added to the OBS input.<br>
 The 'greenscreen' solution is not perfect and will affect the display of videos and clips that use the color green.
 
-Instead of using window display with 'greenscreen' filter as OBS input you can use browser source (<i>currently in beta phase - some functionalities may not work!</i>) hosted by the bot at http://127.0.0.1:40000.  
+Instead of using window display with 'greenscreen' filter as OBS input you can use browser source (<i>currently in beta phase - some functionalities may not work!</i>) hosted by the bot at http://127.0.0.1:40000. Or use "server/client.html" file located in the main bot directory as OBS browser source from local file (checkbox at the top when adding new browser source).  
 <p align="center"><img src="ReadmeImages/OBSBrowserInput.png" alt="OBS browser input configuration" height="300"></p>
 
 The bot's control elements are located on the left side of the window.<br>
@@ -71,6 +71,7 @@ Both files are generated automatically when the bot is launched.
     - Rude points (`!rude`) - chatters can point a chatter for being rude, <p align="center"><img src="ReadmeImages/MinigameRude.png" width="300px" alt="Rude minigame"></p>
     - Vanish (`!vanish`) - self timeout for the chatter, also deletes chatter messages.
     - Hug (`!hug`) - just a friendly hug to other person.
+    - Counters (`!counter`) - on screen counters. Hosted at "http://127.0.0.1:40000/counter" or by opening "server/counter.html" file. <p align="center"><img src="ReadmeImages/Counters.png" width="300px" alt="Counters"></p>
 
 4. Discord integration:
     - Sends message to the Discord channel when the stream goes live.
