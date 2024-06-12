@@ -513,6 +513,7 @@ public static class Chat
       if (Spotify.SkipEnabled) sb.Append("!skipsong, ");
     }
     if (VanishEnabled) { sb.Append("!vanish, "); }
+    if (Counter.IsStarted) { sb.Append("!counter, "); }
 
     foreach (string key in ResponseMessages.Keys)
     {
@@ -1109,7 +1110,7 @@ public static class Chat
     {
       if (Counter.IsStarted)
       {
-        if (metadata.Badge == "STR" || metadata.Badge == "MOD") { Counter.ParseChatMessage(msg[8..].Trim()); }
+        if (metadata.Badge == "STR" || metadata.Badge == "MOD") { Counter.ParseChatMessage(msg[8..].Trim(), metadata.MessageID); }
         else { AddMessageResponseToQueue("Only the streamer or mods can update counters!", metadata.MessageID); }
       }
       else { AddMessageResponseToQueue("Counters are not working peepoSad", metadata.MessageID); }

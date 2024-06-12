@@ -92,8 +92,21 @@ public static class Counter
     }
   }
 
-  public static void ParseChatMessage(string msg)
+  public static void ParseChatMessage(string msg, string chatMessageID)
   {
+    if (msg.Length == 0 || msg == "help")
+    {
+      // Send "!counter help"
+      Chat.AddMessageResponseToQueue(string.Concat(
+        "Control on screen counters. ",
+        "\"!counter <action> <counter name>\". ",
+        "Action can be: add, remove, ++, -- or value. ",
+        "Example 1, increase value of \"first counter\": !counter ++ first counter. ",
+        "Example 2, add new counter with name \"new counter\": !counter add new counter."),
+        chatMessageID);
+      return;
+    }
+
     int temp = msg.IndexOf(' ');
     if (temp == -1) { return; }
     // data[0] == action (e.g. add, remove, ++, --, <value> - set to value)
