@@ -2,7 +2,7 @@ let ws_counter; // WebSocket connection
 let conn_err_counter;
 let content_counter;
 let static_url_counter = 'http://127.0.0.1:40000/'; // Static default address
-let static_ws_counter = 'ws://127.0.0.1:40000/counter'
+let static_ws_counter = 'ws://127.0.0.1:40000/counter';
 
 function loaded() {
   conn_err_counter = document.getElementById('conn_err');
@@ -39,7 +39,7 @@ function connect() {
     console.log('Counter WebSocket connection established!');
     conn_err_counter.hidden = true;
     content_counter.hidden = false;
-  })
+  });
 
   ws_counter.addEventListener('close', () => {
     console.log('Counter WebSocket connection closed!');
