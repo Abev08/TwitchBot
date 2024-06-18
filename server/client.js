@@ -8,7 +8,7 @@ let audio_should_play = false; // Should audio be played?
 let video_should_play = false; // Shoud video be played?
 let gamba_player, gamba_text_name, gamba_text_value; // Gamba elements (video player, text, other text)
 let static_url = 'http://127.0.0.1:40000/'; // Static default address
-let static_ws = 'ws://127.0.0.1:40000/'
+let static_ws = 'ws://127.0.0.1:40000/';
 
 function loaded() {
   conn_err = document.getElementById('conn_err');
