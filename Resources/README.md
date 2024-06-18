@@ -1,0 +1,1 @@
+Skull icon (CounterIcon.png) downloaded from: https://www.flaticon.com/free-icon/skull_2699654
