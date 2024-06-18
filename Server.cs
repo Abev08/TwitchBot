@@ -213,6 +213,7 @@ public static class Server
             else if (metadata[1] == "/client.js")
             {
               var js = GetFileOrEmbedded("client.js");
+              js = "let fromServer = true;\r\n" + js;
               response = Encoding.UTF8.GetBytes(string.Concat(
                 "HTTP/1.1 200 OK\r\n",
                 "Content-Length: ", js.Length, "\r\n",
@@ -303,6 +304,7 @@ public static class Server
             else if (metadata[1] == "/counter.js")
             {
               var js = GetFileOrEmbedded("counter.js");
+              js = "let fromServer = true;\r\n" + js;
               response = Encoding.UTF8.GetBytes(string.Concat(
                 "HTTP/1.1 200 OK\r\n",
                 "Content-Length: ", js.Length, "\r\n",

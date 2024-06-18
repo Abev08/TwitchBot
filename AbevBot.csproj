@@ -38,7 +38,7 @@
   </ItemGroup>
   <!-- Also copy them to output dir -->
   <ItemGroup>
-    <None Include="server\**" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="server\**" CopyToOutputDirectory="Always"/>
   </ItemGroup>
 
   <!-- Copy config and runtime files to output directory -->

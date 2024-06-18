@@ -93,6 +93,12 @@ function loaded() {
       }
     </style>`;
 
+  // For html received from the server reset static url and ws
+  if (typeof fromServer !== 'undefined') {
+    static_url = '';
+    static_ws = '';
+  }
+
   connect();
 
   setInterval(function () {
@@ -106,11 +112,6 @@ function loaded() {
   }, 5000);
 }
 
-// Check if the html page was loaded from the server or static file
-if (window.location.protocol != "file:") {
-  static_url = ''; // For html received from the server reset static url and ws
-  static_ws = '';
-}
 window.addEventListener('load', loaded);
 
 function connect() {

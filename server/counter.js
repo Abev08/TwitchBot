@@ -8,6 +8,12 @@ function loaded() {
   conn_err_counter = document.getElementById('conn_err');
   content_counter = document.getElementById('content');
 
+  // For html received from the server reset static url and ws
+  if (typeof fromServer !== 'undefined') {
+    static_url_counter = '';
+    static_ws_counter = '';
+  }
+
   connect();
 
   setInterval(function () {
@@ -21,11 +27,6 @@ function loaded() {
   }, 5000);
 }
 
-// Check if the html page was loaded from the server or static file
-if (window.location.protocol != "file:") {
-  static_url_counter = ''; // For html received from the server reset static url and ws
-  static_ws_counter = '';
-}
 window.addEventListener('load', loaded);
 
 function connect() {
