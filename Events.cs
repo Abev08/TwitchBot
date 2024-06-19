@@ -90,6 +90,7 @@ public static class Events
             anySubscriptionSucceeded |= Subscribe("channel.channel_points_custom_reward_redemption.add", "1", sessionID); // User redeemed channel points
             anySubscriptionSucceeded |= Subscribe("channel.hype_train.progress", "1", sessionID); // A Hype Train makes progress on the specified channel
             anySubscriptionSucceeded |= Subscribe("channel.ban", "1", sessionID); // A viewer is banned from the specified channel
+            anySubscriptionSucceeded |= Subscribe("channel.channel_points_automatic_reward_redemption.add", "1", sessionID); // A viewer has redeemed an automatic channel points reward on the specified channel
 
             if (!anySubscriptionSucceeded)
             {
@@ -250,6 +251,40 @@ public static class Events
                         dur,
                         reason);
                     }
+                    break;
+
+                  case "channel.channel_points_automatic_reward_redemption.add":
+                    // Received new bits channel reward redemption
+                    string reward = string.Empty;
+                    string msg = string.Empty;
+                    string userInput = string.Empty;
+                    try
+                    {
+                      // The type of reward. One of:
+                      // single_message_bypass_sub_mode
+                      // send_highlighted_message
+                      // random_sub_emote_unlock
+                      // chosen_sub_emote_unlock
+                      // chosen_modified_sub_emote_unlock
+                      // message_effect
+                      // gigantify_an_emote
+                      // celebration
+                      reward = eventMsg["payload"]["event"]["reward"]["type"].ToString();
+                      msg = eventMsg["payload"]["event"]["message"].ToString();
+                      userInput = eventMsg["payload"]["event"]["user_input"]?.ToString();
+                    }
+                    catch { }
+
+                    if (reward == "celebration" && !Config.TestFeatureDisabled)
+                    {
+                      Notifications.CreateTTSNotification(string.Concat(
+                        "funny: ", userName,
+                        "fired up a celebration. ",
+                        userInput?.Length == 0 ? "" : $"Also saying {userInput}. ",
+                        msg
+                      ));
+                    }
+                    LogEventToFile(message);
                     break;
 
                   case "channel.hype_train.progress":

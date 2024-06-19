@@ -65,16 +65,16 @@ function parse_message(d) {
 
   clear_content();
 
-  for (var i = 0; i < data.length; i++) {
-    var d = data[i];
-    for (var j = 0; j < 3; j++) {
-      var div = document.createElement('div');
+  for (let i = 0; i < data.length; i++) {
+    let d = data[i];
+    for (let j = 0; j < 3; j++) {
+      let div = document.createElement('div');
       if (j == 2) {
-        var img = document.createElement('img');
+        let img = document.createElement('img');
         img.src = static_url_counter + d[j];
         div.appendChild(img);
       } else {
-        var text = document.createElement('p');
+        let text = document.createElement('p');
         text.textContent = d[j];
         div.appendChild(text);
       }

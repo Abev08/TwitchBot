@@ -570,6 +570,11 @@ public partial class MainWindow : Window
     if (FinishedLoading) await Database.UpdateValueInConfig(Database.Keys.WindowAudioDisabled, Config.WindowAudioDisabled);
   }
 
+  private void ChkTest_CheckChanged(object sender, RoutedEventArgs e)
+  {
+    Config.TestFeatureDisabled = ((CheckBox)sender).IsChecked == true;
+  }
+
   private void MainVideoEnded(object sender, RoutedEventArgs e)
   {
     VideoPlayer.Source = null;

@@ -125,7 +125,7 @@ function connect() {
     console.log('WebSocket connection established!');
     conn_err.hidden = true;
     content.hidden = false;
-  })
+  });
 
   ws.addEventListener('close', () => {
     console.log('WebSocket connection closed!');
@@ -216,7 +216,7 @@ function clear_audio() {
 function clear_text() {
   text.childNodes.forEach((element) => {
     text.removeChild(element);
-  })
+  });
   if (content.contains(text)) {
     content.removeChild(text);
   }
@@ -379,9 +379,9 @@ function clear_gamba() {
   gamba_player.src = '';
   gamba_player.removeAttribute('src');
 
-  gamba_text_name.childNodes[0].textContent = ''
+  gamba_text_name.childNodes[0].textContent = '';
   gamba_text_name.hidden = true;
-  gamba_text_value.childNodes[0].textContent = ''
+  gamba_text_value.childNodes[0].textContent = '';
   gamba_text_value.hidden = true;
 }
 
