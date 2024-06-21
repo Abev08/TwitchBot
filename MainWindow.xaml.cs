@@ -638,6 +638,10 @@ public partial class MainWindow : Window
           "prime", "1", "2", "3",
           "This is test sub received in chat");
         break;
+
+      case "On screen celebration":
+        Notifications.CreateOnScreenCelebrationNotification("Chatter", "This is a test");
+        break;
     }
   }
 

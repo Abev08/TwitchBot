@@ -80,15 +80,7 @@ public static class Config
     Notifications.ChannelRedemptions.Clear();
     HotkeysForPauseNotification.Clear();
     HotkeysForSkipNotification.Clear();
-    Notifications.ConfigFollow.Reset();
-    Notifications.ConfigSubscription.Reset();
-    Notifications.ConfigSubscriptionExt.Reset();
-    Notifications.ConfigSubscriptionGift.Reset();
-    Notifications.ConfigSubscriptionGiftReceived.Reset();
-    Notifications.ConfigCheer.Reset();
-    Notifications.ConfigRaid.Reset();
-    Notifications.ConfigTimeout.Reset();
-    Notifications.ConfigBan.Reset();
+    foreach (var config in Notifications.Configs) { config.Value.Reset(); }
     Notifications.RandomVideoParameters?.Reset();
 
     // Create example Config.ini
@@ -129,41 +121,11 @@ public static class Config
         // check for group heading
         if (line.EndsWith(':'))
         {
-          switch (line)
+          if (!Notifications.Configs.TryGetValue(line[..^1], out currentNotifConfig))
           {
-            case "Follow:":
-              currentNotifConfig = Notifications.ConfigFollow;
-              break;
-            case "Subscription:":
-              currentNotifConfig = Notifications.ConfigSubscription;
-              break;
-            case "SubscriptionExt:":
-              currentNotifConfig = Notifications.ConfigSubscriptionExt;
-              break;
-            case "SubscriptionGift:":
-              currentNotifConfig = Notifications.ConfigSubscriptionGift;
-              break;
-            case "SubscriptionGiftReceived:":
-              currentNotifConfig = Notifications.ConfigSubscriptionGiftReceived;
-              break;
-            case "Cheer:":
-              currentNotifConfig = Notifications.ConfigCheer;
-              break;
-            case "Raid:":
-              currentNotifConfig = Notifications.ConfigRaid;
-              break;
-            case "Timeout:":
-              currentNotifConfig = Notifications.ConfigTimeout;
-              break;
-            case "Ban:":
-              currentNotifConfig = Notifications.ConfigBan;
-              break;
-            default:
-              Log.Warning("Bad config line {index}. Group header not recognized!", lineIndex);
-              currentNotifConfig = null;
-              break;
+            Log.Warning("Bad config line {index}. Group header not recognized!", lineIndex);
+            currentNotifConfig = null;
           }
-
           continue;
         }
 
@@ -825,6 +787,19 @@ public static class Config
       writer.WriteLine(string.Concat(Keys.TextSize.ToString(), " = "));
       writer.WriteLine(string.Concat(Keys.TextToSpeech.ToString(), " = "));
       writer.WriteLine(string.Concat(Keys.SoundToPlay.ToString(), " = tone1.wav"));
+      writer.WriteLine(string.Concat(Keys.VideoToPlay.ToString(), " = "));
+      writer.WriteLine(string.Concat(Keys.VideoPosition.ToString(), " = "));
+      writer.WriteLine(string.Concat(Keys.VideoSize.ToString(), " = "));
+      writer.WriteLine();
+      writer.WriteLine("; ----- On screen celebration (channel redemption with bits)");
+      writer.WriteLine("OnScreenCelebration:");
+      writer.WriteLine(string.Concat(Keys.Enable.ToString(), " = true"));
+      writer.WriteLine(string.Concat(Keys.ChatMessage.ToString(), " = "));
+      writer.WriteLine(string.Concat(Keys.TextToDisplay.ToString(), " = "));
+      writer.WriteLine(string.Concat(Keys.TextPosition.ToString(), " = TOP"));
+      writer.WriteLine(string.Concat(Keys.TextSize.ToString(), " = "));
+      writer.WriteLine(string.Concat(Keys.TextToSpeech.ToString(), " = funny: {0} fired up a celebration. {7}"));
+      writer.WriteLine(string.Concat(Keys.SoundToPlay.ToString(), " = "));
       writer.WriteLine(string.Concat(Keys.VideoToPlay.ToString(), " = "));
       writer.WriteLine(string.Concat(Keys.VideoPosition.ToString(), " = "));
       writer.WriteLine(string.Concat(Keys.VideoSize.ToString(), " = "));

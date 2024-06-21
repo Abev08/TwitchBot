@@ -255,34 +255,24 @@ public static class Events
 
                   case "channel.channel_points_automatic_reward_redemption.add":
                     // Received new bits channel reward redemption
-                    string reward = string.Empty;
-                    string msg = string.Empty;
-                    string userInput = string.Empty;
-                    try
-                    {
-                      // The type of reward. One of:
-                      // single_message_bypass_sub_mode
-                      // send_highlighted_message
-                      // random_sub_emote_unlock
-                      // chosen_sub_emote_unlock
-                      // chosen_modified_sub_emote_unlock
-                      // message_effect
-                      // gigantify_an_emote
-                      // celebration
-                      reward = eventMsg["payload"]["event"]["reward"]["type"].ToString();
-                      msg = eventMsg["payload"]["event"]["message"].ToString();
-                      userInput = eventMsg["payload"]["event"]["user_input"]?.ToString();
-                    }
-                    catch { }
+                    // The type of reward. One of:
+                    // single_message_bypass_sub_mode
+                    // send_highlighted_message
+                    // random_sub_emote_unlock
+                    // chosen_sub_emote_unlock
+                    // chosen_modified_sub_emote_unlock
+                    // message_effect
+                    // gigantify_an_emote
+                    // celebration
+                    string type = eventMsg["payload"]["event"]["reward"]["type"].ToString();
+                    string msg = eventMsg["payload"]["event"]["message"]["text"]?.ToString();
+                    string userInput = eventMsg["payload"]["event"]["user_input"]?.ToString();
 
-                    if (reward == "celebration" && !Config.TestFeatureDisabled)
+                    switch (type)
                     {
-                      Notifications.CreateTTSNotification(string.Concat(
-                        "funny: ", userName,
-                        "fired up a celebration. ",
-                        userInput?.Length == 0 ? "" : $"Also saying {userInput}. ",
-                        msg
-                      ));
+                      case "celebration":
+                        Notifications.CreateOnScreenCelebrationNotification(userName, msg);
+                        break;
                     }
                     LogEventToFile(message);
                     break;

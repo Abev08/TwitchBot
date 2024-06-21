@@ -45,15 +45,20 @@ namespace AbevBot
     public static readonly string[] SupportedAudioFormats = new[] { ".wav", ".mp3", ".ogg" };
     public static readonly string[] SupportedImageFormats = new[] { ".png", ".jpg", ".bmp" };
 
-    public static NotificationsConfig ConfigFollow { get; set; } = new(NotificationType.FOLLOW);
-    public static NotificationsConfig ConfigSubscription { get; set; } = new(NotificationType.SUBSCRIPTION);
-    public static NotificationsConfig ConfigSubscriptionExt { get; set; } = new(NotificationType.SUBSCRIPTION);
-    public static NotificationsConfig ConfigSubscriptionGift { get; set; } = new(NotificationType.SUBSCRIPTIONGIFT);
-    public static NotificationsConfig ConfigSubscriptionGiftReceived { get; set; } = new(NotificationType.SUBSCRIPTION);
-    public static NotificationsConfig ConfigCheer { get; set; } = new(NotificationType.CHEER);
-    public static NotificationsConfig ConfigRaid { get; set; } = new(NotificationType.RAID);
-    public static NotificationsConfig ConfigTimeout { get; set; } = new(NotificationType.TIMEOUT);
-    public static NotificationsConfig ConfigBan { get; set; } = new(NotificationType.BAN);
+    /// <summary> Configurations of different notification types. </summary>
+    public static readonly Dictionary<string, NotificationsConfig> Configs = new()
+    {
+      {"Follow", new(NotificationType.FOLLOW)},
+      {"Subscription", new(NotificationType.SUBSCRIPTION)},
+      {"SubscriptionExt", new(NotificationType.SUBSCRIPTION)},
+      {"SubscriptionGift", new(NotificationType.SUBSCRIPTIONGIFT)},
+      {"SubscriptionGiftReceived", new(NotificationType.SUBSCRIPTION)},
+      {"Cheer", new(NotificationType.CHEER)},
+      {"Raid", new(NotificationType.RAID)},
+      {"Timeout", new(NotificationType.TIMEOUT)},
+      {"Ban", new(NotificationType.BAN)},
+      {"OnScreenCelebration", new(NotificationType.ONSCREENCELEBRATION)}
+    };
     private static readonly string[] NotificationData = new string[14];
     public static readonly List<ChannelRedemption> ChannelRedemptions = new();
     private static readonly List<(DateTime time, string name)> GiftedSubs = new();
@@ -227,7 +232,8 @@ namespace AbevBot
     /// <summary> Creates and adds to queue Follow notification. </summary>
     public static void CreateFollowNotification(string userName)
     {
-      if (!ConfigFollow.Enable) return;
+      var config = Configs["Follow"];
+      if (!config.Enable) return;
 
       string chatter;
       if (string.IsNullOrWhiteSpace(userName)) chatter = "Anonymous";
@@ -236,14 +242,15 @@ namespace AbevBot
       Array.Clear(NotificationData);
       NotificationData[0] = chatter;
 
-      Chat.AddMessageToQueue(string.Format(ConfigFollow.ChatMessage, NotificationData));
-      AddNotification(new Notification(ConfigFollow, NotificationData));
+      Chat.AddMessageToQueue(string.Format(config.ChatMessage, NotificationData));
+      AddNotification(new Notification(config, NotificationData));
     }
 
     /// <summary> Creates and adds to queue Subscription notification. </summary>
     public static void CreateSubscriptionNotification(string userName, string tier, string message)
     {
-      if (!ConfigSubscription.Enable) return;
+      var config = Configs["Subscription"];
+      if (!config.Enable) return;
 
       string chatter;
       if (string.IsNullOrWhiteSpace(userName)) chatter = "Anonymous";
@@ -254,14 +261,15 @@ namespace AbevBot
       NotificationData[1] = tier[..1];
       NotificationData[7] = message;
 
-      Chat.AddMessageToQueue(string.Format(ConfigSubscription.ChatMessage, NotificationData));
-      AddNotification(new Notification(ConfigSubscription, NotificationData));
+      Chat.AddMessageToQueue(string.Format(config.ChatMessage, NotificationData));
+      AddNotification(new Notification(config, NotificationData));
     }
 
     /// <summary> This is more advanced CreateSubscriptionNotification version - more info in message variable. </summary>
     public static void CreateSubscriptionNotification(string userName, string tier, int duration, int streak, int cumulative, EventPayloadMessage message)
     {
-      if (!ConfigSubscriptionExt.Enable) return;
+      var config = Configs["SubscriptionExt"];
+      if (!config.Enable) return;
 
       string chatter;
       if (string.IsNullOrWhiteSpace(userName)) chatter = "Anonymous";
@@ -278,14 +286,15 @@ namespace AbevBot
       NotificationData[11] = streak > 1 ? "s" : string.Empty;
       NotificationData[13] = cumulative > 1 ? "s" : string.Empty;
 
-      Chat.AddMessageToQueue(string.Format(ConfigSubscriptionExt.ChatMessage, NotificationData));
-      AddNotification(new Notification(ConfigSubscriptionExt, NotificationData));
+      Chat.AddMessageToQueue(string.Format(config.ChatMessage, NotificationData));
+      AddNotification(new Notification(config, NotificationData));
     }
 
     /// <summary> This is more advanced CreateSubscriptionNotification version - more info in message variable. </summary>
     public static void CreateSubscriptionNotification(string userName, string tier, int duration, int streak, int cumulative, JsonNode message)
     {
-      if (!ConfigSubscriptionExt.Enable) return;
+      var config = Configs["SubscriptionExt"];
+      if (!config.Enable) return;
 
       string chatter;
       if (string.IsNullOrWhiteSpace(userName)) chatter = "Anonymous";
@@ -302,14 +311,15 @@ namespace AbevBot
       NotificationData[11] = streak > 1 ? "s" : string.Empty;
       NotificationData[13] = cumulative > 1 ? "s" : string.Empty;
 
-      Chat.AddMessageToQueue(string.Format(ConfigSubscriptionExt.ChatMessage, NotificationData));
-      AddNotification(new Notification(ConfigSubscriptionExt, NotificationData));
+      Chat.AddMessageToQueue(string.Format(config.ChatMessage, NotificationData));
+      AddNotification(new Notification(config, NotificationData));
     }
 
     /// <summary> Creates and adds to queue Received Gifted Subscription notification. </summary>
     public static void CreateGiftSubscriptionNotification(string userName, string tier, int count, string message, string timeStamp)
     {
-      if (!ConfigSubscriptionGift.Enable) return;
+      var config = Configs["SubscriptionGift"];
+      if (!config.Enable) return;
 
       // Check the gift sub list
       if (DateTime.TryParse(timeStamp, out DateTime time))
@@ -345,8 +355,8 @@ namespace AbevBot
       NotificationData[7] = message;
       NotificationData[12] = count > 1 ? "s" : string.Empty;
 
-      Chat.AddMessageToQueue(string.Format(ConfigSubscriptionGift.ChatMessage, NotificationData));
-      AddNotification(new Notification(ConfigSubscriptionGift, NotificationData));
+      Chat.AddMessageToQueue(string.Format(config.ChatMessage, NotificationData));
+      AddNotification(new Notification(config, NotificationData));
 
       GiftedSubs.Clear();
     }
@@ -354,13 +364,14 @@ namespace AbevBot
     /// <summary> Creates and adds to queue Gifted Subscription notification. </summary>
     public static void CreateReceiveGiftSubscriptionNotification(string userName, string timeStamp)
     {
+      var config = Configs["SubscriptionGiftReceived"];
       // Add gifted sub to the list
       if (userName?.Length > 0 && DateTime.TryParse(timeStamp, out DateTime time))
       {
         GiftedSubs.Add((time, userName));
       }
 
-      if (!ConfigSubscriptionGiftReceived.Enable) return;
+      if (!config.Enable) return;
 
       string chatter;
       if (string.IsNullOrWhiteSpace(userName)) chatter = "Anonymous";
@@ -369,14 +380,15 @@ namespace AbevBot
       Array.Clear(NotificationData);
       NotificationData[0] = chatter;
 
-      Chat.AddMessageToQueue(string.Format(ConfigSubscriptionGiftReceived.ChatMessage, NotificationData));
-      AddNotification(new Notification(ConfigSubscriptionGiftReceived, NotificationData));
+      Chat.AddMessageToQueue(string.Format(config.ChatMessage, NotificationData));
+      AddNotification(new Notification(config, NotificationData));
     }
 
     /// <summary> Creates and adds to queue Cheer notification. </summary>
     public static void CreateCheerNotification(string userName, int count, string message)
     {
-      if (!ConfigCheer.Enable) return;
+      var config = Configs["Cheer"];
+      if (!config.Enable) return;
 
       string chatter;
       if (string.IsNullOrWhiteSpace(userName)) chatter = "Anonymous";
@@ -388,8 +400,8 @@ namespace AbevBot
       NotificationData[7] = message;
       NotificationData[12] = count > 1 ? "s" : string.Empty;
 
-      Chat.AddMessageToQueue(string.Format(ConfigCheer.ChatMessage, NotificationData));
-      AddNotification(new Notification(ConfigCheer, NotificationData));
+      Chat.AddMessageToQueue(string.Format(config.ChatMessage, NotificationData));
+      AddNotification(new Notification(config, NotificationData));
     }
 
     /// <summary> Creates and adds to queue Channel Points Redemption notification. </summary>
@@ -442,8 +454,9 @@ namespace AbevBot
 
     public static void CreateRaidNotification(string userName, string userID, int count)
     {
-      if (!ConfigRaid.Enable) return;
-      if (count < ConfigRaid.MinimumRaiders) return;
+      var config = Configs["Raid"];
+      if (!config.Enable) return;
+      if (count < config.MinimumRaiders) return;
 
       string chatter;
       if (string.IsNullOrWhiteSpace(userName)) chatter = "Anonymous";
@@ -454,9 +467,9 @@ namespace AbevBot
       NotificationData[4] = count.ToString();
       NotificationData[12] = count > 1 ? "s" : string.Empty;
 
-      Chat.AddMessageToQueue(string.Format(ConfigRaid.ChatMessage, NotificationData));
-      if (ConfigRaid.DoShoutout) Chat.Shoutout(userID);
-      AddNotification(new Notification(ConfigRaid, NotificationData));
+      Chat.AddMessageToQueue(string.Format(config.ChatMessage, NotificationData));
+      if (config.DoShoutout) Chat.Shoutout(userID);
+      AddNotification(new Notification(config, NotificationData));
     }
 
     /// <summary> Creates and adds to queue Random Video notification. </summary>
@@ -488,15 +501,16 @@ namespace AbevBot
     /// <param name="reason">Timeout reason</param>
     public static void CreateTimeoutNotification(string userName, TimeSpan duration, string reason)
     {
-      if (!ConfigTimeout.Enable) return;
-      if (duration < ConfigTimeout.MinimumTime) return;
+      var config = Configs["Timeout"];
+      if (!config.Enable) return;
+      if (duration < config.MinimumTime) return;
 
       Array.Clear(NotificationData);
       NotificationData[0] = userName;
       NotificationData[7] = reason;
 
-      Chat.AddMessageToQueue(string.Format(ConfigTimeout.ChatMessage, NotificationData));
-      AddNotification(new Notification(ConfigTimeout, NotificationData));
+      Chat.AddMessageToQueue(string.Format(config.ChatMessage, NotificationData));
+      AddNotification(new Notification(config, NotificationData));
     }
 
     /// <summary> Creates and adds to queue Chatter ban notification. </summary>
@@ -504,20 +518,22 @@ namespace AbevBot
     /// <param name="reason">Ban reason</param>
     public static void CreateBanNotification(string userName, string reason)
     {
-      if (!ConfigBan.Enable) return;
+      var config = Configs["Ban"];
+      if (!config.Enable) return;
 
       Array.Clear(NotificationData);
       NotificationData[0] = userName;
       NotificationData[7] = reason;
 
-      Chat.AddMessageToQueue(string.Format(ConfigBan.ChatMessage, NotificationData));
-      AddNotification(new Notification(ConfigBan, NotificationData));
+      Chat.AddMessageToQueue(string.Format(config.ChatMessage, NotificationData));
+      AddNotification(new Notification(config, NotificationData));
     }
 
     /// <summary> Creates and adds to queue Subscription notification. </summary>
     public static void CreateMaybeSubscriptionNotification(string userName, string tier, string durationInAdvance, string streak, string cumulativeMonths, string message)
     {
-      if (!ConfigSubscriptionExt.Enable) return;
+      var config = Configs["SubscriptionExt"];
+      if (!config.Enable) return;
 
       string chatter;
       if (string.IsNullOrWhiteSpace(userName)) chatter = "Anonymous";
@@ -535,8 +551,24 @@ namespace AbevBot
       if (int.TryParse(streak, out temp) && temp > 1) { NotificationData[11] = "s"; }
       if (int.TryParse(cumulativeMonths, out temp) && temp > 1) { NotificationData[13] = "s"; }
 
-      // Chat.AddMessageToQueue(string.Format(ConfigSubscriptionExt.ChatMessage, NotificationData));
-      AddMaybeNotification(new Notification(ConfigSubscriptionExt, NotificationData));
+      // Chat.AddMessageToQueue(string.Format(config.ChatMessage, NotificationData));
+      AddMaybeNotification(new Notification(config, NotificationData));
+    }
+
+    /// <summary> Creates and adds to queue on screen celebration notification. </summary>
+    /// <param name="userName">Chatter name that fired up a celebration</param>
+    /// <param name="msg">Attached message</param>
+    public static void CreateOnScreenCelebrationNotification(string userName, string msg)
+    {
+      var config = Configs["OnScreenCelebration"];
+      if (!config.Enable) return;
+
+      Array.Clear(NotificationData);
+      NotificationData[0] = userName;
+      NotificationData[7] = msg;
+
+      Chat.AddMessageToQueue(string.Format(config.ChatMessage, NotificationData));
+      AddNotification(new Notification(config, NotificationData));
     }
 
     private static void CreateVoicesPaste()
@@ -821,7 +853,7 @@ namespace AbevBot
     }
   }
 
-  public enum NotificationType { FOLLOW, SUBSCRIPTION, SUBSCRIPTIONGIFT, CHEER, RAID, REDEMPTION, TIMEOUT, BAN }
+  public enum NotificationType { FOLLOW, SUBSCRIPTION, SUBSCRIPTIONGIFT, CHEER, RAID, REDEMPTION, TIMEOUT, BAN, ONSCREENCELEBRATION }
 
   public class NotificationsConfig
   {

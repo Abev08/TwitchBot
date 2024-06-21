@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Threading.Tasks;
 
 using Serilog;
 
@@ -31,6 +32,7 @@ namespace AbevBot
     [JsonIgnore]
     public DateTime LastChatted { get; set; } = DateTime.MinValue;
     public DateTime LastSongRequest { get; set; } = DateTime.MinValue;
+    private static bool StopFollowBotsActive = false;
 
     /// <summary> Sets starting values for new chatter. </summary>
     private void InitChatter(long id)
@@ -232,6 +234,9 @@ namespace AbevBot
     /// <para> Then bans find users for 10 hours, deletes them from Chatters array and deletes follow notifications. </para></summary>
     public static void StopFollowBots()
     {
+      if (StopFollowBotsActive) return;
+      StopFollowBotsActive = true;
+
       Log.Warning("Stop follow bots clicked!");
       TimeSpan followedLimit = TimeSpan.FromSeconds(20);
       var now = DateTime.Now;
@@ -241,19 +246,23 @@ namespace AbevBot
 
       // Ban the chatters
       LoadChattersFile();
-      lock (Chatters)
+      Task.Run(() =>
       {
-        var chatter = Chatters.GetEnumerator();
-        while (chatter.MoveNext())
+        lock (Chatters)
         {
-          if (now - chatter.Current.Value.LastTimeFollowed <= followedLimit)
+          var chatter = Chatters.GetEnumerator();
+          while (chatter.MoveNext())
           {
-            // Followed in last x seconds - BAN!
-            Chat.BanChatter("follow bot?", chatter.Current.Value, 36000); // 10 hours
-            Chatters.Remove(chatter.Current.Value.ID);
+            if (now - chatter.Current.Value.LastTimeFollowed <= followedLimit)
+            {
+              // Followed in last x seconds - BAN!
+              Chat.BanChatter("follow bot?", chatter.Current.Value, 36000); // 10 hours
+              Chatters.Remove(chatter.Current.Value.ID);
+            }
           }
         }
-      }
+        StopFollowBotsActive = false;
+      });
     }
 
     public override string ToString() { return Name; }
