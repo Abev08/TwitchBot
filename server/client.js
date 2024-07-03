@@ -192,10 +192,9 @@ function parse_message(d) {
 function clear_content() {
   clear_audio();
   clear_video();
+  clear_text();
 
-  content.childNodes.forEach((element) => {
-    content.removeChild(element);
-  });
+  content.innerHTML = '';
 }
 
 function clear_video() {
@@ -214,9 +213,7 @@ function clear_audio() {
 }
 
 function clear_text() {
-  text.childNodes.forEach((element) => {
-    text.removeChild(element);
-  });
+  text.innerHTML = '';
   if (content.contains(text)) {
     content.removeChild(text);
   }

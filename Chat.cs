@@ -465,6 +465,7 @@ public static class Chat
   public static void BanChatter(string message, Chatter chatter, int durSeconds = 15)
   {
     if (chatter is null) return;
+    if (chatter.Name == "testFromUser") return; // Debug chatter
 
     Log.Information("Banning {userName} from chat for {duration} seconds. {msg}", chatter.Name, durSeconds, message);
 

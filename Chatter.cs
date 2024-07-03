@@ -32,7 +32,6 @@ namespace AbevBot
     [JsonIgnore]
     public DateTime LastChatted { get; set; } = DateTime.MinValue;
     public DateTime LastSongRequest { get; set; } = DateTime.MinValue;
-    private static bool StopFollowBotsActive = false;
 
     /// <summary> Sets starting values for new chatter. </summary>
     private void InitChatter(long id)
@@ -234,15 +233,18 @@ namespace AbevBot
     /// <para> Then bans find users for 10 hours, deletes them from Chatters array and deletes follow notifications. </para></summary>
     public static void StopFollowBots()
     {
-      if (StopFollowBotsActive) return;
-      StopFollowBotsActive = true;
+      if (Notifications.StopFollowBotsActive) return;
+      Notifications.StopFollowBotsActive = true;
+      Notifications.StopFollowBotsPause = true; // Pause notifications while follow notifications are being removed
 
       Log.Warning("Stop follow bots clicked!");
-      TimeSpan followedLimit = TimeSpan.FromSeconds(20);
+      TimeSpan followedLimit = TimeSpan.FromSeconds(60);
       var now = DateTime.Now;
 
       // First clean up notifications because it's faster than sending http messages for bans
       Notifications.CleanFollowNotifications();
+
+      Notifications.StopFollowBotsPause = false; // Unpause notifications from "stop follow bots active"
 
       // Ban the chatters
       LoadChattersFile();
@@ -261,7 +263,7 @@ namespace AbevBot
             }
           }
         }
-        StopFollowBotsActive = false;
+        Notifications.StopFollowBotsActive = false;
       });
     }
 

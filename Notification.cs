@@ -173,15 +173,7 @@ namespace AbevBot
       if (DateTime.Now - StartTime > MaximumNotificationTime)
       {
         Log.Warning("Maximum notification time reached, something went wrong, to not block other notificaitons force closing this one!");
-        MainWindow.I.ClearTextDisplayed();
-        MainWindow.I.StopVideoPlayer();
-        foreach (var audio in AudioToPlay)
-        {
-          audio?.Stop();
-          audio?.Dispose();
-        }
-        AudioToPlay.Clear();
-        Server.ClearAll();
+        Stop();
         return true;
       }
 
@@ -336,10 +328,25 @@ namespace AbevBot
 
       // The notification is over, clear after it
       if (!Notifications.SkipNotification && (DateTime.Now - StartTime < MinimumNotificationTime)) return false;
-      MainWindow.I.ClearTextDisplayed(); // Clear displayed text, again just to be sure
-      Server.ClearAll();
+      Stop(); // Just to be sure that everything is cleared out
 
       return true; // return true when notification has ended
+    }
+
+    /// <summary> Stops the notification. </summary>
+    public void Stop()
+    {
+      if (!Started) return;
+
+      MainWindow.I.ClearTextDisplayed();
+      MainWindow.I.StopVideoPlayer();
+      foreach (var audio in AudioToPlay)
+      {
+        audio?.Stop();
+        audio?.Dispose();
+      }
+      AudioToPlay.Clear();
+      Server.ClearAll();
     }
 
     // FIXME: Figure out good method name :D

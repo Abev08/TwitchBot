@@ -20,7 +20,12 @@ namespace AbevBot
     public const string SOUNDS_PATH = "Resources/Sounds";
     /// <summary> Notifications thread started. </summary>
     public static bool Started { get; private set; }
+    /// <summary> Are notifications paused? </summary>
     public static bool NotificationsPaused { get; set; }
+    /// <summary> Is "stop follow bots" method active? </summary>
+    public static bool StopFollowBotsActive { get; set; }
+    /// <summary> Is notification pause active from "stop follow bots" method? </summary>
+    public static bool StopFollowBotsPause { get; set; }
     public static bool SkipNotification { get; set; }
     public static bool ChatTTSEnabled { get; set; }
     public static bool WelcomeMessagesEnabled { get; set; }
@@ -99,6 +104,13 @@ namespace AbevBot
             // The notification ended more than 30 sec ago, remove it from past notifications collection
             PastNotifications.RemoveAt(0);
           }
+        }
+
+        // During "stop follow bots" don't update notifications
+        if (StopFollowBotsPause)
+        {
+          Thread.Sleep(500);
+          continue;
         }
 
         // Check maybe notifications
@@ -636,6 +648,7 @@ namespace AbevBot
         {
           if (NotificationQueue[i].Type == NotificationType.FOLLOW)
           {
+            NotificationQueue[i].Stop(); // Stop the notification if it's currently playing
             NotificationQueue.RemoveAt(i);
           }
         }
