@@ -1,6 +1,8 @@
 using System;
 using System.Net.Http;
 using System.Text;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 
 using Serilog;
 
@@ -185,21 +187,22 @@ namespace AbevBot
       );
       using HttpRequestMessage request = new(HttpMethod.Post, uri);
       request.Headers.Add("Authorization", $"Bearer {Secret.Data[Secret.Keys.SpotifyOAuthToken]}");
-      string resp;
-      try { resp = Notifications.Client.Send(request).Content.ReadAsStringAsync().Result; }
-      catch (HttpRequestException ex) { Log.Error("Spotify add song to queue failed. {ex}", ex); return false; }
-      if (resp is null) return false; // Something went wrong
-      if (resp.Length != 0)
+      try
       {
-        SpotifyResponse response = SpotifyResponse.Deserialize(resp);
-        if (response is null || response.Error?.Status != 204)
-        {
-          Log.Warning("Couldn't add track to Spotify queue. {msg}", response.Error?.Message);
-          return false;
-        }
-      }
+        string resp = Notifications.Client.Send(request).Content.ReadAsStringAsync().Result;
+        if (resp is null || resp.Length == 0) { return false; } // Something went wrong
 
-      return true; // Everything went ok
+        var r = JsonSerializer.Deserialize<JsonObject>(resp);
+        if (r["error"]["status"].GetValue<int>() == 204) { return true; }
+
+        Log.Warning("Couldn't add track to Spotify queue. {msg}", r["error"]["message"]);
+        return false;
+      }
+      catch (HttpRequestException ex)
+      {
+        Log.Error("Spotify add song to queue failed. {ex}", ex);
+        return false;
+      }
     }
 
     /// <summary> Skips current song (requires spotify premium). </summary>

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Net.Http;
 using System.Text;
+using System.Web;
 
 using Serilog;
 
@@ -271,12 +272,10 @@ namespace AbevBot
     {
       if (text is null || text.Length == 0) return null;
 
-      Stream stream;
-      using HttpRequestMessage request = new(HttpMethod.Get, $"https://api.streamelements.com/kappa/v2/speech?voice={voice}&text={text}");
-      try { stream = Notifications.Client.Send(request).Content.ReadAsStream(); }
+      string t = HttpUtility.UrlEncode(text); // Without url encoding it breaks at "&" symbol
+      using HttpRequestMessage request = new(HttpMethod.Get, $"https://api.streamelements.com/kappa/v2/speech?voice={voice}&text={t}");
+      try { return Notifications.Client.Send(request).Content.ReadAsStream(); }
       catch (HttpRequestException ex) { Log.Error("StreamElements TTS request failed. {ex}", ex); return null; }
-
-      return stream;
     }
 
     /// <summary> Can be used to get available StreamElements voices. The voices are printed to the console. </summary>

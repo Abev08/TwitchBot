@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Net.Http;
 using System.Text;
+using System.Web;
 
 using Serilog;
 
@@ -193,39 +194,36 @@ namespace AbevBot
       sb.AppendLine();
     }
 
-    public static Stream GetTTS(string _text, string voice)
+    public static Stream GetTTS(string text, string voice)
     {
       if (Secret.Data[Secret.Keys.TikTokSessionID].Length == 0) return null;
-      if (_text is null || _text.Length == 0) return null;
+      if (text is null || text.Length == 0) return null;
 
-      string text = _text;
-      text = text.Replace("+", "plus");
-      text = text.Replace(" ", "+");
-      text = text.Replace("&", "and");
-
+      string t = HttpUtility.UrlEncode(text);
       // string url = $"https://api16-normal-v6.tiktokv.com/media/api/text/speech/invoke/?text_speaker={voice}&req_text={text}&speaker_map_type=0&aid=1233";
-      string url = $"https://api16-normal-c-useast2a.tiktokv.com/media/api/text/speech/invoke/?text_speaker={voice}&req_text={text}&speaker_map_type=0&aid=1233";
+      string url = $"https://api16-normal-c-useast2a.tiktokv.com/media/api/text/speech/invoke/?text_speaker={voice}&req_text={t}&speaker_map_type=0&aid=1233";
 
       using HttpRequestMessage request = new(HttpMethod.Post, url);
       request.Headers.Add("User-Agent", "com.zhiliaoapp.musically/2022600030 (Linux; U; Android 7.1.2; es_ES; SM-G988N; Build/NRD90M;tt-ok/3.12.13.1)");
       request.Headers.Add("Cookie", $"sessionid={Secret.Data[Secret.Keys.TikTokSessionID]}");
 
-      string resp;
-      try { resp = Notifications.Client.Send(request).Content.ReadAsStringAsync().Result; }
+      try
+      {
+        string resp = Notifications.Client.Send(request).Content.ReadAsStringAsync().Result;
+        var result = TikTokTTSResponse.Deserialize(resp);
+        if (result?.StatusCode != 0)
+        {
+          Log.Warning("TikTok TTS request status: {status}, error: {msg}", result?.StatusCode, result?.StatusMessage);
+          return null;
+        }
+        else if (result?.Data?.Duration?.Length is null || string.IsNullOrEmpty(result?.Data?.VStr))
+        {
+          Log.Warning("TikTok TTS request returned sound with length 0.");
+          return null;
+        }
+        return new MemoryStream(Convert.FromBase64String(result.Data.VStr));
+      }
       catch (HttpRequestException ex) { Log.Error("TikTok TTS request failed. {ex}", ex); return null; }
-      var result = TikTokTTSResponse.Deserialize(resp);
-      if (result?.StatusCode != 0)
-      {
-        Log.Warning("TikTok TTS request status: {status}, error: {msg}", result?.StatusCode, result?.StatusMessage);
-        return null;
-      }
-      else if (result?.Data?.Duration?.Length is null || string.IsNullOrEmpty(result?.Data?.VStr))
-      {
-        Log.Warning("TikTok TTS request returned sound with length 0.");
-        return null;
-      }
-
-      return new MemoryStream(Convert.FromBase64String(result.Data.VStr));
     }
   }
 }
