@@ -189,16 +189,20 @@ namespace AbevBot
       request.Headers.Add("Authorization", $"Bearer {Secret.Data[Secret.Keys.SpotifyOAuthToken]}");
       try
       {
-        string resp = Notifications.Client.Send(request).Content.ReadAsStringAsync().Result;
-        if (resp is null || resp.Length == 0) { return false; } // Something went wrong
-
-        var r = JsonSerializer.Deserialize<JsonObject>(resp);
-        if (r["error"]["status"].GetValue<int>() == 204) { return true; }
-
-        Log.Warning("Couldn't add track to Spotify queue. {msg}", r["error"]["message"]);
+        var response = Notifications.Client.Send(request);
+        if ((int)response.StatusCode >= 200 && (int)response.StatusCode < 300) { return true; } // OK
+        // Something went wrong, try to get error message
+        string resp = response.Content.ReadAsStringAsync().Result;
+        string msg = null;
+        if (resp != null && resp.Length > 0)
+        {
+          var r = JsonSerializer.Deserialize<JsonObject>(resp);
+          msg = r["error"]["message"].GetValue<string>();
+        }
+        Log.Warning("Couldn't add track to Spotify queue. {msg}", msg is null ? "No error message" : msg);
         return false;
       }
-      catch (HttpRequestException ex)
+      catch (Exception ex)
       {
         Log.Error("Spotify add song to queue failed. {ex}", ex);
         return false;

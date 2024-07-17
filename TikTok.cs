@@ -223,7 +223,7 @@ namespace AbevBot
         }
         return new MemoryStream(Convert.FromBase64String(result.Data.VStr));
       }
-      catch (HttpRequestException ex) { Log.Error("TikTok TTS request failed. {ex}", ex); return null; }
+      catch (Exception ex) { Log.Error("TikTok TTS request failed. {ex}", ex); return null; }
     }
   }
 }
