@@ -59,6 +59,7 @@ namespace AbevBot
       {"SubscriptionGift", new(NotificationType.SUBSCRIPTIONGIFT)},
       {"SubscriptionGiftReceived", new(NotificationType.SUBSCRIPTION)},
       {"Cheer", new(NotificationType.CHEER)},
+      {"CheerRange", new(NotificationType.CHEERRANGE)},
       {"Raid", new(NotificationType.RAID)},
       {"Timeout", new(NotificationType.TIMEOUT)},
       {"Ban", new(NotificationType.BAN)},
@@ -69,6 +70,7 @@ namespace AbevBot
     private static readonly List<(DateTime time, string name)> GiftedSubs = new();
     private static readonly TimeSpan GiftSubMaxTimeout = new(0, 0, 10);
     public static VideoParameters RandomVideoParameters;
+    public static readonly List<NotificationsConfig> CheerRangeNotifications = new();
 
     public enum TextPosition { TOPLEFT, TOP, TOPRIGHT, LEFT, CENTER, RIGHT, BOTTOMLEFT, BOTTOM, BOTTOMRIGHT, VIDEOABOVE, VIDEOCENTER, VIDEOBELOW }
 
@@ -399,7 +401,18 @@ namespace AbevBot
     /// <summary> Creates and adds to queue Cheer notification. </summary>
     public static void CreateCheerNotification(string userName, int count, string message)
     {
-      var config = Configs["Cheer"];
+      // Notifications.CheerRangeNotifications
+      NotificationsConfig config = null;
+      foreach (var c in CheerRangeNotifications)
+      {
+        if (!c.Enable) { continue; }
+        if (count >= c.BitsRange[0] && count <= c.BitsRange[1])
+        {
+          config = c;
+          break;
+        }
+      }
+      if (config is null) { config = Configs["Cheer"]; }
       if (!config.Enable) return;
 
       string chatter;
@@ -866,7 +879,7 @@ namespace AbevBot
     }
   }
 
-  public enum NotificationType { FOLLOW, SUBSCRIPTION, SUBSCRIPTIONGIFT, CHEER, RAID, REDEMPTION, TIMEOUT, BAN, ONSCREENCELEBRATION }
+  public enum NotificationType { FOLLOW, SUBSCRIPTION, SUBSCRIPTIONGIFT, CHEER, CHEERRANGE, RAID, REDEMPTION, TIMEOUT, BAN, ONSCREENCELEBRATION }
 
   public class NotificationsConfig
   {
@@ -884,6 +897,7 @@ namespace AbevBot
     public bool DoShoutout { get; set; }
     public NotificationType Type { get; }
     public TimeSpan MinimumTime { get; set; } = TimeSpan.MinValue;
+    public int[] BitsRange { get; set; } = new int[] { 0, 0 };
 
     public NotificationsConfig(NotificationType type) { Type = type; }
 

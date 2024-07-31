@@ -20,7 +20,7 @@ public static class Config
     HotkeyNotificationPause, HotkeyNotificationSkip,
     PrintChatMessagesToConsole,
 
-    Enable, ChatMessage, TextToDisplay, TextPosition, TextSize, TextToSpeech, SoundToPlay, VideoToPlay, VideoPosition, VideoSize, MinimumRaiders, DoShoutout, MinimumDuration, MinimumBitsForTTS,
+    Enable, ChatMessage, TextToDisplay, TextPosition, TextSize, TextToSpeech, SoundToPlay, VideoToPlay, VideoPosition, VideoSize, MinimumRaiders, DoShoutout, MinimumDuration, MinimumBitsForTTS, Amount,
 
     ChannelRedemption_RandomVideo_ID, ChannelRedemption_RandomVideo_MarkAsFulfilled, ChannelRedemption_SongRequest_ID, ChannelRedemption_SongRequest_MarkAsFulfilled, ChannelRedemption_SongSkip_ID, ChannelRedemption_SongSkip_MarkAsFulfilled,
     ChannelRedemption_RandomVideo_Size, ChannelRedemption_RandomVideo_Position,
@@ -82,6 +82,7 @@ public static class Config
     HotkeysForSkipNotification.Clear();
     foreach (var config in Notifications.Configs) { config.Value.Reset(); }
     Notifications.RandomVideoParameters?.Reset();
+    Notifications.CheerRangeNotifications.Clear();
 
     // Create example Config.ini
     FileInfo configFile = new("Config_example.ini");
@@ -121,11 +122,17 @@ public static class Config
         // check for group heading
         if (line.EndsWith(':'))
         {
+          // Special check if previously configured notification was CheerRange - it should be added to notifications list
+          if (currentNotifConfig?.Type == NotificationType.CHEERRANGE) { Notifications.CheerRangeNotifications.Add(currentNotifConfig); }
+
           if (!Notifications.Configs.TryGetValue(line[..^1], out currentNotifConfig))
           {
             Log.Warning("Bad config line {index}. Group header not recognized!", lineIndex);
             currentNotifConfig = null;
           }
+
+          // If configuring new CheerRange notification create new one - it would be added to CheerRange notifications list
+          if (currentNotifConfig?.Type == NotificationType.CHEERRANGE) { currentNotifConfig = new(NotificationType.CHEERRANGE); }
           continue;
         }
 
@@ -330,6 +337,32 @@ public static class Config
                 if (currentNotifConfig is null) Log.Warning("Bad config line {index}. Missing previous group header definition!", lineIndex);
                 else if (int.TryParse(text[1], out temp2)) currentNotifConfig.MinimumBits = temp2;
                 else Log.Warning("Bad config line {index}. Value not recognized!", lineIndex);
+              }
+              break;
+            case Keys.Amount:
+              var tmp = text[1].Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+              if (tmp.Length == 1)
+              {
+                if (int.TryParse(tmp[0], out int v1))
+                {
+                  currentNotifConfig.BitsRange[0] = v1;
+                  currentNotifConfig.BitsRange[1] = v1;
+                }
+                else { Log.Warning("Bad config line {index}. Value not recognized!", lineIndex); }
+              }
+              else if (tmp.Length != 2) { Log.Warning("Bad config line {index}. Value not recognized!", lineIndex); }
+              else
+              {
+                if (int.TryParse(tmp[0], out int v1) && int.TryParse(tmp[1], out int v2))
+                {
+                  if (v1 > v2) { Log.Warning("Bad config line {index}. Upper range is smaller than lower range!", lineIndex); }
+                  else
+                  {
+                    currentNotifConfig.BitsRange[0] = v1;
+                    currentNotifConfig.BitsRange[1] = v2;
+                  }
+                }
+                else { Log.Warning("Bad config line {index}. Value not recognized!", lineIndex); }
               }
               break;
 
@@ -733,6 +766,7 @@ public static class Config
       writer.WriteLine(string.Concat(Keys.VideoSize.ToString(), " = "));
       writer.WriteLine();
       writer.WriteLine("; ----- Bits cheer");
+      writer.WriteLine("; Default notification");
       writer.WriteLine("Cheer:");
       writer.WriteLine(string.Concat(Keys.Enable.ToString(), " = true"));
       writer.WriteLine(string.Concat(Keys.ChatMessage.ToString(), " = "));
@@ -746,6 +780,28 @@ public static class Config
       writer.WriteLine(string.Concat(Keys.VideoSize.ToString(), " = "));
       writer.WriteLine("; The minimum amount of bits thrown for the message to be read as TTS. Default: empty - 10");
       writer.WriteLine(string.Concat(Keys.MinimumBitsForTTS.ToString(), " = "));
+      writer.WriteLine();
+      writer.WriteLine("; Custom cheer notifications (related to amount of bits)");
+      writer.WriteLine("; When cheer event is received first custom notifications are inspected if cheer amount mathes");
+      writer.WriteLine("; if none of custom cheer notifications is valid the default cheer notification is played");
+      writer.WriteLine("; You can have multiple custom cheer notifications - just start new one with \"CheerRange:\" header");
+      writer.WriteLine("; In the Amount field you can specify a value on which the notification would be played");
+      writer.WriteLine("; or a range on which the custom notification is valid. Examples:");
+      writer.WriteLine("; - play notification on 1234 bits: \"Amount = 1234\"");
+      writer.WriteLine("; - play notification on bits in range 100 - 1000: \"Amount = 100, 1000\"");
+      writer.WriteLine("; If bits range in different CheerRange notifications overlaps the first one configured is played");
+      writer.WriteLine("CheerRange:");
+      writer.WriteLine(string.Concat(Keys.Enable.ToString(), " = false"));
+      writer.WriteLine(string.Concat(Keys.Amount.ToString(), " = 123, 234"));
+      writer.WriteLine(string.Concat(Keys.ChatMessage.ToString(), " = "));
+      writer.WriteLine(string.Concat(Keys.TextToDisplay.ToString(), " = "));
+      writer.WriteLine(string.Concat(Keys.TextPosition.ToString(), " = TOP"));
+      writer.WriteLine(string.Concat(Keys.TextSize.ToString(), " = "));
+      writer.WriteLine(string.Concat(Keys.TextToSpeech.ToString(), " = {0} cheered with {4} bit{12} which is in range of magic numbers! {7}"));
+      writer.WriteLine(string.Concat(Keys.SoundToPlay.ToString(), " = tone1.wav"));
+      writer.WriteLine(string.Concat(Keys.VideoToPlay.ToString(), " = "));
+      writer.WriteLine(string.Concat(Keys.VideoPosition.ToString(), " = "));
+      writer.WriteLine(string.Concat(Keys.VideoSize.ToString(), " = "));
       writer.WriteLine();
       writer.WriteLine("; ----- Raid (channel got raided)");
       writer.WriteLine("Raid:");
