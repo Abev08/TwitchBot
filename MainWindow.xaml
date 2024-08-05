@@ -101,7 +101,7 @@
       <!-- Notifications test -->
       <Border Padding="4,10,4,10" Margin="2,0,4,10" BorderThickness="1" BorderBrush="Black" CornerRadius="10">
         <StackPanel>
-          <ComboBox x:Name="cbNotificationType" SelectedIndex="0" Margin="0,0,0,10" ToolTip="Type of event notification to be tested on 'Test Notification' button click">
+          <ComboBox x:Name="cbNotificationType" SelectedIndex="0" Margin="0,0,0,5" ToolTip="Type of event notification to be tested on 'Test Notification' button click">
             <ComboBoxItem Content="Follow" ToolTip="Follow notification"/>
             <ComboBoxItem Content="Subscription" ToolTip="Subscription notification (simple one, sent even when the user doesn't share the subscription)"/>
             <ComboBoxItem Content="Subscription Gifted" ToolTip="Subsciption gift notifications (someone is gifting subs)"/>
@@ -112,6 +112,7 @@
             <ComboBoxItem Content="Chat sub message" ToolTip="Subscription message send in the chat"/>
             <ComboBoxItem Content="On screen celebration" ToolTip="On screen celebration bits redemption"/>
           </ComboBox>
+          <TextBox x:Name="tbTestNotificationValue" Text="7" Margin="0,0,0,5" PreviewTextInput="TestNotificationValue_TextInput" ToolTip="Count of main thing in a notification (bits, gifted subs, etc.)"/>
           <Button x:Name="btnTestNotification" Content="Test Notification" Click="NotificationTestClicked" ToolTip="Queues selected above test notification"/>
         </StackPanel>
       </Border>

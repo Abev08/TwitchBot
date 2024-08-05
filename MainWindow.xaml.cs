@@ -603,6 +603,8 @@ public partial class MainWindow : Window
 
   private void NotificationTestClicked(object sender, RoutedEventArgs e)
   {
+    if (!int.TryParse(tbTestNotificationValue.Text, out int value)) { value = 7; }
+
     switch (cbNotificationType.Text)
     {
       case "Follow":
@@ -614,15 +616,15 @@ public partial class MainWindow : Window
         break;
 
       case "Subscription Gifted":
-        Notifications.CreateGiftSubscriptionNotification("Chatter", "1", 7, "This is a test", null);
+        Notifications.CreateGiftSubscriptionNotification("Chatter", "1", value, "This is a test", null);
         break;
 
       case "Subscription Ext. Msg":
-        Notifications.CreateSubscriptionNotification("Chatter", "1", 7, 77, 777, new EventPayloadMessage() { Text = "This is a test" });
+        Notifications.CreateSubscriptionNotification("Chatter", "1", 7, value, 777, new EventPayloadMessage() { Text = "This is a test" });
         break;
 
       case "Cheer":
-        Notifications.CreateCheerNotification("Chatter", 100, "This is a test");
+        Notifications.CreateCheerNotification("Chatter", value, "This is a test");
         break;
 
       case "Discord message":
@@ -635,7 +637,7 @@ public partial class MainWindow : Window
 
       case "Chat sub message":
         Notifications.CreateMaybeSubscriptionNotification("Chatter",
-          "prime", "1", "2", "3",
+          "prime", "1", value.ToString(), "3",
           "This is test sub received in chat");
         break;
 
@@ -800,6 +802,12 @@ public partial class MainWindow : Window
         tbText.Visibility = Visibility.Visible;
       }
     }
+  }
+
+  /// <summary> Preview of text input into notification test textbox. It should allow only numbers. </summary>
+  private void TestNotificationValue_TextInput(object sender, TextCompositionEventArgs e)
+  {
+    if (!int.TryParse(e.Text, out _)) { e.Handled = true; }
   }
 }
 
