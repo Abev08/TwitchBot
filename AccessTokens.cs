@@ -34,6 +34,7 @@ public static class AccessTokens
     "chat:read", // View live stream chat messages
     "moderator:manage:banned_users", // Ban and unban users
     "moderator:manage:shoutouts", // Manage a broadcaster’s shoutouts
+    "moderator:manage:shield_mode", // Manage status of shield mode
     "moderator:read:chatters", // View the chatters in a broadcaster’s chat room
     "moderator:read:followers", // Read the followers of a broadcaster
     "whispers:edit", // Send whisper messages

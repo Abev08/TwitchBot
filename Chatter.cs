@@ -233,7 +233,7 @@ namespace AbevBot
     /// <para> Then bans find users for 10 hours, deletes them from Chatters array and deletes follow notifications. </para></summary>
     public static void StopFollowBots()
     {
-      if (Notifications.StopFollowBotsActive) return;
+      if (Notifications.StopFollowBotsActive) { return; }
       Notifications.StopFollowBotsActive = true;
       Notifications.StopFollowBotsPause = true; // Pause notifications while follow notifications are being removed
 
@@ -241,15 +241,18 @@ namespace AbevBot
       TimeSpan followedLimit = TimeSpan.FromSeconds(60);
       var now = DateTime.Now;
 
-      // First clean up notifications because it's faster than sending http messages for bans
-      Notifications.CleanFollowNotifications();
-
-      Notifications.StopFollowBotsPause = false; // Unpause notifications from "stop follow bots active"
+      Notifications.ActivateShieldMode();
+      Chat.AddMessageToQueue("Stop follow bots activated FeelsGoodMan If you got banned and you are not a bot sorry pepeLost");
 
       // Ban the chatters
       LoadChattersFile();
       Task.Run(() =>
       {
+        // First clean up notifications because it's faster than sending http messages for bans
+        Notifications.CleanFollowNotifications();
+
+        Notifications.StopFollowBotsPause = false; // Unpause notifications from "stop follow bots active"
+
         lock (Chatters)
         {
           var chatter = Chatters.GetEnumerator();
@@ -258,7 +261,7 @@ namespace AbevBot
             if (now - chatter.Current.Value.LastTimeFollowed <= followedLimit)
             {
               // Followed in last x seconds - BAN!
-              Chat.BanChatter("follow bot?", chatter.Current.Value, 36000); // 10 hours
+              Chat.BanChatter("follow bot? If not just issue unban request :)", chatter.Current.Value, 0); // perma
               Chatters.Remove(chatter.Current.Value.ID);
             }
           }

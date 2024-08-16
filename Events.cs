@@ -58,7 +58,7 @@ public static class Events
         WebSocketClient.Options.SetRequestHeader("Client-Id", Secret.Data[Secret.Keys.CustomerID]);
         WebSocketClient.Options.SetRequestHeader("Authorization", $"Bearer {Secret.Data[Secret.Keys.OAuthToken]}");
         try { WebSocketClient.ConnectAsync(new Uri(WEBSOCKETURL), CancellationToken.None).Wait(); }
-        catch (AggregateException ex) { Log.Error("Events bot error: {ex}", ex); }
+        catch (AggregateException ex) { Log.Error("Events bot error: {ex}", ex.Message); }
 
         // Check if it worked
         if (WebSocketClient.State == WebSocketState.Open) { receiveResult = WebSocketClient.ReceiveAsync(receiveBuffer, CancellationToken.None).Result; }

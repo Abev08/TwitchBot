@@ -526,9 +526,10 @@ namespace AbevBot
     /// <param name="reason">Timeout reason</param>
     public static void CreateTimeoutNotification(string userName, TimeSpan duration, string reason)
     {
+      if (StopFollowBotsActive) { return; } // While stop follow bots is active, don't play these notifications
       var config = Configs["Timeout"];
-      if (!config.Enable) return;
-      if (duration < config.MinimumTime) return;
+      if (!config.Enable) { return; }
+      if (duration < config.MinimumTime) { return; }
 
       Array.Clear(NotificationData);
       NotificationData[0] = userName;
@@ -543,8 +544,9 @@ namespace AbevBot
     /// <param name="reason">Ban reason</param>
     public static void CreateBanNotification(string userName, string reason)
     {
+      if (StopFollowBotsActive) { return; } // While stop follow bots is active, don't play these notifications
       var config = Configs["Ban"];
-      if (!config.Enable) return;
+      if (!config.Enable) { return; }
 
       Array.Clear(NotificationData);
       NotificationData[0] = userName;
@@ -876,6 +878,28 @@ namespace AbevBot
       string resp;
       try { resp = Client.Send(request).Content.ReadAsStringAsync().Result; }      // Assume that it worked
       catch (HttpRequestException ex) { Log.Error("Marking redemption as fulfilled failed. {ex}", ex); }
+    }
+
+    /// <summary> Activates shield mode. </summary>
+    public static void ActivateShieldMode()
+    {
+      string uri = string.Concat(
+        "https://api.twitch.tv/helix/moderation/shield_mode",
+        "?broadcaster_id=", Config.Data[Config.Keys.ChannelID],
+        "&moderator_id=", Config.Data[Config.Keys.ChannelID]
+      );
+      using HttpRequestMessage request = new(HttpMethod.Put, uri);
+      request.Content = new StringContent("""{"is_active":true}""", Encoding.UTF8, "application/json");
+      request.Headers.Add("Authorization", $"Bearer {Secret.Data[Secret.Keys.OAuthToken]}");
+      request.Headers.Add("Client-Id", Secret.Data[Secret.Keys.CustomerID]);
+
+      try
+      {
+        var resp = Client.Send(request);
+        if ((int)resp.StatusCode >= 200 && (int)resp.StatusCode < 300) { } // OK
+        else { Log.Error("Activating shield mode failed. Received error code: {code} ({status})", (int)resp.StatusCode, resp.StatusCode); }
+      }
+      catch (HttpRequestException ex) { Log.Error("Activating shield mode failed. {ex}", ex); }
     }
   }
 
