@@ -41,8 +41,10 @@ namespace AbevBot
       c.AddRudePoint(point);
 
       Chat.AddMessageToQueue(string.Concat(
-        c.Name, " stop being rude Madge you have been rude ",
-        c.RudePoints, " times Madge"
+        c.Name, " stop being rude, you have been rude ",
+        c.RudePoints,
+        c.RudePoints > 1 ? " times" : " time",
+        " Madge"
       ));
     }
 

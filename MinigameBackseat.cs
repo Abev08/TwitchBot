@@ -32,7 +32,9 @@ namespace AbevBot
         Chat.AddMessageToQueue(string.Concat(
           "1 point ",
           point > 0 ? "awarded to " : "taken from ",
-          c.Name, ". Now has ", c.BackseatPoints, " points"
+          c.Name, ". Now has ",
+          c.BackseatPoints,
+          c.BackseatPoints > 1 ? " points" : " point"
         ));
       }
     }

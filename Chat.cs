@@ -1116,6 +1116,10 @@ public static class Chat
       }
       else { AddMessageResponseToQueue("Counters are not working peepoSad", metadata.MessageID); }
     }
+    else if (msg.StartsWith("!friendly"))
+    {
+      AddMessageResponseToQueue("PepeLaugh", metadata.MessageID);
+    }
     else if (ResponseMessages.Count > 0) // Check if message starts with key to get automatic response
     {
       int temp = msg.IndexOf(' ');

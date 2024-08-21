@@ -101,11 +101,11 @@ namespace AbevBot
       }
 
       // Fight
-      Chat.AddMessageToQueue(string.Concat(
-        fighter1.Name, " (", fighter1.Fight.Level, ")",
-        " is fighting ",
-        fighter2.Name, " (", fighter2.Fight.Level, ")",
-        " ... peepoBox"));
+      var sb = new StringBuilder();
+      sb.Append(fighter1.Name).Append(" (").Append(fighter1.Fight.Level).Append(')');
+      sb.Append(" is fighting ");
+      sb.Append(fighter2.Name).Append(" (").Append(fighter2.Fight.Level).Append(')');
+      sb.Append("... peepoBox ");
       fighter1.Fight.LastFight = fighter2.Fight.LastFight = DateTime.Now;
       int rounds = 0, dmg;
       while (fighter1.Fight.CurrentHp > 0 && fighter2.Fight.CurrentHp > 0)
@@ -121,55 +121,72 @@ namespace AbevBot
         else if (Random.Shared.Next(0, 101) <= FightStats.BASECRIT) dmg *= 2; // Critical hit
         fighter1.Fight.CurrentHp -= dmg;
       }
+      sb.Append("After some time the arena went quiet. The fight lasted ");
+      sb.Append(rounds).Append(rounds > 1 ? " rounds. " : " round. ");
 
       // End
-      string msg = string.Empty;
+      int f1level = fighter1.Fight.Level;
+      int f2level = fighter2.Fight.Level;
+      int hpLeft = -1;
+      float percentHpLeft = -1;
       if (fighter1.Fight.CurrentHp <= 0 && fighter2.Fight.CurrentHp <= 0)
       {
         // Draw, both of the fighter gain 20% exp
-        int f1level = fighter1.Fight.Level;
-        int f2level = fighter2.Fight.Level;
         fighter1.Fight.Draws++;
         fighter2.Fight.Draws++;
         fighter1.AddFightExp(fighter2.Fight.Level * 0.2f);
         fighter2.AddFightExp(f1level * 0.2f);
-        msg = string.Concat(
-          "It was a draw! The fight took ", rounds, " rounds",
-          f1level != fighter1.Fight.Level ? $". {fighter1.Name} leveled up to level {fighter1.Fight.Level}" : "",
-          f2level != fighter2.Fight.Level ? $". {fighter2.Name} leveled up to level {fighter2.Fight.Level}" : ""
-        );
+
+        sb.Append("Nobody is standing on their own, it was a DRAW Deadge");
       }
       else if (fighter2.Fight.CurrentHp <= 0)
       {
         // Fighter 1 won
-        int level = fighter1.Fight.Level;
-        int hp = fighter1.Fight.CurrentHp;
+        hpLeft = fighter1.Fight.CurrentHp;
+        percentHpLeft = (float)hpLeft / (float)fighter1.Fight.GetMaxHp();
         fighter1.Fight.Wins++;
         fighter2.Fight.Looses++;
         fighter2.Fight.CheckStats(fighter2.Name);
         fighter1.AddFightExp(fighter2.Fight.Level);
-        msg = string.Concat(
-          fighter1.Name, " won with ", hp, " hp left! The fight took ", rounds, " rounds",
-          level != fighter1.Fight.Level ? $". {fighter1.Name} leveled up to level {fighter1.Fight.Level}" : ""
-        );
+        sb.Append("Loud battle cires echo through the arena as the winner ");
+        sb.Append(fighter1.Name).Append(" shouts them with all his might peepoEvil");
       }
       else if (fighter1.Fight.CurrentHp <= 0)
       {
         // Fighter 2 won
-        int level = fighter2.Fight.Level;
-        int hp = fighter2.Fight.CurrentHp;
+        hpLeft = fighter2.Fight.CurrentHp;
+        percentHpLeft = (float)hpLeft / (float)fighter1.Fight.GetMaxHp();
         fighter1.Fight.Looses++;
         fighter2.Fight.Wins++;
         fighter1.Fight.CheckStats(fighter1.Name);
         fighter2.AddFightExp(fighter1.Fight.Level);
-        msg = string.Concat(
-          fighter2.Name, " won with ", hp, " hp left! The fight took ", rounds, " rounds",
-          level != fighter2.Fight.Level ? $". {fighter2.Name} leveled up to level {fighter2.Fight.Level}" : ""
-        );
+        sb.Append(fighter2.Name).Append("'s terrifying laughter can be heard PepeLaugh as he stands victorious");
       }
 
-      Task.Delay(2000).Wait(); // Add some time to keep them waiting
-      Chat.AddMessageToQueue(msg);
+      if (percentHpLeft > 0)
+      {
+        if (percentHpLeft <= 0.2)
+        {
+          // Less than 20% hp left
+          sb.Append(" The winner can barely stand on his own with only ").Append(hpLeft).Append(" hp left!");
+        }
+        else if (percentHpLeft <= 0.6)
+        {
+          // Less than 60% hp left
+          sb.Append(" The winner has a lot of battle marks on his body, the fight left him with ").Append(hpLeft).Append(" hp left!");
+        }
+        else
+        {
+          // Healthy
+          sb.Append(" The winner jumping around the arena seems to be very healthy with ").Append(hpLeft).Append(" hp left!");
+        }
+      }
+
+      // Add lvl up info
+      if (f1level != fighter1.Fight.Level) { sb.Append(' ').Append(fighter1.Name).Append(" leveled up to level ").Append(fighter1.Fight.Level).Append('.'); }
+      if (f2level != fighter2.Fight.Level) { sb.Append(' ').Append(fighter2.Name).Append(" leveled up to level ").Append(fighter2.Fight.Level).Append('.'); }
+
+      Chat.AddMessageToQueue(sb.ToString());
     }
 
     private static bool InitFighter(Chatter fighter)
@@ -194,7 +211,7 @@ namespace AbevBot
         "@", fighter.Name,
         " LVL: ", fighter.Fight.Level,
         ", REQ. EXP: ", MathF.Round(fighter.Fight.RequiredExp - fighter.Fight.CurrentExp, 2),
-        ", HP: ", fighter.Fight.CurrentHp,
+        ", HP: ", fighter.Fight.CurrentHp, " (", fighter.Fight.GetMaxHp(), ")",
         ", DMG: ", fighter.Fight.DmgMin, "-", fighter.Fight.DmgMax,
         ", Wins: ", fighter.Fight.Wins,
         ", Looses: ", fighter.Fight.Looses,
@@ -299,20 +316,28 @@ namespace AbevBot
       {
         RequiredExp = (int)MathF.Floor(0.2f * Level * Level + 3f * Level); // 0,2 * Level^2 + 3 * Level
       }
+      int maxHp = GetMaxHp();
       if (leveledUp || CurrentHp <= 0)
       {
-        int maxHp = (int)((4f * Level * Level) + (60f * Level) + 180f); // 4x^2 + 60x + 180
         if (overpowered) maxHp = (int)(maxHp * OVERPOWEREDMULTI);
 
         if (CurrentHp <= 0) { CurrentHp = maxHp; }
         else
         {
           // Calculate current hp percentage and convert it to next lvl hp percentage
-          int maxHpPrev = (int)((4f * (Level - 1) * (Level - 1)) + (60f * (Level - 1)) + 180f);
+          int maxHpPrev = GetMaxHp(Level - 1);
           float hpPercent = (float)CurrentHp / (float)maxHpPrev;
           CurrentHp = (int)(maxHp * hpPercent);
         }
       }
+      if (CurrentHp > maxHp) { CurrentHp = maxHp; } // Just a sanity check
+    }
+
+    /// <summary> Returns maximum hp for current (or when provided the specified) level. </summary>
+    public int GetMaxHp(int level = -1)
+    {
+      int l = level >= 0 ? level : Level;
+      return (int)((4f * l * l) + (60f * l) + 180f);// 4x^2 + 60x + 180
     }
   }
 }

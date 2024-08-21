@@ -76,13 +76,13 @@ namespace AbevBot
     public void AddFightExp(float exp)
     {
       Fight.CurrentExp += MathF.Round(exp, 2);
-      if (Fight.CurrentExp >= Fight.RequiredExp)
+      while (Fight.CurrentExp >= Fight.RequiredExp)
       {
         Fight.Level++;
         Fight.CurrentExp -= Fight.RequiredExp;
         Fight.CheckStats(Name, true);
       }
-      else { Fight.CheckStats(Name); }
+      Fight.CheckStats(Name);
 
       UpdateRequired = true;
     }
