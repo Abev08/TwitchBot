@@ -148,7 +148,7 @@ namespace AbevBot
         fighter2.Fight.Looses++;
         fighter2.Fight.CheckStats(fighter2.Name);
         fighter1.AddFightExp(fighter2.Fight.Level);
-        sb.Append("Loud battle cires echo through the arena as the winner ");
+        sb.Append("Loud battle cries echo through the arena as the winner ");
         sb.Append(fighter1.Name).Append(" shouts them with all his might peepoEvil");
       }
       else if (fighter1.Fight.CurrentHp <= 0)
