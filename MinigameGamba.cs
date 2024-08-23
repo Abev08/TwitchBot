@@ -15,6 +15,10 @@ namespace AbevBot
     public static readonly GambaLadderComparer GambaLadderComparer = new();
     private static readonly bool AnimationVideosAvailable = LoadAnimations();
     private static FileInfo[] AnimationJackpot, AnimationWin, AnimationLoose;
+    /// <summary> List of emotes used in chat messages. </summary>
+    private static readonly List<string> GambaMachineEmotes = new() { "YEP", "Prayge", "Sadge", "peepoHappy", "UHM" };
+    /// <summary> Jackpot emote used in chat message. </summary>
+    private const string GambaMachineEmoteJackpot = "Susge";
 
     public static bool Enabled { get; set; }
     public static bool GambaLifeEnabled { get; set; }
@@ -110,12 +114,24 @@ namespace AbevBot
       if (DateTime.Now - chatter.Gamba.LastGamba < GAMBATIMEOUT)
       {
         TimeSpan restTimer = GAMBATIMEOUT - (DateTime.Now - chatter.Gamba.LastGamba);
+        string amount;
+        string t;
+        if (restTimer.TotalSeconds < 60)
+        {
+          var s = Math.Ceiling(restTimer.TotalSeconds);
+          amount = s.ToString();
+          t = s > 1 ? "seconds" : "second";
+        }
+        else
+        {
+          var s = Math.Round(restTimer.TotalMinutes);
+          amount = s.ToString();
+          t = s > 1 ? "minutes" : "minute";
+        }
 
         Chat.AddMessageToQueue(string.Concat(
           "@", chatter.Name, " you're still shaking, you need to rest for another ",
-          restTimer.TotalSeconds < 60 ?
-            $"{Math.Ceiling(restTimer.TotalSeconds)} seconds" :
-            $"{Math.Ceiling(restTimer.TotalMinutes)} minutes"
+          amount, " ", t
         ));
         return; // The gamba timeout
       }
@@ -158,31 +174,40 @@ namespace AbevBot
         return;
       }
 
-      Chat.AddMessageToQueue(string.Concat(
-          "@", chatter.Name, " GAMBA is putting ",
-          pointsToRoll, " points at risk peepoShake"
-        ));
-
-      Task.Delay(2000).Wait();
+      var sb = new StringBuilder();
+      sb.Append('@').Append(chatter.Name);
+      sb.Append(" GAMBA is putting ").Append(pointsToRoll).Append(" points at risk peepoShake");
+      sb.Append(" The gamba machine stops spinning: ");
 
       if (Random.Shared.Next(0, 100) < 50)
       {
         // won
         // Check for a jackpot 1% chance
         bool jackpot = false;
+        string emote;
         if (Random.Shared.Next(0, 100) == 0) // 1% chance
         {
           jackpot = true;
           pointsToRoll *= 100;
+          emote = GambaMachineEmoteJackpot;
+        }
+        else
+        {
+          // No jackpot, randomise win emote
+          var idx = Random.Shared.Next(GambaMachineEmotes.Count);
+          emote = GambaMachineEmotes[idx];
         }
 
-        Chat.AddMessageToQueue(string.Concat(
-          "@", chatter.Name, " won ",
-          pointsToRoll, " points ",
-          jackpot ? "hitting a jackpot OMEGALUL" : "",
-          " and have ",
-          chatter.Gamba.Points + pointsToRoll, " points peepoHappy"
-        ));
+        sb.Append(emote).Append(" | ")
+          .Append(emote).Append(" | ")
+          .Append(emote);
+
+        sb.Append(" You won ").Append(pointsToRoll).Append(" points");
+        if (jackpot)
+        {
+          sb.Append(" hitting a jackpot OMEGALUL");
+        }
+        sb.Append(" and now have ").Append(chatter.Gamba.Points + pointsToRoll).Append(" points peepoHappy");
 
         chatter.AddGambaPoints(pointsToRoll);
       }
@@ -190,14 +215,33 @@ namespace AbevBot
       {
         // lost
         int newPoints = chatter.Gamba.Points - pointsToRoll;
-        Chat.AddMessageToQueue(string.Concat(
-          "@", chatter.Name, " lost ",
-          pointsToRoll, " points and now have ",
-          newPoints < 0 ? 0 : newPoints, " points PepeLaugh",
-          newPoints <= 0 ? $" having gone bankrupt {chatter.Gamba.Bankruptcies + 1} times GAMBAADDICT" : ""
-        ));
+        if (newPoints < 0) { newPoints = 0; }
+        var idx = new int[3]; // Indexes of gamba emotes
+        for (int i = 0; i < 3; i++)
+        {
+          do
+          {
+            idx[i] = Random.Shared.Next(GambaMachineEmotes.Count);
+          } while (i == 2 && idx[2] == idx[0] && idx[2] == idx[1]);
+        }
+
+        sb.Append(GambaMachineEmotes[idx[0]]).Append(" | ")
+          .Append(GambaMachineEmotes[idx[1]]).Append(" | ")
+          .Append(GambaMachineEmotes[idx[2]]);
+
+        sb.Append(" You lost ").Append(pointsToRoll).Append(" points");
+        sb.Append(" and now have ").Append(newPoints).Append(" points PepeLaugh");
+        if (newPoints <= 0)
+        {
+          var b = chatter.Gamba.Bankruptcies + 1;
+          var bs = b > 1 ? " times" : " time";
+          sb.Append(" having gone bankrupt ").Append(b).Append(bs).Append(" GAMBAADDICT");
+        }
+
         chatter.AddGambaPoints(-pointsToRoll);
       }
+
+      Chat.AddMessageToQueue(sb.ToString());
     }
 
     private static void GetStats(Chatter chatter)
