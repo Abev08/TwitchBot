@@ -177,7 +177,7 @@ namespace AbevBot
         if (MinimalChatMessages) { sb.Append(fighter2.Name).Append(" won PepeLaugh"); }
         else
         {
-          sb.Append(fighter2.Name).Append("'s terrifying laughter can be heard PepeLaugh as he stands victorious");
+          sb.Append(fighter2.Name).Append("'s terrifying laughter can be heard PepeLaugh as he stands victorious.");
         }
       }
 
