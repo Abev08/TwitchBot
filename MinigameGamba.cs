@@ -19,6 +19,8 @@ namespace AbevBot
     private static readonly List<string> GambaMachineEmotes = new() { "YEP", "Prayge", "Sadge", "peepoHappy", "UHM" };
     /// <summary> Jackpot emote used in chat message. </summary>
     private const string GambaMachineEmoteJackpot = "Susge";
+    /// <summary> Minimal chat messages enabled - ugly, but less spammy. </summary>
+    public static bool MinimalChatMessages { get; set; }
 
     public static bool Enabled { get; set; }
     public static bool GambaLifeEnabled { get; set; }
@@ -175,9 +177,16 @@ namespace AbevBot
       }
 
       var sb = new StringBuilder();
-      sb.Append('@').Append(chatter.Name);
-      sb.Append(" GAMBA is putting ").Append(pointsToRoll).Append(" points at risk peepoShake");
-      sb.Append(" The gamba machine stops spinning: ");
+      if (MinimalChatMessages)
+      {
+        sb.Append("GAMBA @").Append(chatter.Name).Append(' ');
+      }
+      else
+      {
+        sb.Append('@').Append(chatter.Name);
+        sb.Append(" GAMBA is putting ").Append(pointsToRoll).Append(" points at risk peepoShake");
+        sb.Append(" The gamba machine stops spinning: ");
+      }
 
       if (Random.Shared.Next(0, 100) < 50)
       {
@@ -202,12 +211,16 @@ namespace AbevBot
           .Append(emote).Append(" | ")
           .Append(emote);
 
-        sb.Append(" You won ").Append(pointsToRoll).Append(" points");
+        if (!MinimalChatMessages) { sb.Append(" You"); }
+        sb.Append(" won ").Append(pointsToRoll).Append(" points");
         if (jackpot)
         {
           sb.Append(" hitting a jackpot OMEGALUL");
         }
-        sb.Append(" and now have ").Append(chatter.Gamba.Points + pointsToRoll).Append(" points peepoHappy");
+        if (!MinimalChatMessages)
+        {
+          sb.Append(" and now have ").Append(chatter.Gamba.Points + pointsToRoll).Append(" points peepoHappy");
+        }
 
         chatter.AddGambaPoints(pointsToRoll);
       }
@@ -229,9 +242,10 @@ namespace AbevBot
           .Append(GambaMachineEmotes[idx[1]]).Append(" | ")
           .Append(GambaMachineEmotes[idx[2]]);
 
-        sb.Append(" You lost ").Append(pointsToRoll).Append(" points");
+        if (!MinimalChatMessages) { sb.Append(" You"); }
+        sb.Append(" lost ").Append(pointsToRoll).Append(" points");
         sb.Append(" and now have ").Append(newPoints).Append(" points PepeLaugh");
-        if (newPoints <= 0)
+        if (newPoints <= 0 && !MinimalChatMessages)
         {
           var b = chatter.Gamba.Bankruptcies + 1;
           var bs = b > 1 ? " times" : " time";

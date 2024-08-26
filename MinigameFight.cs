@@ -12,6 +12,8 @@ namespace AbevBot
     private static readonly TimeSpan FIGHTINGTIMEOUT = new(0, 5, 0);
 
     public static bool Enabled { get; set; }
+    /// <summary> Minimal chat messages enabled - ugly, but less spammy. </summary>
+    public static bool MinimalChatMessages { get; set; }
 
     public static void NewFight(long userID, string userName, string message)
     {
@@ -121,7 +123,12 @@ namespace AbevBot
         else if (Random.Shared.Next(0, 101) <= FightStats.BASECRIT) dmg *= 2; // Critical hit
         fighter1.Fight.CurrentHp -= dmg;
       }
-      sb.Append("After some time the arena went quiet. The fight lasted ");
+
+      if (!MinimalChatMessages)
+      {
+        sb.Append("After some time the arena went quiet. ");
+      }
+      sb.Append("The fight lasted ");
       sb.Append(rounds).Append(rounds > 1 ? " rounds. " : " round. ");
 
       // End
@@ -137,7 +144,8 @@ namespace AbevBot
         fighter1.AddFightExp(fighter2.Fight.Level * 0.2f);
         fighter2.AddFightExp(f1level * 0.2f);
 
-        sb.Append("Nobody is standing on their own, it was a DRAW Deadge");
+        if (MinimalChatMessages) { sb.Append("It was a DRAW Deadge"); }
+        else { sb.Append("Nobody is standing on their own, it was a DRAW Deadge"); }
       }
       else if (fighter2.Fight.CurrentHp <= 0)
       {
@@ -148,8 +156,13 @@ namespace AbevBot
         fighter2.Fight.Looses++;
         fighter2.Fight.CheckStats(fighter2.Name);
         fighter1.AddFightExp(fighter2.Fight.Level);
-        sb.Append("Loud battle cries echo through the arena as the winner ");
-        sb.Append(fighter1.Name).Append(" shouts them with all his might peepoEvil");
+
+        if (MinimalChatMessages) { sb.Append(fighter1.Name).Append(" won peepoEvil"); }
+        else
+        {
+          sb.Append("Loud battle cries echo through the arena as the winner ");
+          sb.Append(fighter1.Name).Append(" shouts them with all his might peepoEvil");
+        }
       }
       else if (fighter1.Fight.CurrentHp <= 0)
       {
@@ -160,10 +173,15 @@ namespace AbevBot
         fighter2.Fight.Wins++;
         fighter1.Fight.CheckStats(fighter1.Name);
         fighter2.AddFightExp(fighter1.Fight.Level);
-        sb.Append(fighter2.Name).Append("'s terrifying laughter can be heard PepeLaugh as he stands victorious");
+
+        if (MinimalChatMessages) { sb.Append(fighter2.Name).Append(" won PepeLaugh"); }
+        else
+        {
+          sb.Append(fighter2.Name).Append("'s terrifying laughter can be heard PepeLaugh as he stands victorious");
+        }
       }
 
-      if (percentHpLeft > 0)
+      if (!MinimalChatMessages && percentHpLeft > 0)
       {
         if (percentHpLeft <= 0.2)
         {

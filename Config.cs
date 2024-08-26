@@ -19,6 +19,8 @@ public static class Config
     DiscordMessageOnline,
     HotkeyNotificationPause, HotkeyNotificationSkip,
     PrintChatMessagesToConsole,
+    GambaMinimalChatMessages,
+    FightMinimalChatMessages,
 
     Enable, ChatMessage, TextToDisplay, TextPosition, TextSize, TextToSpeech, SoundToPlay, VideoToPlay, VideoPosition, VideoSize, MinimumRaiders, DoShoutout, MinimumDuration, MinimumBitsForTTS, Amount,
 
@@ -189,7 +191,8 @@ public static class Config
               break;
 
             case Keys.PrintChatMessagesToConsole:
-              if (bool.TryParse(text[1], out result)) Chat.PrintChatMessages = result;
+              if (bool.TryParse(text[1], out result)) { Chat.PrintChatMessages = result; }
+              else { Log.Warning("Keycode: {key} not recognized as boolean value in line {index} in Config.ini file.", text[1], lineIndex); }
               break;
 
             case Keys.HotkeyNotificationPause:
@@ -208,6 +211,16 @@ public static class Config
                 if (Enum.TryParse(typeof(Key), k, out position)) HotkeysForSkipNotification.Add((Key)position);
                 else Log.Warning("Keycode: {key} not recognized in line {index} in Config.ini file.", k, lineIndex);
               }
+              break;
+
+            case Keys.GambaMinimalChatMessages:
+              if (bool.TryParse(text[1], out result)) { MinigameGamba.MinimalChatMessages = result; }
+              else { Log.Warning("Keycode: {key} not recognized as boolean value in line {index} in Config.ini file.", text[1], lineIndex); }
+              break;
+
+            case Keys.FightMinimalChatMessages:
+              if (bool.TryParse(text[1], out result)) { MinigameFight.MinimalChatMessages = result; }
+              else { Log.Warning("Keycode: {key} not recognized as boolean value in line {index} in Config.ini file.", text[1], lineIndex); }
               break;
 
             case Keys.Enable:
@@ -666,6 +679,10 @@ public static class Config
       writer.WriteLine(string.Concat(Keys.DiscordMessageOnline.ToString(), " = "));
       writer.WriteLine("; Print chat messages to console window. Default: true");
       writer.WriteLine(string.Concat(Keys.PrintChatMessagesToConsole.ToString(), " = true"));
+      writer.WriteLine("; Use minimal gamba minigame chat messages (ugly but less spammy). Default: false");
+      writer.WriteLine(string.Concat(Keys.GambaMinimalChatMessages.ToString(), " = false"));
+      writer.WriteLine("; Use minimal fight minigame chat messages (ugly but less spammy). Default: false");
+      writer.WriteLine(string.Concat(Keys.FightMinimalChatMessages.ToString(), " = false"));
 
       writer.WriteLine();
       writer.WriteLine("; Hotkeys configuration");
