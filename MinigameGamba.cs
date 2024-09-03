@@ -217,10 +217,7 @@ namespace AbevBot
         {
           sb.Append(" hitting a jackpot OMEGALUL");
         }
-        if (!MinimalChatMessages)
-        {
-          sb.Append(" and now have ").Append(chatter.Gamba.Points + pointsToRoll).Append(" points peepoHappy");
-        }
+        sb.Append(" and now has ").Append(chatter.Gamba.Points + pointsToRoll).Append(" points peepoHappy");
 
         chatter.AddGambaPoints(pointsToRoll);
       }
@@ -244,7 +241,9 @@ namespace AbevBot
 
         if (!MinimalChatMessages) { sb.Append(" You"); }
         sb.Append(" lost ").Append(pointsToRoll).Append(" points");
-        sb.Append(" and now have ").Append(newPoints).Append(" points PepeLaugh");
+        sb.Append(" and now has ").Append(newPoints);
+        if (newPoints == 1) { sb.Append(" point PepeLaugh"); }
+        else { sb.Append(" points PepeLaugh"); }
         if (newPoints <= 0 && !MinimalChatMessages)
         {
           var b = chatter.Gamba.Bankruptcies + 1;

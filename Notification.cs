@@ -374,8 +374,20 @@ namespace AbevBot
           {
             // We got indexes between a word that starts with '-' symbol is placed (-1 means to the end of the text)
             maybeSample = text.Substring(index + 1, nextIndex > 0 ? (nextIndex - index - 1) : (text.Length - index - 1));
+            maybeSample = maybeSample.Trim().ToLower();
+            // Skip symbols: !, ., ,, :, etc. - characters between 33 and 47 in ASCII
+            for (int i = 0; i < maybeSample.Length; i++)
+            {
+              var c = maybeSample[i];
+              if (c >= 33 && c <= 47)
+              {
+                // Found first symbol
+                maybeSample = maybeSample[..i];
+                break;
+              }
+            }
             // Check if the sample exist in samples list
-            if (sampleSounds.ContainsKey(maybeSample.Trim().ToLower()))
+            if (sampleSounds.TryGetValue(maybeSample, out var sample))
             {
               // Add text before the sample to be read
               if (supplier.Equals("StreamElements")) { Audio.AddToSampleProviderList(StreamElements.GetTTS(text[..index].Trim(), voice), ref newAudio); }
@@ -383,7 +395,7 @@ namespace AbevBot
               else { Log.Warning("TTS supplier {supplier} not recognized!", supplier); }
 
               // Add sample sound
-              Audio.AddToSampleProviderList(sampleSounds[maybeSample], ref newAudio);
+              Audio.AddToSampleProviderList(sample, ref newAudio);
 
               // Remove already parsed text
               if (nextIndex == -1) { text = string.Empty; } // Already reached the end
