@@ -32,11 +32,11 @@ public static class Server
   /// <summary> Current audio data that should be played. </summary>
   public static byte[] CurrentAudio { get; set; }
   /// <summary> Browser views video playing ended. </summary>
-  public static bool VideoEnded { get; private set; } = true;
+  public static bool VideoEnded { get; set; } = true;
   /// <summary> Amount of browser views on which the video playing has ended. </summary>
   private static int VideoEndedCounter;
   /// <summary> Browser views audio playing ended. </summary>
-  public static bool AudioEnded { get; private set; } = true;
+  public static bool AudioEnded { get; set; } = true;
   /// <summary> Amount of browser views on which the audio playing has ended. </summary>
   private static int AudioEndedCounter;
 
@@ -482,11 +482,14 @@ public static class Server
   {
     if (videoPath is null || videoPath.Length == 0) return;
 
-    FileInfo videoFile = new(videoPath);
-    if (!videoFile.Exists)
+    if (!videoPath.StartsWith("http"))
     {
-      Log.Warning("Video file not found: {file}", videoFile.FullName);
-      return;
+      FileInfo videoFile = new(videoPath);
+      if (!videoFile.Exists)
+      {
+        Log.Warning("Video file not found: {file}", videoFile.FullName);
+        return;
+      }
     }
 
     VideoEndedCounter = 0;

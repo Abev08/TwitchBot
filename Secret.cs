@@ -43,6 +43,8 @@ public static class Secret
     DiscordBotToken,
     /// <summary> Discord channel ID on which messages shoud be posted. </summary>
     DiscordChannelID,
+    /// <summary> Discord channel ID on which random videos are posted. </summary>
+    DiscordRandomVideosChannelID,
     /// <summary> Discord OAuth token to authenticate the bot. </summary>
     DiscordOAuthToken,
     /// <summary> Discord OAuth refresh token to refresh OAuth token when it expiries. </summary>
@@ -203,11 +205,21 @@ public static class Secret
       writer.WriteLine(";  7. You can change the bot 'User Name'. This name will be displayed in bot's messages.");
       writer.WriteLine(";  8. Click 'Reset Token' or 'View Token' (whichever option is available), then copy new token into field below.");
       writer.WriteLine(";  9. In the Discord application, right click on the channel you want the bot to post messages to and copy channel link.");
-      writer.WriteLine(";     Channel ID is the last part of the link you copied - put it in the field below.");
+      writer.WriteLine(";     Channel ID is the last part of the link you copied (after the last '/') - put it in the field below.");
       writer.WriteLine(string.Concat(Keys.DiscrodClientID.ToString(), " = "));
       writer.WriteLine(string.Concat(Keys.DiscordClientSecret.ToString(), " = "));
       writer.WriteLine(string.Concat(Keys.DiscordBotToken.ToString(), " = "));
       writer.WriteLine(string.Concat(Keys.DiscordChannelID.ToString(), " = "));
+      writer.WriteLine("; Using discord channel as random video clips storage.");
+      writer.WriteLine("; The bot will use messages with attached videos in specified channel as source of clips for random videos.");
+      writer.WriteLine("; To enable this functionality:");
+      writer.WriteLine(";  10. Log in to: https://discord.com/login.");
+      writer.WriteLine(";  11. Go to: https://discord.com/developers/applications and click on a button with application (bot's User Name).");
+      writer.WriteLine(";  12. Click the 'Bot' button on the left.");
+      writer.WriteLine(";  13. Enable 'Message Content Intent'. This is required for the bot to read contents of messages in channels.");
+      writer.WriteLine(";  14. In the Discord application, right click on the channel on which video clips will be posted and copy channel link.");
+      writer.WriteLine(";     Channel ID is the last part of the link you copied (after the last '/') - put it in the field below.");
+      writer.WriteLine(string.Concat(Keys.DiscordRandomVideosChannelID.ToString(), " = "));
     }
 
     if (!example)

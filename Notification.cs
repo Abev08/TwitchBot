@@ -82,6 +82,12 @@ namespace AbevBot
       KeysPressed = Redemption is null || Redemption.KeysToPress.Count == 0;
       Keys2Pressed = Redemption is null || Redemption.KeysToPressAfterTime.Count == 0;
 
+      if (!VideoEnded)
+      {
+        MainWindow.VideoEnded = false;
+        Server.VideoEnded = false;
+      }
+
       List<ISampleProvider> sounds = new();
       if (!TTSPlayed)
       {
@@ -153,6 +159,7 @@ namespace AbevBot
       // Create sound to play from samples
       if (sounds.Count > 0)
       {
+        Server.AudioEnded = false;
         Server.CurrentAudio = Audio.GetSoundData(sounds);
 
         AudioToPlay.Add(Audio.GetSound(Server.CurrentAudio, AudioVolume));

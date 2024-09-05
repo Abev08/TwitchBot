@@ -34,7 +34,7 @@ public partial class MainWindow : Window
 
   /// <summary> MainWindow instance - the window. </summary>
   public static MainWindow I { get; private set; }
-  public static bool VideoEnded { get; private set; }
+  public static bool VideoEnded { get; set; }
   private static bool FinishedLoading;
   private (double x, double y) tbTextDesiredPosition = new();
   private Thickness playerDesiredPosition = new();
@@ -438,6 +438,12 @@ public partial class MainWindow : Window
 
   public void StartVideoPlayer(string path, float volume, VideoParameters videoParams = null)
   {
+    if (path?.StartsWith("http") == true)
+    {
+      VideoEnded = true;
+      return;
+    }
+
     Dispatcher.Invoke(new Action(() =>
     {
       ResetVideoPlayer();

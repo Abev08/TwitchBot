@@ -328,7 +328,11 @@ function play_video(data) {
   video_player.hidden = false;
   video_player.pause();
   video_player.volume = data.video_volume;
-  video_player.src = static_url + data.video;
+  if (data.video.startsWith('http')) {
+    video_player.src = data.video;
+  } else {
+    video_player.src = static_url + data.video;
+  }
 
   // Set video position
   if (data.video_position[0] >= 0) {

@@ -42,7 +42,7 @@ namespace AbevBot
     public static string VoicesLink { get; private set; }
     private static readonly Dictionary<string, FileInfo> SampleSounds = new();
     /// <summary> Recently played list of random videos. </summary>
-    private static readonly List<FileInfo> RandomVideosRecentlyPlayed = new();
+    private static readonly List<string> RandomVideosRecentlyPlayed = new();
     private static bool SoundsAvailable;
     private static string s_soundsSamplePasteLink;
     /// <summary> Supported video formats by WPF MediaElement. </summary>
@@ -501,12 +501,12 @@ namespace AbevBot
     public static void CreateRandomVideoNotification(string messageID)
     {
       var video = GetRandomVideoNotPlayedRecently();
-      if (video is null || !video.Exists) return;
+      if (video is null) return;
       string msgID = messageID;
 
       AddNotification(new Notification()
       {
-        VideoPath = $"{RANDOM_VIDEO_PATH}/{video.Name}",
+        VideoPath = video,
         VideoVolume = Config.VolumeVideo,
         VideoParams = RandomVideoParameters,
 
@@ -795,12 +795,12 @@ namespace AbevBot
       return SoundsAvailable;
     }
 
-    /// <summary> Gets all of the random videos in RANDOM_VIDEO_PATH directory. </summary>
-    /// <returns>List of FileInfo objects describing all of the random videos</returns>
-    public static List<FileInfo> GetRandomVideosAll()
+    /// <summary> Gets all of the random videos in RANDOM_VIDEO_PATH directory and Discord channel. </summary>
+    /// <returns>List of paths to random videos</returns>
+    public static List<string> GetRandomVideosAll()
     {
       // Load random videos
-      var videos = new List<FileInfo>();
+      var videos = new List<string>();
       DirectoryInfo dir = new(RANDOM_VIDEO_PATH);
       if (dir.Exists)
       {
@@ -808,9 +808,16 @@ namespace AbevBot
         {
           if (Array.IndexOf(SupportedVideoFormats, file.Extension) >= 0)
           {
-            videos.Add(file);
+            videos.Add(string.Concat(RANDOM_VIDEO_PATH, "\\", file.Name));
           }
         }
+      }
+
+      // Get random videos in discord channel
+      var discordVideos = Discord.GetRandomVideos();
+      foreach (var video in discordVideos)
+      {
+        videos.Add(video);
       }
 
       return videos;
@@ -818,17 +825,17 @@ namespace AbevBot
 
     /// <summary> Gets random videos not played recently. </summary>
     /// <returns>List of FileInfo objects describing random videos</returns>
-    public static List<FileInfo> GetRandomVideosToPlay()
+    public static List<string> GetRandomVideosToPlay()
     {
       var videosAll = GetRandomVideosAll();
-      var videosToPlay = new List<FileInfo>();
+      var videosToPlay = new List<string>();
       videosToPlay.AddRange(videosAll);
 
       foreach (var v in RandomVideosRecentlyPlayed)
       {
         for (int i = videosToPlay.Count - 1; i >= 0; i--)
         {
-          if (v.FullName == videosToPlay[i].FullName)
+          if (v == videosToPlay[i])
           {
             videosToPlay.RemoveAt(i);
             break;
@@ -846,11 +853,11 @@ namespace AbevBot
     }
 
     /// <summary> Gets random video from a pool of videos not played recently. </summary>
-    /// <returns>FileInfo object describing a random video</returns>
-    public static FileInfo GetRandomVideoNotPlayedRecently()
+    /// <returns>Path to random video</returns>
+    public static string GetRandomVideoNotPlayedRecently()
     {
       var videos = GetRandomVideosToPlay();
-      int index = Random.Shared.Next(0, videos.Count);
+      int index = Random.Shared.Next(videos.Count);
       if (index < 0) return null;
 
       var video = videos[index];
