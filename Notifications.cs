@@ -501,7 +501,7 @@ namespace AbevBot
     public static void CreateRandomVideoNotification(string messageID)
     {
       var video = GetRandomVideoNotPlayedRecently();
-      if (video is null) return;
+      if (video is null || video.Length == 0) return;
       string msgID = messageID;
 
       AddNotification(new Notification()
@@ -815,10 +815,7 @@ namespace AbevBot
 
       // Get random videos in discord channel
       var discordVideos = Discord.GetRandomVideos();
-      foreach (var video in discordVideos)
-      {
-        videos.Add(video);
-      }
+      videos.AddRange(discordVideos);
 
       return videos;
     }
@@ -858,7 +855,7 @@ namespace AbevBot
     {
       var videos = GetRandomVideosToPlay();
       int index = Random.Shared.Next(videos.Count);
-      if (index < 0) return null;
+      if (index < 0 || videos.Count == 0) return null;
 
       var video = videos[index];
       RandomVideosRecentlyPlayed.Add(video);
