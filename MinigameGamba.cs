@@ -171,7 +171,6 @@ namespace AbevBot
         }
 
         chatter.AddGambaPoints(pointsReceived);
-        MainWindow.I.GambaAnimationStart(videoPath, chatter.Name, pointsToRoll, pointsReceived);
         Server.GambaAnimation($"Resources/Gamba/{videoPath.Name}", chatter.Name, pointsToRoll, pointsReceived);
         return;
       }

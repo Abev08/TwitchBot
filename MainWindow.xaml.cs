@@ -4,11 +4,9 @@ using System.IO;
 using System.Net.Http;
 using System.Runtime.InteropServices;
 using System.Threading;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
-using System.Windows.Interop;
 using System.Windows.Media;
 
 using Serilog;
@@ -21,25 +19,13 @@ public partial class MainWindow : Window
   private static extern void AllocConsole();
   [DllImport("Kernel32")]
   private static extern void FreeConsole();
+  /// <summary> Has the console got freed? </summary>
   public static bool ConsoleFreed { get; private set; }
-
-  [DllImport("user32.dll")]
-  private static extern int GetWindowLong(IntPtr hwnd, int index);
-  [DllImport("user32.dll")]
-  private static extern int SetWindowLong(IntPtr hwnd, int index, int value);
-  // from winuser.h
-  private const int GWL_STYLE = -16;
-  private const int WS_MAXIMIZEBOX = 0x10000;
-  private const int WS_MINIMIZEBOX = 0x20000;
 
   /// <summary> MainWindow instance - the window. </summary>
   public static MainWindow I { get; private set; }
-  public static bool VideoEnded { get; set; }
-  private static bool FinishedLoading;
-  private (double x, double y) tbTextDesiredPosition = new();
-  private Thickness playerDesiredPosition = new();
-  private Notifications.TextPosition tbTextPositionAnchor;
-  private bool TextPositionShouldUpdate;
+  /// <summary> Has the window finished loading? </summary>
+  private static bool FinishedLoading { get; set; }
   /// <summary> Window / program close was requested. </summary>
   public static bool CloseRequested { get; private set; }
 
@@ -62,7 +48,6 @@ public partial class MainWindow : Window
       .WriteTo.Console()
       .CreateLogger();
 
-    // AllocConsole();
     // Free console window on program close
     Closing += (sender, e) =>
     {
@@ -122,34 +107,16 @@ public partial class MainWindow : Window
     // Wait for window to be loaded (visible) to start a demo video
     Loaded += (sender, e) =>
     {
-      // Try to switch to software renderer - it fixes MediaElement (video player) playing on other monitors
-      try
-      {
-        var hwndSource = PresentationSource.FromVisual(this) as HwndSource;
-        var hwndTarget = hwndSource.CompositionTarget;
-        hwndTarget.RenderMode = RenderMode.SoftwareOnly;
-
-        // Hide minimize button
-        var currentStyle = GetWindowLong(hwndSource.Handle, GWL_STYLE);
-        SetWindowLong(hwndSource.Handle, GWL_STYLE, currentStyle & ~WS_MINIMIZEBOX);
-      }
-      catch (Exception ex) { Log.Error("{exception}", ex); }
-
       if (Config.StartVideoEnabled)
       {
-        Notifications.AddNotification(new Notification()
+        var n = new Notification()
         {
-          // VideoPath = "Resources/peepoHey.mp4",
+          Type = NotificationType.OTHER,
           VideoPath = "Resources/bot.mp4",
-          VideoVolume = Config.VolumeVideo,
-        });
+        };
+        n.UpdateControl();
+        Notifications.AddNotification(n);
       }
-    };
-
-    // Don't allow minimizing the window
-    StateChanged += (sender, e) =>
-    {
-      if (I.WindowState == WindowState.Minimized) I.WindowState = WindowState.Normal;
     };
 
     // Start something like main background loop
@@ -166,7 +133,7 @@ public partial class MainWindow : Window
         // every tick check for active hotkeys
         if (shouldHotkeysBeChecked)
         {
-          Dispatcher.Invoke(() =>
+          Dispatcher.Invoke(new Action(() =>
           {
             // Hotkey pause
             if (Config.HotkeysForPauseNotification.Count > 0)
@@ -207,7 +174,7 @@ public partial class MainWindow : Window
               }
               else { hotkeySkipPressed = false; }
             }
-          });
+          }));
         }
 
         // every 10 sec. check if access token should be refreshed, also do some periodic things
@@ -301,219 +268,46 @@ public partial class MainWindow : Window
     Chatter.StopFollowBots();
   }
 
-  public void SetTextDisplayed(string text, Notifications.TextPosition position, double textSize, VideoParameters videoParams)
-  {
-    VideoParameters video = null;
-
-    if (position == Notifications.TextPosition.VIDEOABOVE ||
-         position == Notifications.TextPosition.VIDEOCENTER ||
-         position == Notifications.TextPosition.VIDEOBELOW)
-    {
-      if (videoParams is null) position = Notifications.TextPosition.CENTER;
-      else
-      {
-        video = new()
-        {
-          Left = videoParams.Left + (videoParams.Width / 2d),
-          Top = videoParams.Top + (videoParams.Height / 2d),
-          Width = videoParams.Width,
-          Height = videoParams.Height
-        };
-
-        if (videoParams.Left <= 0 && videoParams.Top <= 0)
-        {
-          video.Left += MainGrid.ActualWidth / 2d;
-          video.Top += MainGrid.ActualHeight / 2d;
-        }
-      }
-    }
-
-    Dispatcher.Invoke(new Action(() =>
-    {
-      tbText.Text = text;
-      tbText.FontSize = textSize;
-      tbText.Margin = new Thickness();
-      tbTextPositionAnchor = position;
-      tbTextDesiredPosition.x = 0;
-      tbTextDesiredPosition.y = 0;
-      UpdateTextDesiredPosition(video);
-      switch (position)
-      {
-        case Notifications.TextPosition.VIDEOABOVE:
-        case Notifications.TextPosition.VIDEOCENTER:
-        case Notifications.TextPosition.VIDEOBELOW:
-          tbText.Visibility = Visibility.Hidden;
-          break;
-        default:
-          tbText.Visibility = Visibility.Visible;
-          break;
-      }
-      TextPositionShouldUpdate = true;
-    }));
-  }
-
-  private void UpdateTextDesiredPosition(VideoParameters video)
-  {
-    var lineCount = 1;
-    double lineSpacing = tbText.FontSize * 0.75d;
-    switch (tbTextPositionAnchor)
-    {
-      case Notifications.TextPosition.TOPLEFT:
-        tbText.VerticalAlignment = VerticalAlignment.Top;
-        tbText.HorizontalAlignment = HorizontalAlignment.Left;
-        break;
-      case Notifications.TextPosition.TOP:
-        tbText.VerticalAlignment = VerticalAlignment.Top;
-        tbText.HorizontalAlignment = HorizontalAlignment.Center;
-        break;
-      case Notifications.TextPosition.TOPRIGHT:
-        tbText.VerticalAlignment = VerticalAlignment.Top;
-        tbText.HorizontalAlignment = HorizontalAlignment.Right;
-        break;
-      case Notifications.TextPosition.LEFT:
-        tbText.VerticalAlignment = VerticalAlignment.Center;
-        tbText.HorizontalAlignment = HorizontalAlignment.Left;
-        break;
-      case Notifications.TextPosition.CENTER:
-        tbText.VerticalAlignment = VerticalAlignment.Center;
-        tbText.HorizontalAlignment = HorizontalAlignment.Center;
-        break;
-      case Notifications.TextPosition.RIGHT:
-        tbText.VerticalAlignment = VerticalAlignment.Center;
-        tbText.HorizontalAlignment = HorizontalAlignment.Right;
-        break;
-      case Notifications.TextPosition.BOTTOMLEFT:
-        tbText.VerticalAlignment = VerticalAlignment.Bottom;
-        tbText.HorizontalAlignment = HorizontalAlignment.Left;
-        break;
-      case Notifications.TextPosition.BOTTOM:
-        tbText.VerticalAlignment = VerticalAlignment.Bottom;
-        tbText.HorizontalAlignment = HorizontalAlignment.Center;
-        break;
-      case Notifications.TextPosition.BOTTOMRIGHT:
-        tbText.VerticalAlignment = VerticalAlignment.Bottom;
-        tbText.HorizontalAlignment = HorizontalAlignment.Right;
-        break;
-      case Notifications.TextPosition.VIDEOABOVE:
-        tbText.VerticalAlignment = VerticalAlignment.Top;
-        tbText.HorizontalAlignment = HorizontalAlignment.Left;
-        tbTextDesiredPosition.x = video.Left;
-        foreach (char c in tbText.Text) if (c == '\n') lineCount++;
-        tbTextDesiredPosition.y = video.Top - (video.Height / 2d) - (lineSpacing * lineCount);
-        break;
-      case Notifications.TextPosition.VIDEOCENTER:
-        tbText.VerticalAlignment = VerticalAlignment.Top;
-        tbText.HorizontalAlignment = HorizontalAlignment.Left;
-        tbTextDesiredPosition.x = video.Left;
-        tbTextDesiredPosition.y = video.Top;
-        break;
-      case Notifications.TextPosition.VIDEOBELOW:
-        tbText.VerticalAlignment = VerticalAlignment.Top;
-        tbText.HorizontalAlignment = HorizontalAlignment.Left;
-        tbTextDesiredPosition.x = video.Left;
-        foreach (char c in tbText.Text) if (c == '\n') lineCount++;
-        tbTextDesiredPosition.y = video.Top + (video.Height / 2d) + (lineSpacing * lineCount);
-        break;
-    }
-  }
-
-  public void ClearTextDisplayed()
-  {
-    Dispatcher.Invoke(new Action(() =>
-    {
-      tbText.Text = string.Empty;
-      tbText.Visibility = Visibility.Hidden;
-    }));
-  }
-
-  private void ResetVideoPlayer()
-  {
-    VideoPlayer.Height = double.NaN; // default: double.NaN
-    VideoPlayer.Width = double.NaN;
-    VideoPlayer.HorizontalAlignment = HorizontalAlignment.Stretch; // default: Stretch
-    VideoPlayer.VerticalAlignment = VerticalAlignment.Stretch; // default: Stretch
-    VideoPlayer.Margin = new Thickness(0);
-    playerDesiredPosition = new();
-  }
-
-  public void StartVideoPlayer(string path, float volume, VideoParameters videoParams = null)
-  {
-    if (path?.StartsWith("http") == true)
-    {
-      VideoEnded = true;
-      return;
-    }
-
-    Dispatcher.Invoke(new Action(() =>
-    {
-      ResetVideoPlayer();
-      if (videoParams != null)
-      {
-        if (videoParams.Left >= 0 || videoParams.Top >= 0)
-        {
-          VideoPlayer.HorizontalAlignment = HorizontalAlignment.Left;
-          VideoPlayer.VerticalAlignment = VerticalAlignment.Top;
-          playerDesiredPosition.Left = videoParams.Left;
-          playerDesiredPosition.Top = videoParams.Top;
-        }
-        VideoPlayer.Height = videoParams.Height > 0 ? videoParams.Height : double.NaN;
-        VideoPlayer.Width = videoParams.Width > 0 ? videoParams.Width : double.NaN;
-      }
-
-      if (VideoPlayer.Source != null)
-      {
-        VideoEnded = true;
-        return;
-      }
-
-      FileInfo file = new(path);
-      if (!file.Exists)
-      {
-        VideoEnded = true;
-        return;
-      }
-
-      VideoEnded = false;
-      VideoPlayer.Source = new Uri(file.FullName);
-      VideoPlayer.Volume = Config.WindowAudioDisabled ? 0 : volume; // Override audio volume
-      VideoPlayer.Play();
-    }));
-  }
-
-  public void StopVideoPlayer()
-  {
-    Dispatcher.Invoke(new Action(() =>
-    {
-      VideoPlayer.Stop();
-      VideoPlayer.Source = null;
-      VideoEnded = true;
-      ResetVideoPlayer();
-    }));
-  }
-
-  public void PauseVideoPlayer()
-  {
-    Dispatcher.Invoke(new Action(() =>
-    {
-      VideoPlayer.Pause();
-    }));
-  }
-
-  public void ResumeVideoPlayer()
-  {
-    Dispatcher.Invoke(new Action(() =>
-    {
-      VideoPlayer.Play();
-    }));
-  }
-
   public void SetNotificationQueueCount(int count, int maybeCount)
   {
     Dispatcher.Invoke(new Action(() =>
     {
-      tbNotificationsQueue.Text = string.Concat("Notifications in queue: ", count,
-       maybeCount > 0 ? $" ({maybeCount})" : "");
+      tbNotificationsQueue.Text = string.Concat(
+        "Notifications in queue: ", count,
+        maybeCount > 0 ? $" ({maybeCount})" : "");
     }));
+  }
+
+  public void UpdateNotificationQueue(int queueCount, int maybeCount, Notification notif, bool removeNotif)
+  {
+    Dispatcher.Invoke(new Action(() =>
+    {
+      tbNotificationsQueue.Text = string.Concat(
+        "Notifications in queue: ", queueCount,
+        maybeCount > 0 ? $" ({maybeCount})" : "");
+
+      if (notif != null && notif.Control != null)
+      {
+        if (removeNotif)
+        {
+          if (CurrentNotificationsPanel.Children.Contains(notif.Control)) { CurrentNotificationsPanel.Children.Remove(notif.Control); }
+        }
+        else
+        {
+          CurrentNotificationsPanel.Children.Add(notif.Control);
+        }
+      }
+    }));
+  }
+
+  public void RecreateNotificationQueue()
+  {
+    CurrentNotificationsPanel.Children.Clear();
+
+    for (int i = 0; i < Notifications.NotificationQueue.Count; i++)
+    {
+      CurrentNotificationsPanel.Children.Add(Notifications.NotificationQueue[i].Control);
+    }
   }
 
   private async void ChkTTS_CheckChanged(object sender, RoutedEventArgs e)
@@ -570,34 +364,15 @@ public partial class MainWindow : Window
     if (FinishedLoading) await Database.UpdateValueInConfig(Database.Keys.EnabledVanish, Chat.VanishEnabled);
   }
 
-  private async void ChkWindowAudio_CheckChanged(object sender, RoutedEventArgs e)
-  {
-    Config.WindowAudioDisabled = ((CheckBox)sender).IsChecked == true;
-    if (FinishedLoading) await Database.UpdateValueInConfig(Database.Keys.WindowAudioDisabled, Config.WindowAudioDisabled);
-  }
-
-  private void ChkTest_CheckChanged(object sender, RoutedEventArgs e)
-  {
-    Config.TestFeatureDisabled = ((CheckBox)sender).IsChecked == true;
-  }
-
-  private void MainVideoEnded(object sender, RoutedEventArgs e)
-  {
-    VideoPlayer.Source = null;
-    VideoEnded = true;
-
-    ClearTextDisplayed();
-  }
-
   private void VideoTest(object sender, RoutedEventArgs e)
   {
-    Notifications.AddNotification(new Notification()
+    var n = new Notification()
     {
-      // VideoPath = "Resources/peepoHey.mp4",
-      // VideoVolume = Config.VolumeVideos,
+      Type = NotificationType.OTHER,
       VideoPath = "Resources/bot.mp4",
-      VideoVolume = Config.VolumeVideo,
-    });
+    };
+    n.UpdateControl();
+    Notifications.AddNotification(n);
   }
 
   private void TTSTest(object sender, RoutedEventArgs e)
@@ -642,7 +417,7 @@ public partial class MainWindow : Window
         break;
 
       case "Chat sub message":
-        Notifications.CreateMaybeSubscriptionNotification("Chatter",
+        Notifications.CreateMaybeSubscriptionNotification("Prime Chatter",
           "prime", "1", value.ToString(), "3",
           "This is test sub received in chat");
         break;
@@ -691,123 +466,6 @@ public partial class MainWindow : Window
     chkEnableSongSkip.IsChecked = Spotify.SkipEnabled;
     chkEnableSongRequest.IsChecked = Spotify.RequestEnabled;
     chkEnableVanish.IsChecked = Chat.VanishEnabled;
-    chkDisableWindowAudio.IsChecked = Config.WindowAudioDisabled;
-  }
-
-  public void GambaAnimationStart(FileInfo videoPath, string userName, int points, int pointsResult)
-  {
-    Dispatcher.Invoke(new Action(() =>
-    {
-      tbGambaName.Text = userName;
-
-      if (videoPath.Exists)
-      {
-        videoGamba.Source = new Uri(videoPath.FullName);
-        videoGamba.Play();
-      }
-
-      while (!videoGamba.HasVideo || !videoGamba.NaturalDuration.HasTimeSpan || videoGamba.Position.TotalSeconds == 0) Task.Delay(1).Wait();
-
-      var duration = videoGamba.NaturalDuration.TimeSpan.TotalSeconds;
-      double sleepDuration = 0;
-
-      tbGambaPoints.Margin = new Thickness(0, -210, 0, 0);
-
-      // Animate points
-      Task.Run(async () =>
-      {
-        for (int i = 0; i <= 60; i++)
-        {
-          I.Dispatcher.Invoke(new Action(() =>
-          {
-            if (i == 0) tbGambaPoints.Text = points.ToString();
-
-            tbGambaPoints.Margin = new Thickness(0, tbGambaPoints.Margin.Top + 1, 0, 0);
-
-            if (i == 60)
-            {
-              tbGambaPoints.Text = string.Empty;
-              if (!videoGamba.HasVideo) tbGambaName.Text = string.Empty; // If the video doesn't play "finish" the animation
-              sleepDuration = (duration - videoGamba.Position.TotalSeconds - 1d) * 1000d;
-            }
-          }));
-          await Task.Delay(10);
-        }
-
-        if (pointsResult > 0)
-        {
-          if (sleepDuration > 0) await Task.Delay((int)sleepDuration);
-
-          for (int i = 0; i <= 60; i++)
-          {
-            I.Dispatcher.Invoke(new Action(() =>
-            {
-              if (i == 0) tbGambaPoints.Text = $"+{pointsResult}";
-
-              tbGambaPoints.Margin = new Thickness(0, tbGambaPoints.Margin.Top - 1, 0, 0);
-              if (i == 60)
-              {
-                tbGambaPoints.Text = string.Empty;
-                if (!videoGamba.HasVideo) tbGambaName.Text = string.Empty; // If the video doesn't play "finish" the animation
-              }
-            }));
-            await Task.Delay(10);
-          }
-        }
-      });
-    }));
-  }
-
-  private void GambaVideoEnded(object sender, RoutedEventArgs e)
-  {
-    ((MediaElement)sender).Source = null;
-    ((MediaElement)sender).Stop();
-    ((MediaElement)sender).Position = new TimeSpan();
-    tbGambaName.Text = string.Empty;
-  }
-
-  private void GambaTest(object sender, RoutedEventArgs e)
-  {
-    GambaAnimationStart(new FileInfo("Resources/Gamba/GambaLoose1.mp4"), "Chatter", 1000, 0);
-  }
-
-  private void tbText_SizeChanged(object sender, SizeChangedEventArgs e)
-  {
-    if (!this.IsLoaded) return;
-    if (!TextPositionShouldUpdate) return;
-    TextPositionShouldUpdate = false;
-
-    var tb = (TextBlock)sender;
-    if (tbTextDesiredPosition.x != 0 || tbTextDesiredPosition.y != 0)
-    {
-      double width = e is null ? tb.ActualWidth : e.NewSize.Width;
-      double height = e is null ? tb.ActualHeight : e.NewSize.Height;
-      tb.Margin = new Thickness(tbTextDesiredPosition.x - (width / 2d), tbTextDesiredPosition.y - (height / 2d), 0, 0);
-    }
-  }
-
-  private void VideoPlayer_SizeChanged(object sender, SizeChangedEventArgs e)
-  {
-    var player = (MediaElement)sender;
-    if (playerDesiredPosition.Left != 0 || playerDesiredPosition.Top != 0)
-    {
-      player.Margin = new Thickness(playerDesiredPosition.Left - e.NewSize.Width / 2d, playerDesiredPosition.Top - e.NewSize.Height / 2d, 0, 0);
-
-      if (!VideoEnded)
-      {
-        VideoParameters video = new()
-        {
-          Left = playerDesiredPosition.Left,
-          Top = playerDesiredPosition.Top,
-          Width = e.NewSize.Width,
-          Height = e.NewSize.Height,
-        };
-        UpdateTextDesiredPosition(video);
-        TextPositionShouldUpdate = true;
-        tbText_SizeChanged(tbText, null);
-        tbText.Visibility = Visibility.Visible;
-      }
-    }
   }
 
   /// <summary> Preview of text input into notification test textbox. It should allow only numbers. </summary>

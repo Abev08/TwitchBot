@@ -15,14 +15,13 @@ namespace AbevBot
 
     public bool Started { get; private set; }
     private DateTime StartTime { get; set; }
+    public DateTime CreationTime { get; }
     public string TextToDisplay { get; init; }
     public Notifications.TextPosition TextToDisplayPosition { get; init; } = Notifications.TextPosition.TOP;
     public double TextToDisplaySize { get; init; }
     public string TextToRead { get; init; }
     public string SoundPath { get; init; }
-    public float AudioVolume { get; init; } = 1f;
     public string VideoPath { get; init; }
-    public float VideoVolume { get; init; } = 1f;
     private bool VideoEnded;
     private bool VideoStarted;
     private bool VideoPaused;
@@ -30,21 +29,28 @@ namespace AbevBot
     private bool TextCleared;
     private bool SoundPlayed;
     private bool TTSPlayed;
-    private readonly List<WaveOut> AudioToPlay = new();
+    private bool AudioEnded;
     private bool AudioStarted;
+    private bool AudioPaused;
     private readonly ChannelRedemption Redemption;
     private bool KeysPressed, Keys2Pressed;
-    public NotificationType Type { get; }
+    public NotificationType Type { get; init; }
     public Action ExtraActionAtStartup { get; set; }
     public VideoParameters VideoParams;
     public DateTime StartAfter;
     public string Sender = string.Empty;
     public DateTime RelevanceTime;
+    public NotificationControl Control { get; private set; }
 
-    public Notification() { }
+    public Notification()
+    {
+      CreationTime = DateTime.Now;
+    }
 
     public Notification(NotificationsConfig config, string[] data, ChannelRedemption redemption = null)
     {
+      CreationTime = DateTime.Now;
+
       Sender = data[0];
       TextToDisplay = string.Format(config.TextToDisplay, data).Replace("\\n", Environment.NewLine);
       TextToDisplayPosition = config.TextPosition;
@@ -60,12 +66,12 @@ namespace AbevBot
       }
       else { TextToRead = string.Format(config.TextToSpeech, data).Replace("\\n", Environment.NewLine).Replace("#", ""); } // Remove '#' symbols - they are not allowed in TTS request messages
       SoundPath = config.SoundToPlay;
-      AudioVolume = Config.VolumeAudio;
       VideoPath = config.VideoToPlay;
-      VideoVolume = Config.VolumeVideo;
       VideoParams = config.VideoParams;
       Redemption = redemption;
       Type = config.Type;
+
+      Control = new(this);
     }
 
     /// <summary> Initializes required things and starts the notification </summary>
@@ -84,7 +90,7 @@ namespace AbevBot
 
       if (!VideoEnded)
       {
-        MainWindow.VideoEnded = false;
+        Server.VideoEndedCounter = 0;
         Server.VideoEnded = false;
       }
 
@@ -159,12 +165,16 @@ namespace AbevBot
       // Create sound to play from samples
       if (sounds.Count > 0)
       {
+        Server.AudioEndedCounter = 0;
         Server.AudioEnded = false;
         Server.CurrentAudio = Audio.GetSoundData(sounds);
-
-        AudioToPlay.Add(Audio.GetSound(Server.CurrentAudio, AudioVolume));
+        AudioEnded = false;
       }
-      else { Server.CurrentAudio = null; }
+      else
+      {
+        Server.CurrentAudio = null;
+        AudioEnded = true;
+      }
 
       if (ExtraActionAtStartup != null) ExtraActionAtStartup();
 
@@ -227,18 +237,16 @@ namespace AbevBot
         {
           // Start the video
           VideoStarted = true;
-          MainWindow.I.StartVideoPlayer(VideoPath, VideoVolume, VideoParams);
           Server.PlayVideo(VideoPath,
             VideoParams != null ? (float)VideoParams.Left : -1f,
             VideoParams != null ? (float)VideoParams.Top : -1f,
             VideoParams != null ? (float)VideoParams.Width : -1f,
             VideoParams != null ? (float)VideoParams.Height : -1f,
-            VideoVolume);
+            Config.VolumeVideo);
         }
         else if (Notifications.SkipNotification)
         {
           Server.ClearVideo();
-          MainWindow.I.StopVideoPlayer();
           VideoEnded = true;
         }
         else if (Notifications.NotificationsPaused)
@@ -246,24 +254,21 @@ namespace AbevBot
           if (!VideoPaused)
           {
             VideoPaused = true;
-            MainWindow.I.PauseVideoPlayer();
             Server.Pause();
           }
         }
         else if (VideoPaused)
         {
           VideoPaused = false;
-          MainWindow.I.ResumeVideoPlayer();
           Server.Resume();
         }
-        else if (MainWindow.VideoEnded && Server.VideoEnded) { VideoEnded = true; }
+        else if (Server.VideoEnded) { VideoEnded = true; }
       }
 
       // Display text
       if (!TextDisplayed && !Notifications.NotificationsPaused && !Notifications.SkipNotification)
       {
         TextDisplayed = true;
-        MainWindow.I.SetTextDisplayed(TextToDisplay, TextToDisplayPosition, TextToDisplaySize, VideoParams);
         Server.DisplayText(TextToDisplay, TextToDisplayPosition, TextToDisplaySize);
       }
 
@@ -273,61 +278,42 @@ namespace AbevBot
       if (!TextCleared && (DateTime.Now - StartTime >= MinimumNotificationTime))
       {
         TextCleared = true;
-        MainWindow.I.ClearTextDisplayed();
         Server.ClearText();
       }
 
       // Play the audio
-      if (AudioToPlay.Count > 0)
+      if (!AudioEnded)
       {
         if (Notifications.SkipNotification)
         {
           // Skip notification active - stop current audio and clear the queue
-          foreach (var audio in AudioToPlay)
-          {
-            audio?.Stop();
-            audio?.Dispose();
-          }
-          AudioToPlay.Clear();
           Server.ClearAudio();
         }
-        else if (AudioToPlay[0] is null)
-        {
-          // For some reason the GetXXXSound returned null - skip the sound
-          Log.Warning("Notifiaction audio to play: null WaveOut reference in AudioToPlay list!");
-          AudioToPlay.RemoveAt(0);
-        }
-        else if (Notifications.NotificationsPaused && AudioToPlay[0]?.PlaybackState == PlaybackState.Playing)
+        else if (Notifications.NotificationsPaused && !AudioPaused)
         {
           // Pause notification active and the sound is playing - pause it
-          AudioToPlay[0].Pause();
+          AudioPaused = true;
           Server.Pause();
         }
-        else if (!Notifications.NotificationsPaused && AudioToPlay[0]?.PlaybackState == PlaybackState.Paused)
+        else if (!Notifications.NotificationsPaused && AudioPaused)
         {
           // Pause notification not active and the sound is not playing - play it
-          AudioToPlay[0].Play();
+          AudioPaused = false;
           Server.Resume();
         }
-        else if (AudioToPlay[0].PlaybackState == PlaybackState.Stopped)
+        else if (Server.AudioEnded)
         {
-          // Audio is stopped, it wasn't started yet or it finished playing
-          if (!AudioStarted)
-          {
-            if (Config.WindowAudioDisabled) { AudioToPlay[0].Volume = 0f; } // Override audio volume
-            AudioToPlay[0].Play();
-            AudioStarted = true;
-            Server.PlayAudio(AudioVolume);
-          }
-          else if (Server.AudioEnded)
-          {
-            AudioToPlay[0].Dispose();
-            AudioToPlay.RemoveAt(0);
-            AudioStarted = false;
-          }
+          // Server is reporting that audio has finished
+          AudioEnded = true;
+        }
+        else if (!AudioStarted)
+        {
+          // Play the audio
+          AudioStarted = true;
+          Server.PlayAudio(Config.VolumeAudio);
         }
 
-        if (AudioToPlay.Count > 0) return false;
+        if (!AudioEnded) { return false; }
       }
 
       // Check if keys was pressed
@@ -344,15 +330,6 @@ namespace AbevBot
     public void Stop()
     {
       if (!Started) return;
-
-      MainWindow.I.ClearTextDisplayed();
-      MainWindow.I.StopVideoPlayer();
-      foreach (var audio in AudioToPlay)
-      {
-        audio?.Stop();
-        audio?.Dispose();
-      }
-      AudioToPlay.Clear();
       Server.ClearAll();
     }
 
@@ -464,6 +441,13 @@ namespace AbevBot
         if (newAudio[i] is null) { Log.Warning("Some TTS request returned null audio player!"); }
         else { sounds.Insert(0, newAudio[i]); }
       }
+    }
+
+    public void UpdateControl()
+    {
+      if (Control is null) { Control = new(this); }
+
+      Control.Update();
     }
   }
 }

@@ -30,7 +30,7 @@ namespace AbevBot
     public static bool ChatTTSEnabled { get; set; }
     public static bool WelcomeMessagesEnabled { get; set; }
     /// <summary> Queue of notifiactions. </summary>
-    static readonly List<Notification> NotificationQueue = new();
+    public static readonly List<Notification> NotificationQueue = new();
     /// <summary> Collection of past notifications.
     /// When notification ends it should be added to this collection and cleared from it after some time. </summary>
     static readonly List<Notification> PastNotifications = new();
@@ -125,9 +125,10 @@ namespace AbevBot
               lock (NotificationQueue)
               {
                 // Maybe notification should start - move it to the real queue
-                NotificationQueue.Add(MaybeNotificationQueue[0]);
+                var n = MaybeNotificationQueue[0];
+                NotificationQueue.Add(n);
                 MaybeNotificationQueue.RemoveAt(0);
-                MainWindow.I.SetNotificationQueueCount(NotificationQueue.Count, MaybeNotificationQueue.Count);
+                MainWindow.I.UpdateNotificationQueue(NotificationQueue.Count, MaybeNotificationQueue.Count, n, false);
               }
             }
           }
@@ -151,6 +152,7 @@ namespace AbevBot
             {
               SkipNotification = false;
               NotificationQueue[0].Start();
+              NotificationQueue[0].UpdateControl();
             }
             if (NotificationQueue[0].Update())
             {
@@ -161,9 +163,11 @@ namespace AbevBot
                 PastNotifications.Add(NotificationQueue[0]);
                 PastNotifications[^1].RelevanceTime = DateTime.Now.AddSeconds(30);
               }
+              var n = NotificationQueue[0];
               NotificationQueue.RemoveAt(0);
               notificationEnded = true;
-              MainWindow.I.SetNotificationQueueCount(NotificationQueue.Count, MaybeNotificationQueue.Count);
+              MainWindow.I.UpdateNotificationQueue(NotificationQueue.Count, MaybeNotificationQueue.Count, n, true);
+              n = null;
             }
           }
 
@@ -204,7 +208,7 @@ namespace AbevBot
           }
 
           NotificationQueue.Add(notification);
-          MainWindow.I.SetNotificationQueueCount(NotificationQueue.Count, MaybeNotificationQueue.Count);
+          MainWindow.I.UpdateNotificationQueue(NotificationQueue.Count, MaybeNotificationQueue.Count, notification, false);
         }
       });
     }
@@ -470,11 +474,13 @@ namespace AbevBot
     {
       if (string.IsNullOrWhiteSpace(text)) return;
 
-      AddNotification(new Notification()
+      var n = new Notification()
       {
+        Type = NotificationType.OTHER,
         TextToRead = text.Replace("#", ""), // Remove '#' symbols - they are not allowed in TTS request messages
-        AudioVolume = Config.VolumeAudio
-      });
+      };
+      n.UpdateControl();
+      AddNotification(n);
     }
 
     public static void CreateRaidNotification(string userName, string userID, int count)
@@ -504,10 +510,10 @@ namespace AbevBot
       if (video is null || video.Length == 0) return;
       string msgID = messageID;
 
-      AddNotification(new Notification()
+      var n = new Notification()
       {
+        Type = NotificationType.OTHER,
         VideoPath = video,
-        VideoVolume = Config.VolumeVideo,
         VideoParams = RandomVideoParameters,
 
         ExtraActionAtStartup = () =>
@@ -517,7 +523,9 @@ namespace AbevBot
             MarkRedemptionAsFulfilled(Config.Data[Config.Keys.ChannelRedemption_RandomVideo_ID], msgID);
           }
         }
-      });
+      };
+      n.UpdateControl();
+      AddNotification(n);
     }
 
     /// <summary> Creates and adds to queue Chatter Timeout notification. </summary>
@@ -659,15 +667,20 @@ namespace AbevBot
     {
       lock (NotificationQueue)
       {
-        for (int i = NotificationQueue.Count - 1; i >= 0; i--)
+        MainWindow.I.Dispatcher.Invoke(new Action(() =>
         {
-          if (NotificationQueue[i].Type == NotificationType.FOLLOW)
+          for (int i = NotificationQueue.Count - 1; i >= 0; i--)
           {
-            NotificationQueue[i].Stop(); // Stop the notification if it's currently playing
-            NotificationQueue.RemoveAt(i);
+            if (NotificationQueue[i].Type == NotificationType.FOLLOW)
+            {
+              var n = NotificationQueue[i];
+              n.Stop(); // Stop the notification if it's currently playing
+              NotificationQueue.RemoveAt(i);
+              MainWindow.I.UpdateNotificationQueue(NotificationQueue.Count, MaybeNotificationQueue.Count, n, true);
+              n = null;
+            }
           }
-        }
-        MainWindow.I.SetNotificationQueueCount(NotificationQueue.Count, MaybeNotificationQueue.Count);
+        }));
       }
     }
 
@@ -905,9 +918,66 @@ namespace AbevBot
       }
       catch (HttpRequestException ex) { Log.Error("Activating shield mode failed. {ex}", ex); }
     }
+
+    public static void MoveToTop(Notification notif)
+    {
+      if (notif is null) { return; }
+      lock (NotificationQueue)
+      {
+        for (int i = NotificationQueue.Count - 1; i >= 0; i--)
+        {
+          if (NotificationQueue[i] == notif)
+          {
+            NotificationQueue.RemoveAt(i);
+            if (NotificationQueue[0].Started)
+            {
+              if (NotificationQueue.Count == 1) { NotificationQueue.Add(notif); }
+              else { NotificationQueue.Insert(1, notif); }
+            }
+            else
+            {
+              if (NotificationQueue.Count == 0) { NotificationQueue.Add(notif); }
+              else { NotificationQueue.Insert(0, notif); }
+            }
+            break;
+          }
+        }
+
+        MainWindow.I.RecreateNotificationQueue();
+      }
+    }
+
+    public static void Skip(Notification notif)
+    {
+      if (notif is null) { return; }
+      lock (NotificationQueue)
+      {
+        if (NotificationQueue[0] == notif)
+        {
+          if (NotificationQueue[0].Started) { SkipNotification = true; }
+          else
+          {
+            NotificationQueue.RemoveAt(0);
+            MainWindow.I.UpdateNotificationQueue(NotificationQueue.Count, MaybeNotificationQueue.Count, notif, true);
+          }
+
+          return;
+        }
+
+        for (int i = NotificationQueue.Count - 1; i >= 0; i--)
+        {
+          if (NotificationQueue[i] == notif)
+          {
+            NotificationQueue.RemoveAt(i);
+            MainWindow.I.UpdateNotificationQueue(NotificationQueue.Count, MaybeNotificationQueue.Count, notif, true);
+            break;
+          }
+        }
+      }
+    }
   }
 
-  public enum NotificationType { FOLLOW, SUBSCRIPTION, SUBSCRIPTIONGIFT, CHEER, CHEERRANGE, RAID, REDEMPTION, TIMEOUT, BAN, ONSCREENCELEBRATION }
+  public enum NotificationType { FOLLOW, SUBSCRIPTION, SUBSCRIPTIONGIFT, CHEER, CHEERRANGE, RAID, REDEMPTION, TIMEOUT, BAN, ONSCREENCELEBRATION, OTHER }
 
   public class NotificationsConfig
   {

@@ -34,11 +34,11 @@ public static class Server
   /// <summary> Browser views video playing ended. </summary>
   public static bool VideoEnded { get; set; } = true;
   /// <summary> Amount of browser views on which the video playing has ended. </summary>
-  private static int VideoEndedCounter;
+  public static int VideoEndedCounter;
   /// <summary> Browser views audio playing ended. </summary>
   public static bool AudioEnded { get; set; } = true;
   /// <summary> Amount of browser views on which the audio playing has ended. </summary>
-  private static int AudioEndedCounter;
+  public static int AudioEndedCounter;
 
   /// <summary> Starts the HTTP server. </summary>
   public static void Start()

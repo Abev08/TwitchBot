@@ -61,9 +61,6 @@ public static class Config
   public static TimeSpan BroadcasterOfflineTimeout { get; } = TimeSpan.FromMinutes(30);
   public static readonly List<Key> HotkeysForPauseNotification = new();
   public static readonly List<Key> HotkeysForSkipNotification = new();
-  /// <summary> Is audio output of main window disabled? </summary>
-  public static bool WindowAudioDisabled { get; set; }
-  public static bool TestFeatureDisabled { get; set; }
 
   public static bool ParseConfigFile(bool reload = false)
   {

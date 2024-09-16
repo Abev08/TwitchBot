@@ -91,7 +91,6 @@ public static class Database
     Spotify.SkipEnabled = bool.Parse(GetValueOrCreateFromConfig(Keys.EnabledSpotifySkip, "True"));
     Spotify.RequestEnabled = bool.Parse(GetValueOrCreateFromConfig(Keys.EnabledSpotifyRequest, "True"));
     Chat.VanishEnabled = bool.Parse(GetValueOrCreateFromConfig(Keys.EnabledVanish, "True"));
-    Config.WindowAudioDisabled = bool.Parse(GetValueOrCreateFromConfig(Keys.WindowAudioDisabled, "False"));
     MainWindow.I.SetEnabledStatus();
 
     // Connection.Close();
