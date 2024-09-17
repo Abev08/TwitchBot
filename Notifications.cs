@@ -63,7 +63,8 @@ namespace AbevBot
       {"Raid", new(NotificationType.RAID)},
       {"Timeout", new(NotificationType.TIMEOUT)},
       {"Ban", new(NotificationType.BAN)},
-      {"OnScreenCelebration", new(NotificationType.ONSCREENCELEBRATION)}
+      {"OnScreenCelebration", new(NotificationType.ONSCREENCELEBRATION)},
+      {"Other", new(NotificationType.OTHER)}
     };
     private static readonly string[] NotificationData = new string[14];
     public static readonly List<ChannelRedemption> ChannelRedemptions = new();
@@ -144,7 +145,7 @@ namespace AbevBot
           }
         }
 
-        if ((NotificationQueue.Count > 0) && (!NotificationsPaused || NotificationQueue[0].Started))
+        if ((NotificationQueue.Count > 0) && (!NotificationsPaused || NotificationQueue[0].Started || NotificationQueue[0].NotPausable))
         {
           lock (NotificationQueue)
           {
@@ -924,6 +925,12 @@ namespace AbevBot
       if (notif is null) { return; }
       lock (NotificationQueue)
       {
+        notif.NotPausable = true;
+
+        // If the queue count is 1, I assume that provided notification is the only one in the queue
+        if (NotificationQueue.Count == 1) { return; }
+
+        // Find the notification
         for (int i = NotificationQueue.Count - 1; i >= 0; i--)
         {
           if (NotificationQueue[i] == notif)
@@ -931,13 +938,13 @@ namespace AbevBot
             NotificationQueue.RemoveAt(i);
             if (NotificationQueue[0].Started)
             {
+              // The first one is already playing, put the provided one after it
               if (NotificationQueue.Count == 1) { NotificationQueue.Add(notif); }
               else { NotificationQueue.Insert(1, notif); }
             }
             else
             {
-              if (NotificationQueue.Count == 0) { NotificationQueue.Add(notif); }
-              else { NotificationQueue.Insert(0, notif); }
+              NotificationQueue.Insert(0, notif);
             }
             break;
           }

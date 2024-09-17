@@ -459,7 +459,7 @@ public static class Server
 
     var msg = Encoding.UTF8.GetBytes(new JsonObject()
       {
-        { "type", "new_notification" },
+        { "type", "display_text" },
         { "text", text },
         { "text_position", position.ToString() },
         { "text_size", size }
@@ -496,7 +496,7 @@ public static class Server
 
     var msg = Encoding.UTF8.GetBytes(new JsonObject()
       {
-        { "type", "new_notification" },
+        { "type", "play_video" },
         { "video", videoPath },
         { "video_position", new JsonArray(left, top) },
         { "video_size", new JsonArray(width, height) },
@@ -525,7 +525,7 @@ public static class Server
 
     var msg = Encoding.UTF8.GetBytes(new JsonObject()
       {
-        { "type", "new_notification" },
+        { "type", "play_audio" },
         { "audio", audioPath },
         { "audio_volume", volume }
       }.ToJsonString());
@@ -544,7 +544,7 @@ public static class Server
   {
     var msg = Encoding.UTF8.GetBytes(new JsonObject()
       {
-        { "type", "new_notification" },
+        { "type", "play_audio" },
         { "audio", "audio" },
         { "audio_volume", volume }
       }.ToJsonString());

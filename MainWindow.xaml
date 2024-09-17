@@ -93,6 +93,7 @@
                         <ComboBoxItem Content="Random video" ToolTip="Random video"/>
                         <ComboBoxItem Content="Chat sub message" ToolTip="Subscription message send in the chat"/>
                         <ComboBoxItem Content="On screen celebration" ToolTip="On screen celebration bits redemption"/>
+                        <ComboBoxItem Content="Key combination" ToolTip="Channel points redemption that does key combination. The keys are: Ctrl+Shift+Esc."/>
                     </ComboBox>
                     <TextBox x:Name="tbTestNotificationValue" Text="7" Margin="0,0,0,5" PreviewTextInput="TestNotificationValue_TextInput" ToolTip="Count of main thing in a notification (bits, gifted subs, etc.)"/>
                     <Button x:Name="btnTestNotification" Content="Test Notification" Click="NotificationTestClicked" ToolTip="Queues selected above test notification"/>

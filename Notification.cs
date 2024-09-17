@@ -14,6 +14,7 @@ namespace AbevBot
     private static readonly TimeSpan MaximumNotificationTime = TimeSpan.FromSeconds(120);
 
     public bool Started { get; private set; }
+    public bool NotPausable { get; set; }
     private DateTime StartTime { get; set; }
     public DateTime CreationTime { get; }
     public string TextToDisplay { get; init; }
@@ -252,7 +253,7 @@ namespace AbevBot
           Server.ClearVideo();
           VideoEnded = true;
         }
-        else if (Notifications.NotificationsPaused)
+        else if (Notifications.NotificationsPaused && !NotPausable)
         {
           if (!VideoPaused)
           {
@@ -269,10 +270,15 @@ namespace AbevBot
       }
 
       // Display text
-      if (!TextDisplayed && !Notifications.NotificationsPaused && !Notifications.SkipNotification)
+      if (!TextDisplayed && !TextCleared && (!Notifications.NotificationsPaused || NotPausable) && !Notifications.SkipNotification)
       {
         TextDisplayed = true;
         Server.DisplayText(TextToDisplay, TextToDisplayPosition, TextToDisplaySize);
+      }
+      else if (TextDisplayed && Notifications.NotificationsPaused && !NotPausable)
+      {
+        TextDisplayed = false;
+        Server.ClearText();
       }
 
       if (!VideoEnded) return false;
@@ -292,7 +298,7 @@ namespace AbevBot
           // Skip notification active - stop current audio and clear the queue
           Server.ClearAudio();
         }
-        else if (Notifications.NotificationsPaused && !AudioPaused)
+        else if (Notifications.NotificationsPaused && !NotPausable && !AudioPaused)
         {
           // Pause notification active and the sound is playing - pause it
           AudioPaused = true;
@@ -445,7 +451,7 @@ namespace AbevBot
         else { sounds.Insert(0, newAudio[i]); }
       }
     }
-    
+
     public void UpdateControl()
     {
       if (Control is null)

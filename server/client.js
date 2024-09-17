@@ -148,42 +148,48 @@ function parse_message(d) {
   let data = JSON.parse(d);
   // console.log(data);
 
-  // Clear all of the content
-  if (data.type == 'clear_all') {
-    clear_content();
-  } else if (data.type == 'clear_video') {
-    clear_video();
-  } else if (data.type == 'clear_audio') {
-    clear_audio();
-  } else if (data.type == 'clear_text') {
-    clear_text();
-  } else if (data.type == 'pause') {
-    pause();
-  } else if (data.type == 'resume') {
-    resume();
-  } else {
-    video_should_play = false;
-    audio_should_play = false;
-
-    // Play video
-    if (data.video?.length > 0) {
-      play_video(data);
-    }
-
-    // Play audio
-    if (data.audio?.length > 0) {
-      play_audio(data);
-    }
-
-    // Display text
-    if (data.text?.length > 0) {
-      display_text(data);
-    }
-
-    // Gamba animation
-    if (data.gamba?.length > 0) {
-      play_gamba(data);
-    }
+  switch (data.type) {
+    case "clear_all":
+      clear_content();
+      break;
+    case "clear_video":
+      clear_video();
+      break;
+    case "clear_audio":
+      clear_audio();
+      break;
+    case "clear_text":
+      clear_text();
+      break;
+    case "pause":
+      pause();
+      break;
+    case "resume":
+      resume();
+      break;
+    case "play_video":
+      if (data.video?.length > 0) {
+        play_video(data);
+      }
+      break;
+    case "play_audio":
+      if (data.audio?.length > 0) {
+        play_audio(data);
+      }
+      break;
+    case "display_text":
+      if (data.text?.length > 0) {
+        display_text(data);
+      }
+      break;
+    case "gamba_animation":
+      if (data.gamba?.length > 0) {
+        play_gamba(data);
+      }
+      break;
+    default:
+      console.log('data type not recognized: ' + data.type);
+      break;
   }
 
   ws.send('message_parsed');

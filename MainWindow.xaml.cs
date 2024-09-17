@@ -425,6 +425,16 @@ public partial class MainWindow : Window
       case "On screen celebration":
         Notifications.CreateOnScreenCelebrationNotification("Chatter", "This is a test");
         break;
+
+      case "Key combination":
+        Notifications.AddNotification(
+          new Notification(Notifications.Configs["Other"],
+          new string[14],
+          new ChannelRedemption()
+          {
+            KeysToPress = new System.Collections.Generic.List<Key>() { Key.LeftCtrl, Key.LeftShift, Key.Escape }
+          }));
+        break;
     }
   }
 

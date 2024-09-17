@@ -18,6 +18,7 @@ public partial class NotificationControl : UserControl
     btnPlay.Click += (sender, e) =>
     {
       Notifications.MoveToTop(Notif);
+      ((Button)sender).Visibility = System.Windows.Visibility.Hidden;
     };
     btnSkip.Click += (sender, e) =>
     {
@@ -49,11 +50,8 @@ public partial class NotificationControl : UserControl
       if (Notif.TextToDisplay?.Length > 0) { tbDisplayedText.Text = Notif.TextToDisplay.Replace("\r\n", " "); }
       tbTTS.Text = Notif.TextToRead;
 
-      if (Notif.Started)
-      {
-        btnPlay.Visibility = System.Windows.Visibility.Hidden;
-        btnSkip.Visibility = System.Windows.Visibility.Hidden;
-      }
+      if (Notif.NotPausable) { btnPlay.Visibility = System.Windows.Visibility.Hidden; }
+      if (Notif.Started) { btnSkip.Visibility = System.Windows.Visibility.Hidden; }
     }));
   }
 }
