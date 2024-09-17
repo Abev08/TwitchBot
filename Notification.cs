@@ -71,7 +71,10 @@ namespace AbevBot
       Redemption = redemption;
       Type = config.Type;
 
-      Control = new(this);
+      MainWindow.I.Dispatcher.Invoke(new Action(() =>
+      {
+        Control = new(this);
+      }));
     }
 
     /// <summary> Initializes required things and starts the notification </summary>
