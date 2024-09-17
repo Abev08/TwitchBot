@@ -442,10 +442,16 @@ namespace AbevBot
         else { sounds.Insert(0, newAudio[i]); }
       }
     }
-
+    
     public void UpdateControl()
     {
-      if (Control is null) { Control = new(this); }
+      if (Control is null)
+      {
+        MainWindow.I.Dispatcher.Invoke(new Action(() =>
+        {
+          Control = new(this);
+        }));
+      }
 
       Control.Update();
     }
