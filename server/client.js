@@ -79,6 +79,7 @@ function loaded() {
         position: absolute;
         text-align: center;
         text-wrap: nowrap;
+        text-shadow: 0 0 2px #000000, 0 0 10px #000000AA;
       }
 
       h2 {

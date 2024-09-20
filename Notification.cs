@@ -293,7 +293,12 @@ namespace AbevBot
       // Play the audio
       if (!AudioEnded)
       {
-        if (Notifications.SkipNotification)
+        if (Server.AudioEnded)
+        {
+          // Server is reporting that audio has finished
+          AudioEnded = true;
+        }
+        else if (Notifications.SkipNotification)
         {
           // Skip notification active - stop current audio and clear the queue
           Server.ClearAudio();
@@ -309,11 +314,6 @@ namespace AbevBot
           // Pause notification not active and the sound is not playing - play it
           AudioPaused = false;
           Server.Resume();
-        }
-        else if (Server.AudioEnded)
-        {
-          // Server is reporting that audio has finished
-          AudioEnded = true;
         }
         else if (!AudioStarted)
         {
