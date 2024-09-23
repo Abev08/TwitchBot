@@ -79,7 +79,8 @@ function loaded() {
         position: absolute;
         text-align: center;
         text-wrap: nowrap;
-        text-shadow: 0 0 2px #000000, 0 0 10px #000000AA;
+        text-shadow: 0 0 2px #000000, 0 0 10px #000000BB;
+        width: 100%;
       }
 
       h2 {

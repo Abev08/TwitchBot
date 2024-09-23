@@ -611,7 +611,7 @@ public static class Chat
       return;
     }
 
-    if (Spotify.AddTrackToQueue(uri))
+    if (Spotify.AddTrackToQueue(uri, chatter.Name))
     {
       if (!fromNotifications) chatter.LastSongRequest = DateTime.Now;
       AddMessageResponseToQueue("Track added to the queue peepoHappy", messageID);
@@ -983,13 +983,13 @@ public static class Chat
     {
       Log.Information("Creating {userName} welcome message TTS.", metadata.UserName);
       chatter.SetLastWelcomeMessageToNow();
-      Notifications.CreateTTSNotification(chatter.WelcomeMessage);
+      Notifications.CreateTTSNotification(chatter.WelcomeMessage, chatter.Name);
     }
 
     if (msg.StartsWith("!tts")) // Check if the message starts with !tts key
     {
       if (msg.Length <= 5) { Log.Warning("!tts command without a message Susge"); } // No message to read, do nothing
-      else if (Notifications.ChatTTSEnabled || Chatter.AlwaysReadTTSFromThem.Contains(metadata.UserName)) { Notifications.CreateTTSNotification(msg[5..]); } // 5.. - without "!tts "
+      else if (Notifications.ChatTTSEnabled || Chatter.AlwaysReadTTSFromThem.Contains(metadata.UserName)) { Notifications.CreateTTSNotification(msg[5..], chatter.Name); } // 5.. - without "!tts "
       else { AddMessageResponseToQueue("TTS disabled peepoSad", metadata.MessageID); }
     }
     else if (msg.StartsWith("!gamba")) // Check if the message starts with !gamba key

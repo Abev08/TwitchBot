@@ -23,7 +23,7 @@
 
             <!--Notification data-->
             <TextBlock x:Name="tbType" d:Text="Subscription" Grid.ColumnSpan="2" Foreground="Orange"/>
-            <TextBlock x:Name="tbTime" d:Text="12:34:56" Grid.Column="1" HorizontalAlignment="Right" Padding="0,0,10,0"/>
+            <TextBlock x:Name="tbTime" d:Text="12:34:56" Grid.Column="1" HorizontalAlignment="Right" Padding="0,0,10,0" ToolTip="C - created, S - started, F - finished"/>
             <TextBlock x:Name="tbUserName" d:Text="User Name" Grid.Row="1" Grid.ColumnSpan="2"/>
             <TextBlock x:Name="tbDisplayedText" d:Text="Displayed text" Grid.Row="2" Grid.ColumnSpan="2"/>
             <TextBlock x:Name="tbTTS" d:Text="TTS" Grid.Row="3" Grid.ColumnSpan="2"/>

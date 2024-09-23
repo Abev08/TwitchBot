@@ -14,8 +14,11 @@ namespace AbevBot
     private static readonly TimeSpan MaximumNotificationTime = TimeSpan.FromSeconds(120);
 
     public bool Started { get; private set; }
+    public DateTime StartTime { get; private set; }
+    public bool Finished { get; private set; }
+    public DateTime FinishTime { get; private set; }
     public bool NotPausable { get; set; }
-    private DateTime StartTime { get; set; }
+    public bool NotReplayable { get; set; }
     public DateTime CreationTime { get; }
     public string TextToDisplay { get; init; }
     public Notifications.TextPosition TextToDisplayPosition { get; init; } = Notifications.TextPosition.TOP;
@@ -33,14 +36,14 @@ namespace AbevBot
     private bool AudioEnded;
     private bool AudioStarted;
     private bool AudioPaused;
-    private readonly ChannelRedemption Redemption;
+    public ChannelRedemption Redemption { get; init; }
     private bool KeysPressed, Keys2Pressed;
     public NotificationType Type { get; init; }
+    public string SubType { get; init; }
     public Action ExtraActionAtStartup { get; set; }
     public VideoParameters VideoParams;
     public DateTime StartAfter;
-    public string Sender = string.Empty;
-    public DateTime RelevanceTime;
+    public string Sender { get; init; } = string.Empty;
     public NotificationControl Control { get; private set; }
 
     public Notification()
@@ -82,15 +85,8 @@ namespace AbevBot
     public void Start()
     {
       if (Started) return;
+      Reset();
       Started = true;
-
-      TextDisplayed = TextToDisplay is null || TextToDisplay.Length == 0;
-      TextCleared = TextDisplayed;
-      VideoEnded = VideoPath is null || VideoPath.Length == 0;
-      SoundPlayed = SoundPath is null || SoundPath.Length == 0;
-      TTSPlayed = TextToRead is null || TextToRead.Length == 0;
-      KeysPressed = Redemption is null || Redemption.KeysToPress.Count == 0;
-      Keys2Pressed = Redemption is null || Redemption.KeysToPressAfterTime.Count == 0;
 
       if (!VideoEnded)
       {
@@ -340,6 +336,9 @@ namespace AbevBot
     {
       if (!Started) return;
       Server.ClearAll();
+
+      FinishTime = DateTime.Now;
+      Finished = true;
     }
 
     // FIXME: Figure out good method name :D
@@ -463,6 +462,35 @@ namespace AbevBot
       }
 
       Control.Update();
+    }
+
+    // Sets the notification as dummy notification - already started and finished.
+    public void Dummy()
+    {
+      Finished = Started = true;
+      FinishTime = StartTime = DateTime.Now;
+      NotReplayable = true;
+    }
+
+    // Resets the notification as it never played.
+    public void Reset()
+    {
+      Finished = Started = false;
+
+      TextDisplayed = TextToDisplay is null || TextToDisplay.Length == 0;
+      TextCleared = TextDisplayed;
+      VideoEnded = VideoPath is null || VideoPath.Length == 0;
+      SoundPlayed = SoundPath is null || SoundPath.Length == 0;
+      TTSPlayed = TextToRead is null || TextToRead.Length == 0;
+      KeysPressed = Redemption is null || Redemption.KeysToPress.Count == 0;
+      Keys2Pressed = Redemption is null || Redemption.KeysToPressAfterTime.Count == 0;
+
+      VideoStarted = false;
+      VideoPaused = false;
+      AudioStarted = false;
+      AudioPaused = false;
+
+      NotPausable = false;
     }
   }
 }

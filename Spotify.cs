@@ -179,7 +179,7 @@ namespace AbevBot
     /// <summary> Adds provided track to queue to be played (requires Spotify premium). </summary>
     /// <param name="songURI"> Spotify specific track URI that identifies the track. </param>
     /// <returns> true if everything went ok, otherwise false. </returns>
-    public static bool AddTrackToQueue(string songURI)
+    public static bool AddTrackToQueue(string songURI, string userName)
     {
       string uri = string.Concat(
         "https://api.spotify.com/v1/me/player/queue",
@@ -190,7 +190,20 @@ namespace AbevBot
       try
       {
         var response = Notifications.Client.Send(request);
-        if ((int)response.StatusCode >= 200 && (int)response.StatusCode < 300) { return true; } // OK
+        if ((int)response.StatusCode >= 200 && (int)response.StatusCode < 300)
+        {
+          // OK
+          var n = new Notification()
+          {
+            Type = NotificationType.OTHER,
+            SubType = "Song request",
+            Sender = userName,
+          };
+          // TODO Create function GetTrackInfo(trackID) to get track info and pass it to notification above
+          n.Dummy();
+          Notifications.AddPastNotification(n);
+          return true;
+        }
         // Something went wrong, try to get error message
         string resp = response.Content.ReadAsStringAsync().Result;
         string msg = null;

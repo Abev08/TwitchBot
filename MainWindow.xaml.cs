@@ -112,6 +112,7 @@ public partial class MainWindow : Window
         var n = new Notification()
         {
           Type = NotificationType.OTHER,
+          SubType = "Start video",
           VideoPath = "Resources/bot.mp4",
         };
         n.UpdateControl();
@@ -300,6 +301,25 @@ public partial class MainWindow : Window
     }));
   }
 
+  public void UpdatePastNotificationQueue(Notification notif, bool removeNotif)
+  {
+    Dispatcher.Invoke(new Action(() =>
+    {
+      if (notif != null && notif.Control != null)
+      {
+        if (removeNotif)
+        {
+          notif.UpdateControl();
+          if (PastNotificationsPanel.Children.Contains(notif.Control)) { PastNotificationsPanel.Children.Remove(notif.Control); }
+        }
+        else
+        {
+          PastNotificationsPanel.Children.Insert(0, notif.Control);
+        }
+      }
+    }));
+  }
+
   public void RecreateNotificationQueue()
   {
     CurrentNotificationsPanel.Children.Clear();
@@ -369,6 +389,7 @@ public partial class MainWindow : Window
     var n = new Notification()
     {
       Type = NotificationType.OTHER,
+      SubType = "Test video",
       VideoPath = "Resources/bot.mp4",
     };
     n.UpdateControl();
@@ -379,7 +400,7 @@ public partial class MainWindow : Window
   {
     string text = tbTTSText.Text.Trim();
     if (string.IsNullOrEmpty(text)) return;
-    Notifications.CreateTTSNotification(text);
+    Notifications.CreateTTSNotification(text, "Chatter");
   }
 
   private void NotificationTestClicked(object sender, RoutedEventArgs e)
@@ -413,7 +434,7 @@ public partial class MainWindow : Window
         break;
 
       case "Random video":
-        Notifications.CreateRandomVideoNotification(string.Empty);
+        Notifications.CreateRandomVideoNotification(string.Empty, "Chatter");
         break;
 
       case "Chat sub message":
@@ -427,13 +448,18 @@ public partial class MainWindow : Window
         break;
 
       case "Key combination":
-        Notifications.AddNotification(
-          new Notification(Notifications.Configs["Other"],
-          new string[14],
-          new ChannelRedemption()
+        var n = new Notification()
+        {
+          Type = NotificationType.OTHER,
+          SubType = "Channel points redemption",
+          Sender = "Chatter",
+          Redemption = new ChannelRedemption()
           {
             KeysToPress = new System.Collections.Generic.List<Key>() { Key.LeftCtrl, Key.LeftShift, Key.Escape }
-          }));
+          }
+        };
+        n.UpdateControl();
+        Notifications.AddNotification(n);
         break;
     }
   }

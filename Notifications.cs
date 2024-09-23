@@ -99,14 +99,22 @@ namespace AbevBot
       {
         if (MainWindow.CloseRequested) { return; }
 
-        // Clean up past notifications
-        if (PastNotifications.Count > 0 && DateTime.Now >= PastNotifications[0].RelevanceTime)
+        // Clean up past notifications, keep only 20 newest
+        if (PastNotifications.Count > 20)
         {
-          lock (PastNotifications)
+          MainWindow.I.Dispatcher.Invoke(new Action(() =>
           {
-            // The notification ended more than 30 sec ago, remove it from past notifications collection
-            PastNotifications.RemoveAt(0);
-          }
+            lock (PastNotifications)
+            {
+              while (PastNotifications.Count > 20)
+              {
+                var n = PastNotifications[0];
+                MainWindow.I.UpdatePastNotificationQueue(n, true);
+                PastNotifications.RemoveAt(0);
+                n = null;
+              }
+            }
+          }));
         }
 
         // During "stop follow bots" don't update notifications
@@ -159,16 +167,11 @@ namespace AbevBot
             {
               SkipNotification = false;
               // Update returned true == notificaion has ended, remove it from queue
-              lock (PastNotifications)
-              {
-                PastNotifications.Add(NotificationQueue[0]);
-                PastNotifications[^1].RelevanceTime = DateTime.Now.AddSeconds(30);
-              }
               var n = NotificationQueue[0];
               NotificationQueue.RemoveAt(0);
-              notificationEnded = true;
               MainWindow.I.UpdateNotificationQueue(NotificationQueue.Count, MaybeNotificationQueue.Count, n, true);
-              n = null;
+              AddPastNotification(n);
+              notificationEnded = true;
             }
           }
 
@@ -215,7 +218,7 @@ namespace AbevBot
     }
 
     /// <summary> Adds notification to the queue. </summary>
-    public static void AddMaybeNotification(Notification notification)
+    public static void AddMaybeNotification(Notification notification, double startAfter = 3)
     {
       Task.Run(() =>
       {
@@ -241,7 +244,7 @@ namespace AbevBot
 
         lock (MaybeNotificationQueue)
         {
-          notification.StartAfter = DateTime.Now.AddSeconds(5); // Lets give it 5 sec, maybe propper event message will come?
+          notification.StartAfter = DateTime.Now.AddSeconds(startAfter); // Lets give it 5 sec, maybe propper event message will come?
           MaybeNotificationQueue.Add(notification);
           MainWindow.I.SetNotificationQueueCount(NotificationQueue.Count, MaybeNotificationQueue.Count);
         }
@@ -438,16 +441,17 @@ namespace AbevBot
     public static void CreateRedemptionNotificaiton(string userName, string redemptionID, string messageID, string message)
     {
       string msgID = messageID;
-      if (Config.Data[Config.Keys.ChannelRedemption_RandomVideo_ID].Equals(redemptionID)) { CreateRandomVideoNotification(msgID); }
+      var chatter = Chatter.GetChatterByName(userName);
+      if (Config.Data[Config.Keys.ChannelRedemption_RandomVideo_ID].Equals(redemptionID)) { CreateRandomVideoNotification(msgID, chatter.Name); }
       else if (Config.Data[Config.Keys.ChannelRedemption_SongRequest_ID].Equals(redemptionID))
       {
-        Chat.SongRequest(Chatter.GetChatterByName(userName), message, null, true);
-        if (Config.Data[Config.Keys.ChannelRedemption_SongRequest_MarkAsFulfilled].Equals("True")) MarkRedemptionAsFulfilled(redemptionID, msgID);
+        Chat.SongRequest(chatter, message, null, true);
+        if (Config.Data[Config.Keys.ChannelRedemption_SongRequest_MarkAsFulfilled].Equals("True")) { MarkRedemptionAsFulfilled(redemptionID, msgID); }
       }
       else if (Config.Data[Config.Keys.ChannelRedemption_SongSkip_ID].Equals(redemptionID))
       {
         Spotify.SkipSong();
-        if (Config.Data[Config.Keys.ChannelRedemption_SongSkip_MarkAsFulfilled].Equals("True")) MarkRedemptionAsFulfilled(redemptionID, msgID);
+        if (Config.Data[Config.Keys.ChannelRedemption_SongSkip_MarkAsFulfilled].Equals("True")) { MarkRedemptionAsFulfilled(redemptionID, msgID); }
       }
       else
       {
@@ -458,6 +462,7 @@ namespace AbevBot
           {
             // Create notification
             Array.Clear(NotificationData);
+            NotificationData[0] = chatter.Name;
 
             Chat.AddMessageToQueue(redemption.Config.ChatMessage);
             AddNotification(new Notification(redemption.Config, NotificationData, redemption)
@@ -471,13 +476,15 @@ namespace AbevBot
     }
 
     /// <summary> Creates and adds to queue TTS notification (mainly for chat messages). </summary>
-    public static void CreateTTSNotification(string text)
+    public static void CreateTTSNotification(string text, string userName)
     {
       if (string.IsNullOrWhiteSpace(text)) return;
 
       var n = new Notification()
       {
         Type = NotificationType.OTHER,
+        SubType = "TTS",
+        Sender = userName,
         TextToRead = text.Replace("#", ""), // Remove '#' symbols - they are not allowed in TTS request messages
       };
       n.UpdateControl();
@@ -505,7 +512,7 @@ namespace AbevBot
     }
 
     /// <summary> Creates and adds to queue Random Video notification. </summary>
-    public static void CreateRandomVideoNotification(string messageID)
+    public static void CreateRandomVideoNotification(string messageID, string sender)
     {
       var video = GetRandomVideoNotPlayedRecently();
       if (video is null || video.Length == 0) return;
@@ -514,6 +521,8 @@ namespace AbevBot
       var n = new Notification()
       {
         Type = NotificationType.OTHER,
+        SubType = "Random video",
+        Sender = sender,
         VideoPath = video,
         VideoParams = RandomVideoParameters,
 
@@ -954,6 +963,17 @@ namespace AbevBot
       }
     }
 
+    public static void ReplayNotification(Notification notif)
+    {
+      notif.Reset();
+      lock (PastNotifications)
+      {
+        PastNotifications.Remove(notif);
+        MainWindow.I.UpdatePastNotificationQueue(notif, true);
+      }
+      AddNotification(notif);
+    }
+
     public static void Skip(Notification notif)
     {
       if (notif is null) { return; }
@@ -980,6 +1000,16 @@ namespace AbevBot
             break;
           }
         }
+      }
+    }
+
+    public static void AddPastNotification(Notification notif)
+    {
+      lock (PastNotifications)
+      {
+        notif.UpdateControl();
+        PastNotifications.Add(notif);
+        MainWindow.I.UpdatePastNotificationQueue(notif, false);
       }
     }
   }
