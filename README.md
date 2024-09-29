@@ -8,7 +8,7 @@ The bots source code is modular - the functionalities are divided among .cs file
 The bot uses Windows Presentation Foundation (WPF, an UI framework) to open configuration window. WPF only supports Windows. The configuration window is used for easy control over most of its features while the bot is running (without restarts). The settings are saved into local database and loaded on each startup. If you don't know what the control element is doing try hovering over it to see the tooltip message.<br>
 <p align="center"><img src="ReadmeImages/Window.png" alt="Bots window"></p>
 
-## **Bots Configuration**
+## **Bot Configuration**
 Bots configuration is carried out in:
 - `Secrets.ini` file - Twitch app data: customer ID, passwords, etc.,
 - `Config.ini` file - channel name, bot notifications configuration, etc.,
