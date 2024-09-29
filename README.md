@@ -3,38 +3,39 @@ Programmed with C# on .NET 7.<br>
 Requires .NET 7 SDK (or newer) to build: https://dotnet.microsoft.com/download.<br>
 To run the bot, .NET Desktop Runtime 7 (or newer) is required https://dotnet.microsoft.com/en-us/download/dotnet/7.0. It's included in the SDK, but if you just downloaded bot's release package and don't need entire SDK, the runtime will be sufficient.
 
-The bot sourcecode is modular - the functionalities are divided among .cs files.<br>
-The bot uses Windows Presentation Foundation (WPF, an UI framework) to open bot's configuration window. The window should also be used as OBS input (the 'greenscreen' part of the window) for capturing displayed notifications.<br>
-Because WPF is used can be built only for Windows.
-<p align="center"><img src="ReadmeImages/Window.png" alt="Bot's window"></p>
+The bots source code is modular - the functionalities are divided among .cs files.<br>
 
-To remove the 'greenscreen', chroma key filter for green and similarity value ~340 should be added to the OBS input.<br>
-The 'greenscreen' solution is not perfect and will affect the display of videos and clips that use the color green.
+The bot uses Windows Presentation Foundation (WPF, an UI framework) to open configuration window. WPF only supports Windows. The configuration window is used for easy control over most of its features while the bot is running (without restarts). The settings are saved into local database and loaded on each startup. If you don't know what the control element is doing try hovering over it to see the tooltip message.<br>
+<p align="center"><img src="ReadmeImages/Window.png" alt="Bots window"></p>
 
-Instead of using window display with 'greenscreen' filter as OBS input you can use browser source (<i>currently in beta phase - some functionalities may not work!</i>) hosted by the bot at http://127.0.0.1:40000. Or use "server/client.html" file located in the main bot directory as OBS browser source from local file (checkbox at the top when adding new browser source).  
-<p align="center"><img src="ReadmeImages/OBSBrowserInput.png" alt="OBS browser input configuration" height="300"></p>
+## **Bots Configuration**
+Bots configuration is carried out in:
+- `Secrets.ini` file - Twitch app data: customer ID, passwords, etc.,
+- `Config.ini` file - channel name, bot notifications configuration, etc.,
+- `ResponseMessages.csv` file - automated response messages.
 
-The bot's control elements are located on the left side of the window.<br>
-They can be used to control the behavior of the bot while it is running (without restarts).<br>
-If you don't know what the control element is doing try hovering over it to see the tooltip message.
-
-Bot's configuration is carried out in:
-- `Secrets.ini` (Twitch app data: customer ID, passwords, etc.),
-- `Config.ini` (channel name, bot notifications configuration, etc.),
-- `ResponseMessages.csv` (automated response messages).
-
-Configuration files (`Secrets.ini`, `Config.ini`, etc.) are generated automatically when the bot is lanuched.<br>
+Configuration files (`Secrets.ini`, `Config.ini`, etc.) are generated automatically when the bot is launched. If the files are missing run the bot once for them to be generated.<br>
 Changes in `Config.ini` and `ResponseMessages.csv` files are hot reloaded (no bot restart is required to load changes).<br>
-Setting up the bot can be overwhelming to do everything at once - check out the 'Required information' sections in the readme to get started with essentials.<br>
-The steps required to configure the bot's functionalities are described in the configuration files.<br>
-Additional options can be configured later and should not require more than 10 minutes per seciton.
+Setting up the bot can be overwhelming to do everything at once - check out the [Required information](#required-information) section in the readme to get started with essentials.<br>
+The steps required to configure the bots functionalities are described in the configuration files.<br>
+Additional options can be configured later and should not require more than 10 minutes per section.
 
 The bot uses SQL database file (`.db`) to save runtime bot data: OAuth tokens, bot control elements statuses, etc.<br>
 > [!warning]
 > ***DON'T SHARE THE `.db` and `Secrets.ini` FILES WITH ANYONE!***
 
-Chatters data is stored in `.chatters` file.<br>
-Both files are generated automatically when the bot is launched.
+Chatters data is stored in `.chatters` file.
+
+## **OBS configuration**
+The bot offers two possibilities for presenting received notifications in OBS:
+  - Adding browser source from local file
+  <p align="center"><img src="ReadmeImages/OBSBrowserInput2.png" alt="OBS browser input configuration" height="300"></p>
+
+  - Adding browser source from locally hosted server (by the bot) at http://127.0.0.1:40000<br>
+  <p align="center"><img src="ReadmeImages/OBSBrowserInput.png" alt="OBS browser input configuration" height="300"></p>
+
+For the best results I suggest setting up width and height of the OBS browser source to resolution of your monitor. Most commonly used resolution is 1920x1080 (width: 1920, height: 1080).<br>
+Browser source from local file may be better option because OBS will open the bots website even when the bot is not running and it will wait for the bot to be started (using other approach may require refreshing browser source in OBS when the OBS is stared before the bot).<br>
 
 ## **Features**
 1. Integrates Twitch IRC chat:
@@ -71,18 +72,19 @@ Both files are generated automatically when the bot is launched.
     - Rude points (`!rude`) - chatters can point a chatter for being rude, <p align="center"><img src="ReadmeImages/MinigameRude.png" width="300px" alt="Rude minigame"></p>
     - Vanish (`!vanish`) - self timeout for the chatter, also deletes chatter messages.
     - Hug (`!hug`) - just a friendly hug to other person.
-    - Counters (`!counter`) - on screen counters. Hosted at "http://127.0.0.1:40000/counter" or by opening "server/counter.html" file. <p align="center"><img src="ReadmeImages/Counters.png" width="300px" alt="Counters"></p>
+    - Counters (`!counter`) - on screen counters. Hosted at "http://127.0.0.1:40000/counter" or by opening "server/counter.html" file. Adding it to OBS is the same as described in [OBS configuration](#obs-configuration), just the address/path is different. <p align="center"><img src="ReadmeImages/Counters.png" width="300px" alt="Counters"></p>
 
 4. Discord integration:
     - Sends message to the Discord channel when the stream goes live.
 
-## **Required information in Secrets.ini**
+## **Required information**
+### Secrets.ini
 The file will be generated automatically the first time the bot is launched.
   - Bot's name (`Name`) - Name of the registered application on https://dev.twitch.tv/console/apps.
   - Bot's client ID (`CustomerID`) - Customer ID of the registered application on https://dev.twitch.tv/console/apps.
   - Bot's password (`Password`) - Customer password of the registered application on https://dev.twitch.tv/console/apps.
 <p align="center"><img src="ReadmeImages/BotLogin.png" width="600px" alt="Bot's Nick, ClientID and Password"></p>
 
-## **Required information in Config.ini**
+### Config.ini
 The file will be generated automatically the first time the bot is launched.
   - Channel name (`ChannelName`) - Name of the channel to connect to.
