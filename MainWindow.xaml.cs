@@ -461,6 +461,14 @@ public partial class MainWindow : Window
         n.UpdateControl();
         Notifications.AddNotification(n);
         break;
+
+      case "Message effect":
+        Notifications.CreateMessageEffectNotification("Chatter", "This is a test");
+        break;
+
+      case "Gigantify an emote":
+        Notifications.CreateGigantifyEmoteNotification("Chatter", "This is a test");
+        break;
     }
   }
 

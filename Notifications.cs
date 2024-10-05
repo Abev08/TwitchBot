@@ -64,6 +64,8 @@ namespace AbevBot
       {"Timeout", new(NotificationType.TIMEOUT)},
       {"Ban", new(NotificationType.BAN)},
       {"OnScreenCelebration", new(NotificationType.ONSCREENCELEBRATION)},
+      {"MessageEffect", new(NotificationType.MESSAGEEFFECT)},
+      {"GigantifyEmote", new(NotificationType.GIGANTIFYEMOTE)},
       {"Other", new(NotificationType.OTHER)}
     };
     private static readonly string[] NotificationData = new string[14];
@@ -616,6 +618,38 @@ namespace AbevBot
       AddNotification(new Notification(config, NotificationData));
     }
 
+    /// <summary> Creates and adds to queue chat message effect notification. </summary>
+    /// <param name="userName">Chatter name that fired up the event</param>
+    /// <param name="msg">Attached message</param>
+    public static void CreateMessageEffectNotification(string userName, string msg)
+    {
+      var config = Configs["MessageEffect"];
+      if (!config.Enable) return;
+
+      Array.Clear(NotificationData);
+      NotificationData[0] = userName;
+      NotificationData[7] = msg;
+
+      Chat.AddMessageToQueue(string.Format(config.ChatMessage, NotificationData));
+      AddNotification(new Notification(config, NotificationData));
+    }
+
+    /// <summary> Creates and adds to queue chat gigantify emote effect notification. </summary>
+    /// <param name="userName">Chatter name that fired up the event</param>
+    /// <param name="msg">Attached message</param>
+    public static void CreateGigantifyEmoteNotification(string userName, string msg)
+    {
+      var config = Configs["GigantifyEmote"];
+      if (!config.Enable) return;
+
+      Array.Clear(NotificationData);
+      NotificationData[0] = userName;
+      NotificationData[7] = msg;
+
+      Chat.AddMessageToQueue(string.Format(config.ChatMessage, NotificationData));
+      AddNotification(new Notification(config, NotificationData));
+    }
+
     private static void CreateVoicesPaste()
     {
       if (Chat.ResponseMessages.ContainsKey("!voices"))
@@ -1014,7 +1048,17 @@ namespace AbevBot
     }
   }
 
-  public enum NotificationType { FOLLOW, SUBSCRIPTION, SUBSCRIPTIONGIFT, CHEER, CHEERRANGE, RAID, REDEMPTION, TIMEOUT, BAN, ONSCREENCELEBRATION, OTHER }
+  public enum NotificationType
+  {
+    FOLLOW,
+    SUBSCRIPTION, SUBSCRIPTIONGIFT,
+    CHEER, CHEERRANGE,
+    RAID,
+    REDEMPTION,
+    TIMEOUT, BAN,
+    ONSCREENCELEBRATION, MESSAGEEFFECT, GIGANTIFYEMOTE,
+    OTHER
+  }
 
   public class NotificationsConfig
   {

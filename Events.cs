@@ -273,6 +273,12 @@ public static class Events
                       case "celebration":
                         Notifications.CreateOnScreenCelebrationNotification(userName, msg);
                         break;
+                      case "message_effect":
+                        Notifications.CreateMessageEffectNotification(userName, msg);
+                        break;
+                      case "gigantify_an_emote":
+                        Notifications.CreateGigantifyEmoteNotification(userName, msg);
+                        break;
                     }
                     LogEventToFile(message);
                     break;
