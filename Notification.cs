@@ -191,6 +191,7 @@ namespace AbevBot
       {
         Log.Warning("Maximum notification time reached, something went wrong, to not block other notificaitons force closing this one!");
         Stop();
+        NotPausable = false;
         return true;
       }
 
@@ -328,6 +329,7 @@ namespace AbevBot
       if (!Notifications.SkipNotification && (DateTime.Now - StartTime < MinimumNotificationTime)) return false;
       Stop(); // Just to be sure that everything is cleared out
 
+      NotPausable = false;
       return true; // return true when notification has ended
     }
 
@@ -489,8 +491,6 @@ namespace AbevBot
       VideoPaused = false;
       AudioStarted = false;
       AudioPaused = false;
-
-      NotPausable = false;
     }
   }
 }
