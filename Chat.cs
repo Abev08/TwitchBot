@@ -394,6 +394,32 @@ public static class Chat
     }
   }
 
+  /// <summary> Adds multiple chat messages to the queue. </summary>
+  /// <param name="messages">Messages to be sent</param>
+  public static void AddMessagesToQueue(List<string> messages)
+  {
+    if (!IsStarted) return;
+
+    var sb = new StringBuilder();
+    var channelName = Config.Data[Config.Keys.ChannelName];
+
+    lock (MessageQueue)
+    {
+      foreach (var msg in messages)
+      {
+        if (msg is null || msg.Length == 0 || msg.Length > MESSAGE_SENT_MAX_LEN) { continue; } // Skip
+
+        sb.Clear();
+        sb.Append("PRIVMSG #");
+        sb.Append(channelName);
+        sb.Append(" :");
+        sb.Append(msg);
+        sb.Append("\r\n");
+        MessageQueue.Add(sb.ToString());
+      }
+    }
+  }
+
   /// <summary> Gets current chatters. </summary>
   /// <returns>List of chatters that are connected to the chat</returns>
   public static List<(long id, string name)> GetChatters()

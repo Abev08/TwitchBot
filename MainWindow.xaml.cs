@@ -213,6 +213,10 @@ public partial class MainWindow : Window
           sw.Restart();
         }
 
+        // YouTube
+        YouTube.CheckActiveStream();
+        YouTube.PollChatMessages();
+
         Thread.Sleep(100);
       }
     })

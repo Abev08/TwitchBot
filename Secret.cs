@@ -48,7 +48,12 @@ public static class Secret
     /// <summary> Discord OAuth token to authenticate the bot. </summary>
     DiscordOAuthToken,
     /// <summary> Discord OAuth refresh token to refresh OAuth token when it expiries. </summary>
-    DiscordOAuthRefreshToken
+    DiscordOAuthRefreshToken,
+
+    /// <summary> YouTube channel ID, can be read from: https://www.youtube.com/account_advanced </summary>
+    YouTubeChannelID,
+    /// <summary> YouTube API key, can be generated at: https://console.developers.google.com </summary>
+    YouTubeAPIKey,
   }
 
   private const string FILENAME = "Secrets.ini";
