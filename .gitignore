@@ -3,7 +3,7 @@
 ##
 ## Get latest from https://github.com/github/gitignore/blob/main/VisualStudio.gitignore
 
-# Do not add user specyfic files
+# Skip user specific files
 Secrets.ini
 Secrets_example.ini
 Config.ini
@@ -19,6 +19,7 @@ Doc/*
 eventlog_*.txt
 *.db
 *.db-journal
+log*/
 
 # User-specific files
 *.rsuser

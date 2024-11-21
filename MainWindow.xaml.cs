@@ -37,7 +37,9 @@ public partial class MainWindow : Window
     // Catch all unhandled exceptions and print them into a file
     AppDomain.CurrentDomain.UnhandledException += (sender, ex) =>
     {
-      LogError("UnhandledException", ex.ExceptionObject as Exception);
+      var exc = ex.ExceptionObject as Exception;
+      LogError($"UnhandledException: {exc.Message}\r\n{exc.StackTrace}");
+      Log.Fatal(exc, "");
     };
 
     // Configure the logger
@@ -46,6 +48,9 @@ public partial class MainWindow : Window
       .MinimumLevel.Debug()
 #endif
       .WriteTo.Console()
+      .WriteTo.File("logs/log_.log",
+        restrictedToMinimumLevel: Serilog.Events.LogEventLevel.Error,
+        rollingInterval: RollingInterval.Day)
       .CreateLogger();
 
     // Free console window on program close
@@ -60,7 +65,9 @@ public partial class MainWindow : Window
       FreeConsole();
     };
 
-    Log.Information("Hi. I'm {AbevBot}.", "AbevBot");
+    Log.Error("Hi. I'm {AbevBot}.", "AbevBot");
+
+    CleanUpLogFiles();
 
     // Read Secrets.ini and Config.ini
     bool error = false;
@@ -247,13 +254,6 @@ public partial class MainWindow : Window
     writer.WriteLine(DateTime.Now);
     writer.WriteLine(msg);
     writer.WriteLine();
-  }
-
-  /// <summary> Writes exception message to 'lasterror.log' file. </summary>
-  /// <param name="ex">Exception object</param>
-  public static void LogError(string header, Exception ex)
-  {
-    LogError($"{header}: {ex.Message}\r\n{ex.StackTrace}");
   }
 
   private void PauseNotificationsClicked(object sender, RoutedEventArgs e)
@@ -520,6 +520,30 @@ public partial class MainWindow : Window
   private void TestNotificationValue_TextInput(object sender, TextCompositionEventArgs e)
   {
     if (!int.TryParse(e.Text, out _)) { e.Handled = true; }
+  }
+
+  private static void CleanUpLogFiles()
+  {
+    Log.Information("Cleaning up log files.");
+
+    // Delete all of the old eventlog files
+    var dir = new DirectoryInfo(Directory.GetCurrentDirectory());
+    foreach (var file in dir.GetFiles())
+    {
+      if (file.Name.StartsWith("eventlog_") && file.Exists) { file.Delete(); }
+    }
+
+    // Check new log files if any of them is old and should be deleted
+    dir = new DirectoryInfo(Directory.GetCurrentDirectory() + "/logs");
+    if (!dir.Exists) { dir.Create(); }
+    else
+    {
+      var oldLogDuration = TimeSpan.FromDays(7);
+      foreach (var file in dir.GetFiles())
+      {
+        if (DateTime.Now - file.CreationTime >= oldLogDuration) { file.Delete(); }
+      }
+    }
   }
 }
 

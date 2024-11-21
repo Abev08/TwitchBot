@@ -233,7 +233,7 @@ public static class AccessTokens
         return true;
       }
     }
-    else { Log.Error("Twitch OAuth token validation failed."); }
+    else { Log.Warning("Twitch OAuth token validation failed."); }
 
     return false;
   }

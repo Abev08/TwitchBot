@@ -38,21 +38,26 @@ public static class YouTube
     var apiKey = Secret.Data[Secret.Keys.YouTubeAPIKey];
     if (channelID is null || channelID.Length == 0 || apiKey is null || apiKey.Length == 0) { return; }
     StreamCheckActive = true;
+    Log.Error("YouTube stream active check activated"); // Test log
 
     Task.Run(() =>
     {
-      string response;
-      var uri = $"https://www.googleapis.com/youtube/v3/search?part=snippet&channelId={channelID}&eventType=live&type=video&key={apiKey}";
       try
       {
+        var uri = $"https://www.googleapis.com/youtube/v3/search?part=snippet&channelId={channelID}&eventType=live&type=video&key={apiKey}";
         using HttpRequestMessage request = new(new HttpMethod("GET"), uri);
         request.Headers.Add("Accept", "application/json");
-        response = Notifications.Client.Send(request).Content.ReadAsStringAsync().Result;
+        var response = Notifications.Client.Send(request).Content.ReadAsStringAsync().Result;
         if (response is null || response.Length == 0) { StreamActive = false; return; }
         var resp = JsonNode.Parse(response);
         if (resp is null) { StreamActive = false; return; }
         var items = resp["items"];
-        if (items is null || (items is JsonArray && ((JsonArray)items).Count == 0)) { StreamActive = false; return; }
+        if (items is null || (items is JsonArray && ((JsonArray)items).Count == 0))
+        {
+          Log.Error("YouTube stream active check, received 0 items (videos).");
+          StreamActive = false;
+          return;
+        }
 
         // Get video ID of the 1st element, it's an assumption that there is only 1 stream active
         var vidID = items[0]["id"]["videoId"];
@@ -70,13 +75,18 @@ public static class YouTube
         items = resp["items"];
         if (items is null || (items is JsonArray && ((JsonArray)items).Count == 0)) { StreamActive = false; return; }
         var chatID = items[0]["liveStreamingDetails"]["activeLiveChatId"];
-        if (chatID is null) { StreamActive = false; return; }
+        if (chatID is null)
+        {
+          Log.Error("YouTube stream active check, chat ID is missing in the video HUH.");
+          StreamActive = false;
+          return;
+        }
 
         ChatID = chatID.ToString();
         MessagesPollUri = $"https://youtube.googleapis.com/youtube/v3/liveChat/messages?liveChatId={ChatID}&part=snippet%2CauthorDetails&key={apiKey}";
         MessagesPollFailCounter = 0;
         MessagesPollFirstPoll = true;
-        Log.Information("YouTube, successfully received chat ID");
+        Log.Error("YouTube successfully received chat ID"); // For now as an error
 
         StreamActive = true;
       }
@@ -95,9 +105,11 @@ public static class YouTube
     if (MessagesPollUri is null || MessagesPollUri.Length == 0) { return; }
     if (DateTime.Now - MessagesPollLast < MessagesPollTimeout) { return; }
     MessagesPollActive = true;
+    Log.Error("YouTube message poll activated"); // Test log
 
-    if (MessagesPollFailCounter >= 5)
+    if (MessagesPollFailCounter >= 3)
     {
+      Log.Error("YouTube message poll reached maximum failed attempts");
       MessagesPollUri = string.Empty;
       StreamActive = false;
       return;
@@ -105,12 +117,11 @@ public static class YouTube
 
     Task.Run(() =>
     {
-      string response;
       try
       {
         using HttpRequestMessage request = new(new HttpMethod("GET"), MessagesPollUri);
         request.Headers.Add("Accept", "application/json");
-        response = Notifications.Client.Send(request).Content.ReadAsStringAsync().Result;
+        var response = Notifications.Client.Send(request).Content.ReadAsStringAsync().Result;
         if (response is null || response.Length == 0) { MessagesPollFailCounter++; return; }
         var resp = JsonNode.Parse(response);
         if (resp is null) { MessagesPollFailCounter++; return; }
@@ -132,7 +143,16 @@ public static class YouTube
               messages.Add(string.Concat("[YT] ", chatter, ": ", msg));
             }
           }
-          if (messages.Count > 0) { Chat.AddMessagesToQueue(messages); }
+          if (messages.Count > 0)
+          {
+            foreach (var msg in messages) { Console.WriteLine("> {0}", msg); }
+            // Chat.AddMessagesToQueue(messages);
+          }
+          else
+          {
+            // 0 messages, that could be an error, for now log it
+            Log.Error("YouTube message poll, 0 chat messages received. Response: {resp}", response);
+          }
         }
         else { MessagesPollFirstPoll = false; }
 
@@ -140,6 +160,7 @@ public static class YouTube
         var apiKey = Secret.Data[Secret.Keys.YouTubeAPIKey];
         MessagesPollUri = $"https://youtube.googleapis.com/youtube/v3/liveChat/messages?liveChatId={ChatID}&part=snippet%2CauthorDetails&pageToken={nextPage}&key={apiKey}";
         MessagesPollFailCounter = 0;
+        Log.Error("YouTube message poll successful"); // Test log
       }
       catch (Exception ex)
       {

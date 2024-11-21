@@ -380,16 +380,7 @@ public static class Events
 
   public static void LogEventToFile(string msg)
   {
-    try
-    {
-      var date = DateTime.Now;
-      var fileName = string.Concat("eventlog_",
-        date.Day.ToString("00"), "_", date.Month.ToString("00"), "_", date.Year.ToString("0000"),
-        ".log");
-      System.IO.File.AppendAllText(fileName, $"{date:G}\r\n");
-      System.IO.File.AppendAllText(fileName, msg);
-      System.IO.File.AppendAllText(fileName, "\r\n\r\n");
-    }
-    catch { } // For now I don't care about the error, it's eventlog mostly for testing
+    // It's mostly for testing, in the future it should be removed
+    Log.Error("Unhandled event message: {msg}", msg);
   }
 }
