@@ -28,6 +28,7 @@ public static class Config
     ChannelRedemption_RandomVideo_Size, ChannelRedemption_RandomVideo_Position,
 
     ChannelRedemption_ID, ChannelRedemption_KeyAction, ChannelRedemption_KeyActionType, ChannelRedemption_KeyActionAfterTime, ChannelRedemption_KeyActionAfterTimeType, ChannelRedemption_ChatMessage, ChannelRedemption_TextToDisplay, ChannelRedemption_TextPosition, ChannelRedemption_TextToSpeech, ChannelRedemption_SoundToPlay, ChannelRedemption_VideoToPlay, ChannelRedemption_MarkAsFulfilled,
+    YouTubeChatMessagePrefix,
     msg
   };
 
@@ -680,6 +681,8 @@ public static class Config
       writer.WriteLine(string.Concat(Keys.GambaMinimalChatMessages.ToString(), " = false"));
       writer.WriteLine("; Use minimal fight minigame chat messages (ugly but less spammy). Default: false");
       writer.WriteLine(string.Concat(Keys.FightMinimalChatMessages.ToString(), " = false"));
+      writer.WriteLine("; Prefix of YouTube chat message resended in Twitch chat.");
+      writer.WriteLine(string.Concat(Keys.YouTubeChatMessagePrefix.ToString(), " = YT"));
 
       writer.WriteLine();
       writer.WriteLine("; Hotkeys configuration");

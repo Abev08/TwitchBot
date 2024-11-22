@@ -133,6 +133,10 @@ public static class YouTube
 
         if (!MessagesPollFirstPoll) // Skip 1st poll of the messages
         {
+          string msgPrefix = string.Empty;
+          try { msgPrefix = Config.Data[Config.Keys.YouTubeChatMessagePrefix]; }
+          catch { }
+
           List<string> messages = new();
           foreach (var item in items)
           {
@@ -140,7 +144,7 @@ public static class YouTube
             var msg = Regex.Unescape(item["snippet"]["displayMessage"].ToString());
             if (chatter?.Length > 0 && msg?.Length > 0)
             {
-              messages.Add(string.Concat("YT ", chatter, ": ", msg));
+              messages.Add(string.Concat(msgPrefix, chatter, ": ", msg));
             }
           }
           if (messages.Count > 0) { Chat.AddMessagesToQueue(messages); }
