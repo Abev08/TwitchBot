@@ -19,11 +19,12 @@ public static class YouTube
   private static bool StreamActive;
   private static string ChatID;
   private static DateTime StreamCheckLast = DateTime.MinValue;
-  private static readonly Duration StreamCheckTimeout = TimeSpan.FromMinutes(5);
+  private static readonly Duration StreamCheckTimeout = TimeSpan.FromMinutes(2);
   private static bool StreamCheckActive;
   private static DateTime MessagesPollLast = DateTime.MinValue;
   private static Duration MessagesPollTimeout = TimeSpan.FromSeconds(60);
-  private static readonly Duration MessagesPollMinTimeout = TimeSpan.FromSeconds(60);
+  private static readonly Duration MessagesPollMinTimeout = TimeSpan.FromMinutes(1);
+  private static readonly Duration MessagesPollMaxTimeout = TimeSpan.FromMinutes(10);
   private static bool MessagesPollActive, MessagesPollFirstPoll;
   private static string MessagesPollUri;
   private static int MessagesPollFailCounter;
@@ -31,7 +32,7 @@ public static class YouTube
   public static void CheckActiveStream()
   {
     if (StreamActive || StreamCheckActive) { return; }
-    if (DateTime.Now - StreamCheckLast < StreamCheckTimeout) { return; }
+    if ((DateTime.Now - StreamCheckLast) < StreamCheckTimeout) { return; }
     StreamCheckLast = DateTime.Now;
 
     var channelID = Secret.Data[Secret.Keys.YouTubeChannelID];
@@ -86,9 +87,9 @@ public static class YouTube
         MessagesPollUri = $"https://youtube.googleapis.com/youtube/v3/liveChat/messages?liveChatId={ChatID}&part=snippet%2CauthorDetails&key={apiKey}";
         MessagesPollFailCounter = 0;
         MessagesPollFirstPoll = true;
-        Log.Error("YouTube successfully received chat ID"); // For now as an error
-
+        MessagesPollActive = false; // Just to be sure
         StreamActive = true;
+        Log.Error("YouTube successfully received chat ID"); // For now as an error
       }
       catch (Exception ex)
       {
@@ -103,7 +104,7 @@ public static class YouTube
   {
     if (!StreamActive || MessagesPollActive) { return; }
     if (MessagesPollUri is null || MessagesPollUri.Length == 0) { return; }
-    if (DateTime.Now - MessagesPollLast < MessagesPollTimeout) { return; }
+    if ((DateTime.Now - MessagesPollLast) < MessagesPollTimeout) { return; }
     MessagesPollActive = true;
     Log.Error("YouTube message poll activated"); // Test log
 
@@ -111,22 +112,26 @@ public static class YouTube
     {
       Log.Error("YouTube message poll reached maximum failed attempts");
       MessagesPollUri = string.Empty;
+      MessagesPollActive = false;
       StreamActive = false;
       return;
     }
 
     Task.Run(() =>
     {
+      string response = string.Empty;
       try
       {
         using HttpRequestMessage request = new(new HttpMethod("GET"), MessagesPollUri);
         request.Headers.Add("Accept", "application/json");
-        var response = Notifications.Client.Send(request).Content.ReadAsStringAsync().Result;
+        response = Notifications.Client.Send(request).Content.ReadAsStringAsync().Result;
         if (response is null || response.Length == 0) { MessagesPollFailCounter++; return; }
+        // if (response.Length < 3000) { Log.Error("YouTube poll response: {resp}", response); } // Maybe some short message is being sent that indicates an error?
         var resp = JsonNode.Parse(response);
         if (resp is null) { MessagesPollFailCounter++; return; }
         var interval = TimeSpan.FromMilliseconds(resp["pollingIntervalMillis"].GetValue<double>());
-        if (interval > MessagesPollMinTimeout) { MessagesPollTimeout = interval; }
+        Log.Error("YouTube requested poll interval of: {val}", interval);
+        if (interval > MessagesPollMinTimeout && interval < MessagesPollMaxTimeout) { MessagesPollTimeout = interval; }
         var nextPage = resp["nextPageToken"].ToString();
         var items = resp["items"].AsArray();
         if (items is null) { MessagesPollFailCounter++; return; }
@@ -140,19 +145,33 @@ public static class YouTube
           List<string> messages = new();
           foreach (var item in items)
           {
-            var chatter = item["authorDetails"]["displayName"].ToString();
-            var msg = Regex.Unescape(item["snippet"]["displayMessage"].ToString());
-            if (chatter?.Length > 0 && msg?.Length > 0)
-            {
-              messages.Add(string.Concat(msgPrefix, " ", chatter, ": ", msg));
-            }
+            // Message snippet
+            var snippet = item["snippet"];
+            if (snippet is null) { continue; }
+            // Message type
+            var snippetType = snippet["type"];
+            if (snippetType is null || snippetType.ToString() == "messageDeletedEvent") { continue; } // Skip deleted messages
+            // Message author (chatter)
+            var temp = item["authorDetails"];
+            if (temp is null) { continue; }
+            temp = temp["displayName"];
+            if (temp is null) { continue; }
+            var chatter = Regex.Unescape(temp.ToString());
+            if (chatter is null || chatter.Length == 0) { continue; }
+            // Message text
+            temp = snippet["displayMessage"];
+            if (temp is null) { continue; }
+            var msg = Regex.Unescape(temp.ToString());
+            if (msg is null || msg.Length == 0) { continue; }
+
+            messages.Add(string.Concat(msgPrefix, " ", chatter, ": ", msg));
           }
-          if (messages.Count > 0) { Chat.AddMessagesToQueue(messages); }
-          else
+          if (messages.Count > 0)
           {
-            // 0 messages, that could be an error, for now log it
-            Log.Error("YouTube message poll, 0 chat messages received. Response: {resp}", response);
+            Chat.AddMessagesToQueue(messages);
           }
+          // 0 messages, that could be an error, for now log it
+          else { Log.Error("YouTube message poll, 0 chat messages received. Response: {resp}", response); }
         }
         else { MessagesPollFirstPoll = false; }
 
@@ -164,7 +183,7 @@ public static class YouTube
       }
       catch (Exception ex)
       {
-        Log.Error("YouTube stream message poll failed, error: {msg}", ex);
+        Log.Error("YouTube stream message poll failed, error: {msg}\nresponse: {resp}", ex, response);
         MessagesPollFailCounter++;
       }
       finally
