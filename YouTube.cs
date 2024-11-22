@@ -143,11 +143,7 @@ public static class YouTube
               messages.Add(string.Concat("[YT] ", chatter, ": ", msg));
             }
           }
-          if (messages.Count > 0)
-          {
-            foreach (var msg in messages) { Console.WriteLine("> {0}", msg); }
-            // Chat.AddMessagesToQueue(messages);
-          }
+          if (messages.Count > 0) { Chat.AddMessagesToQueue(messages); }
           else
           {
             // 0 messages, that could be an error, for now log it
