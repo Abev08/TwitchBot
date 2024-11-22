@@ -144,7 +144,7 @@ public static class YouTube
             var msg = Regex.Unescape(item["snippet"]["displayMessage"].ToString());
             if (chatter?.Length > 0 && msg?.Length > 0)
             {
-              messages.Add(string.Concat(msgPrefix, chatter, ": ", msg));
+              messages.Add(string.Concat(msgPrefix, " ", chatter, ": ", msg));
             }
           }
           if (messages.Count > 0) { Chat.AddMessagesToQueue(messages); }
