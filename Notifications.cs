@@ -935,8 +935,8 @@ namespace AbevBot
       );
       using HttpRequestMessage request = new(HttpMethod.Patch, uri);
       request.Content = new StringContent("""{ "status": "FULFILLED" }""", Encoding.UTF8, "application/json");
-      request.Headers.Add("Authorization", $"Bearer {Secret.Data[Secret.Keys.OAuthToken]}");
-      request.Headers.Add("Client-Id", Secret.Data[Secret.Keys.CustomerID]);
+      request.Headers.Add("Authorization", $"Bearer {Secret.Data[Secret.Keys.TwitchOAuthToken]}");
+      request.Headers.Add("Client-Id", Secret.Data[Secret.Keys.TwitchClientID]);
 
       string resp;
       try { resp = Client.Send(request).Content.ReadAsStringAsync().Result; }      // Assume that it worked
@@ -953,8 +953,8 @@ namespace AbevBot
       );
       using HttpRequestMessage request = new(HttpMethod.Put, uri);
       request.Content = new StringContent("""{"is_active":true}""", Encoding.UTF8, "application/json");
-      request.Headers.Add("Authorization", $"Bearer {Secret.Data[Secret.Keys.OAuthToken]}");
-      request.Headers.Add("Client-Id", Secret.Data[Secret.Keys.CustomerID]);
+      request.Headers.Add("Authorization", $"Bearer {Secret.Data[Secret.Keys.TwitchOAuthToken]}");
+      request.Headers.Add("Client-Id", Secret.Data[Secret.Keys.TwitchClientID]);
 
       try
       {

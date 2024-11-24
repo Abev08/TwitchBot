@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Net.Http;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 
@@ -271,6 +273,31 @@ namespace AbevBot
     }
 
     public override string ToString() { return Name; }
+
+    /// <summary> Gets chatter Twitch ID from provided name. </summary>
+    public static string GetChatterID(string name)
+    {
+      try
+      {
+        string uri = $"https://api.twitch.tv/helix/users?login={name}";
+        using HttpRequestMessage request = new(HttpMethod.Get, uri);
+        request.Headers.Add("Authorization", $"Bearer {Secret.Data[Secret.Keys.TwitchOAuthToken]}");
+        request.Headers.Add("Client-Id", Secret.Data[Secret.Keys.TwitchClientID]);
+
+        var resp = Notifications.Client.Send(request);
+        if (resp.StatusCode != System.Net.HttpStatusCode.OK) { throw new Exception("Received status code: " + resp.StatusCode); }
+        var response = JsonNode.Parse(resp.Content.ReadAsStringAsync().Result)["data"].AsArray();
+        if (response.Count == 0) { throw new Exception("Received 0 users."); }
+        if (response.Count != 1) { throw new Exception("Received multiple users."); }
+        var user = response[0];
+        if (user["display_name"].ToString().ToLower() != name.ToLower()) { throw new Exception("Received data for different user."); }
+        var id = user["id"].ToString();
+        if (id is null || id.Length == 0) { throw new Exception("User data is missing an ID"); }
+        return id;
+      }
+      catch (Exception ex) { Log.Error("Could get chatter \"{name}\" ID, error: {ex}", name, ex); }
+      return "";
+    }
   }
 
   public class SkipSongChatter

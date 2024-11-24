@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Security.Cryptography;
+using System.Text;
 
 using Serilog;
 
@@ -12,16 +14,22 @@ public static class Secret
   /// <summary> Secret keys that should be secret. </summary>
   public enum Keys
   {
-    /// <summary> Bot's name. Probably not relevant but should be set to the same as in App Manager in https://dev.twitch.tv/console/apps. </summary>
-    Name,
-    /// <summary> Bot's Customer ID. Read it from https://dev.twitch.tv/console/apps. </summary>
-    CustomerID,
-    /// <summary> Bot's Password. Read it from https://dev.twitch.tv/console/apps. </summary>
-    Password,
-    /// <summary> OAuth token to authenticate the bot. </summary>
-    OAuthToken,
-    /// <summary> OAuth refresh token to refresh OAuth token when it expiries. </summary>
-    OAuthRefreshToken,
+    /// <summary> Twitch bot name. Probably not relevant but should be set to the same as in App Manager in https://dev.twitch.tv/console/apps. </summary>
+    TwitchName,
+    /// <summary> Twitch bot client ID. Read it from https://dev.twitch.tv/console/apps. </summary>
+    TwitchClientID,
+    /// <summary> Twitch bot password. Read it from https://dev.twitch.tv/console/apps. </summary>
+    TwitchPassword,
+    /// <summary> Twitch main bot OAuth token. </summary>
+    TwitchOAuthToken,
+    /// <summary> Twitch main bot OAuth refresh token to refresh OAuth token when it expiries. </summary>
+    TwitchOAuthRefreshToken,
+    /// <summary> Twitch sub bot OAuth token. Used as an account for posting chat messages. </summary>
+    TwitchSubOAuthToken,
+    /// <summary> Twitch sub bot OAuth refresh token to refresh OAuth token when it expiries. </summary>
+    TwitchSubOAuthRefreshToken,
+    /// <summary> Should Twitch chat bot use sub account for posting chat messages? "1" == enabled </summary>
+    TwitchUseTwoAccounts,
 
     /// <summary> TikTok Session ID needed for TikTok API calls. </summary>
     TikTokSessionID,
@@ -57,6 +65,7 @@ public static class Secret
   }
 
   private const string FILENAME = "Secrets.ini";
+  private const string FILENAMEEXAMPLE = "Secrets_example.ini";
 
   private static Dictionary<Keys, string> _Data;
   public static Dictionary<Keys, string> Data
@@ -80,7 +89,7 @@ public static class Secret
     Log.Information("Reading {file} file.", FILENAME);
 
     // Create example Secrets.ini
-    FileInfo secretsFile = new("Secrets_example.ini");
+    FileInfo secretsFile = new(FILENAMEEXAMPLE);
     CreateSecretsFile(secretsFile, true);
 
     secretsFile = new(FILENAME);
@@ -91,6 +100,7 @@ public static class Secret
     }
     else
     {
+      bool oldTwitchNamesUsed = false;
       using (StreamReader reader = new(secretsFile.FullName))
       {
         string line;
@@ -112,21 +122,60 @@ public static class Secret
           {
             switch ((Keys)key)
             {
+              case Keys.TwitchUseTwoAccounts:
+                if (bool.TryParse(text[1].Trim(), out var val) && val) { Data[Keys.TwitchUseTwoAccounts] = "1"; }
+                break;
               default:
                 if (Data.ContainsKey((Keys)key)) { Data[(Keys)key] = text[1].Trim(); }
                 else { Log.Warning("Not recognized key '{key}' on line {index} in {file} file.", text[0], lineIndex, FILENAME); }
                 break;
             }
           }
-          else { Log.Warning("Not recognized key '{key}' on line {index} in {file} file.", text[0], lineIndex, FILENAME); }
+          else
+          {
+            Log.Warning("Not recognized key '{key}' on line {index} in {file} file.", text[0], lineIndex, FILENAME);
+            if (text[0] == "Name" || text[0] == "CustomerID" || text[0] == "Password") { oldTwitchNamesUsed = true; }
+          }
         }
       }
+      if (oldTwitchNamesUsed)
+      {
+        System.Windows.MessageBox.Show("Old Twitch data naming detected in Secrets.ini.\nPlease change to current one and restart the bot", "AbevBot: Old Twitch data in Secrets.ini");
+      }
+
 
       // Check if all needed data was read
-      if (Data[Keys.Name].Length == 0 || Data[Keys.CustomerID].Length == 0 || Data[Keys.Password].Length == 0)
+      if (Data[Keys.TwitchName].Length == 0 || Data[Keys.TwitchClientID].Length == 0 || Data[Keys.TwitchPassword].Length == 0)
       {
-        Log.Error("Missing required information in {file} file.\r\nLook inside \"Required information in {file}\" section in README for help.\r\nYou can delete {file} file to generate new one. ! WARNING - ALL DATA INSIDE IT WILL BE LOST !", FILENAME, FILENAME, FILENAME);
+        Log.Error(string.Concat("Missing required information in {file} file.\r\n",
+        "Look inside \"Required information in {file}\" section in README for help.\r\n",
+        "{fileExample} was generated that can be used as a reference.\r\n",
+        "You can delete {file} file to generate new one. ! WARNING - ALL DATA INSIDE IT WILL BE LOST !"
+        ), FILENAME, FILENAME, FILENAMEEXAMPLE, FILENAME);
         return true;
+      }
+      else
+      {
+        // Check if TwitchClientID or TwitchPassword has changed since previous run
+        StringBuilder sb = new();
+        foreach (var b in SHA256.HashData(Encoding.UTF8.GetBytes(Data[Keys.TwitchClientID]))) { sb.Append(b.ToString("x2")); }
+        var clientHash = sb.ToString();
+        sb.Clear();
+        foreach (var b in SHA256.HashData(Encoding.UTF8.GetBytes(Data[Keys.TwitchPassword]))) { sb.Append(b.ToString("x2")); }
+        var passwordHash = sb.ToString();
+        var previousClientHash = Database.GetValueFromConfig(Database.Keys.TwitchClientSHA);
+        var previousPasswordHash = Database.GetValueFromConfig(Database.Keys.TwitchPasswordSHA);
+        if (clientHash != previousClientHash || passwordHash != previousPasswordHash)
+        {
+          // The bot data has changed, reset saved Twitch OAuth tokens
+          Data[Keys.TwitchOAuthToken] = string.Empty;
+          Data[Keys.TwitchOAuthRefreshToken] = string.Empty;
+          Data[Keys.TwitchSubOAuthToken] = string.Empty;
+          Data[Keys.TwitchSubOAuthRefreshToken] = string.Empty;
+          // Also store current client and password hash
+          _ = Database.UpdateValueInConfig(Database.Keys.TwitchClientSHA, clientHash).Result;
+          _ = Database.UpdateValueInConfig(Database.Keys.TwitchPasswordSHA, passwordHash).Result;
+        }
       }
     }
 
@@ -167,10 +216,21 @@ public static class Secret
       writer.WriteLine(";  4. Fill up required information. As Redirect URL use 'http://localhost:3000'.");
       writer.WriteLine(";  5. Next step will show secret information on your screen - don't show it on the stream.");
       writer.WriteLine(";  6. Go back to list of appliactions (https://dev.twitch.tv/console/apps) and click 'Manage' button next to your newly created app.");
-      writer.WriteLine(";  7. Copy 'Name' and 'Customer ID' into the fields below. Also generate new 'Client secret' and copy that too.");
-      writer.WriteLine(string.Concat(Keys.Name.ToString(), " = "));
-      writer.WriteLine(string.Concat(Keys.CustomerID.ToString(), " = "));
-      writer.WriteLine(string.Concat(Keys.Password.ToString(), " = "));
+      writer.WriteLine(";  7. Copy 'Name' and 'Client ID' into the fields below. Also generate new 'Client secret' and copy that too.");
+      writer.WriteLine(string.Concat(Keys.TwitchName.ToString(), " = "));
+      writer.WriteLine(string.Concat(Keys.TwitchClientID.ToString(), " = "));
+      writer.WriteLine(string.Concat(Keys.TwitchPassword.ToString(), " = "));
+      writer.WriteLine(";  8. Optional. Use bot instead of broadcaster account for sending chat messages.");
+      writer.WriteLine(";  Requirements to use:");
+      writer.WriteLine(";    - You have to have two Twitch accounts - one for the bot (ex. AbevBot), other on which you stream (ex. Abev08),");
+      writer.WriteLine(";    - Name provided in 'TwitchName' field has to be the same as bot account name,");
+      writer.WriteLine(";    - The app created in previous steps has to be on the bot account.");
+      writer.WriteLine(";  While using it, once a while when new bot authentication is required it would be neccessary to be logged");
+      writer.WriteLine(";  on both accounts and accept permissions on both of them.");
+      writer.WriteLine(";  Available options: true - enabled, any other or empty - disabled");
+      writer.WriteLine(string.Concat(Keys.TwitchUseTwoAccounts.ToString(), " = "));
+      writer.WriteLine("; Tip: If you need to reset previously accepted authorization, change ClientID and/or Password to something else (can't be empty)");
+      writer.WriteLine("; and run the bot. It will clear saved data even if it would fail to connect.");
 
       writer.WriteLine();
       writer.WriteLine();
@@ -183,6 +243,7 @@ public static class Secret
       writer.WriteLine("; Session ID needed for API calls. You have to search yourself how to get one. I can't help you.");
       writer.WriteLine(string.Concat(Keys.TikTokSessionID.ToString(), " = "));
 
+      writer.WriteLine();
       writer.WriteLine();
       writer.WriteLine("; ----- Spotify");
       writer.WriteLine("; The usage of Spotify is simillar to Twitch.");
@@ -197,6 +258,7 @@ public static class Secret
       writer.WriteLine(string.Concat(Keys.SpotifyClientID.ToString(), " = "));
       writer.WriteLine(string.Concat(Keys.SpotifyClientSecret.ToString(), " = "));
 
+      writer.WriteLine();
       writer.WriteLine();
       writer.WriteLine("; ----- Discord");
       writer.WriteLine("; The Discord integration is used to post 'Stream went online' messages.");
@@ -225,6 +287,21 @@ public static class Secret
       writer.WriteLine(";  14. In the Discord application, right click on the channel on which video clips will be posted and copy channel link.");
       writer.WriteLine(";     Channel ID is the last part of the link you copied (after the last '/') - put it in the field below.");
       writer.WriteLine(string.Concat(Keys.DiscordRandomVideosChannelID.ToString(), " = "));
+
+      writer.WriteLine();
+      writer.WriteLine();
+      writer.WriteLine("; ----- YouTube");
+      writer.WriteLine("; Used for posting YouTube livestream chat messages into Twitch chat.");
+      writer.WriteLine("; Twitch chat messages ARE NOT posted on YouTube livestream.");
+      writer.WriteLine("; Steps:");
+      writer.WriteLine(";  1. Log in to your YouTube account.");
+      writer.WriteLine(";  2. Go to: https://www.youtube.com/account_advanced and copy Channel ID into field below.");
+      writer.WriteLine(";  3. Go to: https://console.cloud.google.com/projectselector2 and create new project (it may take a wile for Google to accept).");
+      writer.WriteLine(";  4. Go to: https://console.developers.google.com/apis/api/youtube.googleapis.com and enable \"YouTube Data API v3\".");
+      writer.WriteLine(";  5. Click on the \'Credentials\' (key in the menu on the left).");
+      writer.WriteLine(";  6. Generate new API key from top menu and copy it into field below.");
+      writer.WriteLine(string.Concat(Keys.YouTubeChannelID.ToString(), " = "));
+      writer.WriteLine(string.Concat(Keys.YouTubeAPIKey.ToString(), " = "));
     }
 
     if (!example)

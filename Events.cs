@@ -55,8 +55,8 @@ public static class Events
       if (WebSocketClient is null)
       {
         WebSocketClient = new();
-        WebSocketClient.Options.SetRequestHeader("Client-Id", Secret.Data[Secret.Keys.CustomerID]);
-        WebSocketClient.Options.SetRequestHeader("Authorization", $"Bearer {Secret.Data[Secret.Keys.OAuthToken]}");
+        WebSocketClient.Options.SetRequestHeader("Client-Id", Secret.Data[Secret.Keys.TwitchClientID]);
+        WebSocketClient.Options.SetRequestHeader("Authorization", $"Bearer {Secret.Data[Secret.Keys.TwitchOAuthToken]}");
         try { WebSocketClient.ConnectAsync(new Uri(WEBSOCKETURL), CancellationToken.None).Wait(); }
         catch (AggregateException ex) { Log.Error("Events bot error: {ex}", ex.Message); }
 
@@ -362,8 +362,8 @@ public static class Events
     Log.Information("Events bot subscribing to {type} event.", type);
     using HttpRequestMessage request = new(HttpMethod.Post, SUBSCRIPTIONRUL);
     request.Content = new StringContent(new SubscriptionMessage(type, version, Config.Data[Config.Keys.ChannelID], sessionID).ToJsonString(), Encoding.UTF8, "application/json");
-    request.Headers.Add("Client-Id", Secret.Data[Secret.Keys.CustomerID]);
-    request.Headers.Add("Authorization", $"Bearer {Secret.Data[Secret.Keys.OAuthToken]}");
+    request.Headers.Add("Client-Id", Secret.Data[Secret.Keys.TwitchClientID]);
+    request.Headers.Add("Authorization", $"Bearer {Secret.Data[Secret.Keys.TwitchOAuthToken]}");
 
     string resp;
     try { resp = HttpClient.Send(request).Content.ReadAsStringAsync().Result; }

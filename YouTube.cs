@@ -46,7 +46,7 @@ public static class YouTube
       try
       {
         var uri = $"https://www.googleapis.com/youtube/v3/search?part=snippet&channelId={channelID}&eventType=live&type=video&key={apiKey}";
-        using HttpRequestMessage request = new(new HttpMethod("GET"), uri);
+        using HttpRequestMessage request = new(HttpMethod.Get, uri);
         request.Headers.Add("Accept", "application/json");
         var response = Notifications.Client.Send(request).Content.ReadAsStringAsync().Result;
         if (response is null || response.Length == 0) { StreamActive = false; return; }
@@ -67,7 +67,7 @@ public static class YouTube
 
         // Get Chat ID from the video ID
         uri = $"https://youtube.googleapis.com/youtube/v3/videos?part=liveStreamingDetails&id={videoID}&key={apiKey}";
-        using HttpRequestMessage request2 = new(new HttpMethod("GET"), uri);
+        using HttpRequestMessage request2 = new(HttpMethod.Get, uri);
         request2.Headers.Add("Accept", "application/json");
         response = Notifications.Client.Send(request2).Content.ReadAsStringAsync().Result;
         if (response is null || response.Length == 0) { StreamActive = false; return; }
@@ -122,7 +122,7 @@ public static class YouTube
       string response = string.Empty;
       try
       {
-        using HttpRequestMessage request = new(new HttpMethod("GET"), MessagesPollUri);
+        using HttpRequestMessage request = new(HttpMethod.Get, MessagesPollUri);
         request.Headers.Add("Accept", "application/json");
         response = Notifications.Client.Send(request).Content.ReadAsStringAsync().Result;
         if (response is null || response.Length == 0) { MessagesPollFailCounter++; return; }
@@ -168,6 +168,7 @@ public static class YouTube
           }
           if (messages.Count > 0)
           {
+            // foreach (var msg in messages) { Console.WriteLine(msg); }
             Chat.AddMessagesToQueue(messages);
           }
           // 0 messages, that could be an error, for now log it

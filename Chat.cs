@@ -4,6 +4,7 @@ using System.IO;
 using System.Net.Http;
 using System.Net.Sockets;
 using System.Text;
+using System.Text.Json.Nodes;
 using System.Threading;
 
 using Serilog;
@@ -106,12 +107,25 @@ public static class Chat
       Log.Information("Chat bot connected.");
       try
       {
-        conn.Send(Encoding.UTF8.GetBytes(string.Concat(
-          $"PASS oauth:{Secret.Data[Secret.Keys.OAuthToken]}\r\n",
-          $"NICK {Secret.Data[Secret.Keys.Name]}\r\n",
-          $"JOIN #{Config.Data[Config.Keys.ChannelName]},#{Config.Data[Config.Keys.ChannelName]}\r\n",
-          "CAP REQ :twitch.tv/commands twitch.tv/tags\r\n" // request extended chat messages
-        )));
+        if (Secret.Data[Secret.Keys.TwitchUseTwoAccounts] == "1" && Config.Data[Config.Keys.BotID].Length > 0 &&
+          Secret.Data[Secret.Keys.TwitchSubOAuthToken].Length > 0)
+        {
+          conn.Send(Encoding.UTF8.GetBytes(string.Concat(
+            $"PASS oauth:{Secret.Data[Secret.Keys.TwitchSubOAuthToken]}\r\n",
+            $"NICK {Secret.Data[Secret.Keys.TwitchName]}\r\n",
+            $"JOIN #{Config.Data[Config.Keys.ChannelName]},#{Config.Data[Config.Keys.ChannelName]}\r\n",
+            "CAP REQ :twitch.tv/commands twitch.tv/tags\r\n" // request extended chat messages
+          )));
+        }
+        else
+        {
+          conn.Send(Encoding.UTF8.GetBytes(string.Concat(
+            $"PASS oauth:{Secret.Data[Secret.Keys.TwitchOAuthToken]}\r\n",
+            $"NICK {Config.Data[Config.Keys.ChannelName]}\r\n",
+            $"JOIN #{Config.Data[Config.Keys.ChannelName]},#{Config.Data[Config.Keys.ChannelName]}\r\n",
+            "CAP REQ :twitch.tv/commands twitch.tv/tags\r\n" // request extended chat messages
+          )));
+        }
       }
       catch (SocketException ex)
       {
@@ -429,8 +443,8 @@ public static class Chat
 
     string uri = $"https://api.twitch.tv/helix/chat/chatters?broadcaster_id={Config.Data[Config.Keys.ChannelID]}&moderator_id={Config.Data[Config.Keys.ChannelID]}&first=1000";
     using HttpRequestMessage request = new(HttpMethod.Get, uri);
-    request.Headers.Add("Authorization", $"Bearer {Secret.Data[Secret.Keys.OAuthToken]}");
-    request.Headers.Add("Client-Id", Secret.Data[Secret.Keys.CustomerID]);
+    request.Headers.Add("Authorization", $"Bearer {Secret.Data[Secret.Keys.TwitchOAuthToken]}");
+    request.Headers.Add("Client-Id", Secret.Data[Secret.Keys.TwitchClientID]);
 
     string resp;
     try { resp = Client.Send(request).Content.ReadAsStringAsync().Result; }
@@ -498,8 +512,8 @@ public static class Chat
     string uri = $"https://api.twitch.tv/helix/moderation/bans?broadcaster_id={Config.Data[Config.Keys.ChannelID]}&moderator_id={Config.Data[Config.Keys.ChannelID]}";
     using HttpRequestMessage request = new(HttpMethod.Post, uri);
     request.Content = new StringContent(new BanMessageRequest(chatter.ID, durSeconds, message).ToJsonString(), Encoding.UTF8, "application/json");
-    request.Headers.Add("Authorization", $"Bearer {Secret.Data[Secret.Keys.OAuthToken]}");
-    request.Headers.Add("Client-Id", Secret.Data[Secret.Keys.CustomerID]);
+    request.Headers.Add("Authorization", $"Bearer {Secret.Data[Secret.Keys.TwitchOAuthToken]}");
+    request.Headers.Add("Client-Id", Secret.Data[Secret.Keys.TwitchClientID]);
 
     try { Client.Send(request); } // We don't really need the result, just assume that it worked
     catch (HttpRequestException ex) { Log.Error("Banning chatter failed. {ex}", ex); }
@@ -563,8 +577,8 @@ public static class Chat
 
     string uri = $"https://api.twitch.tv/helix/chat/shoutouts?from_broadcaster_id={Config.Data[Config.Keys.ChannelID]}&to_broadcaster_id={userID}&moderator_id={Config.Data[Config.Keys.ChannelID]}";
     using HttpRequestMessage request = new(HttpMethod.Post, uri);
-    request.Headers.Add("Authorization", $"Bearer {Secret.Data[Secret.Keys.OAuthToken]}");
-    request.Headers.Add("Client-Id", Secret.Data[Secret.Keys.CustomerID]);
+    request.Headers.Add("Authorization", $"Bearer {Secret.Data[Secret.Keys.TwitchOAuthToken]}");
+    request.Headers.Add("Client-Id", Secret.Data[Secret.Keys.TwitchClientID]);
 
     try { Client.Send(request); } // We don't really need the result, just assume that it worked
     catch (HttpRequestException ex) { Log.Error("Creating shoutout failed. {ex}", ex); }
@@ -1175,6 +1189,34 @@ public static class Chat
         else { Log.Warning("Not sending response for \"{command}\" key. Cooldown active.", command); }
       }
     }
+  }
+
+  public static void TestMessageSend()
+  {
+    // Sending messages via new Twitch API
+    string token, id;
+    if (Secret.Data[Secret.Keys.TwitchUseTwoAccounts] == "1")
+    {
+      token = Secret.Data[Secret.Keys.TwitchSubOAuthToken];
+      id = Config.Data[Config.Keys.BotID];
+    }
+    else
+    {
+      token = Secret.Data[Secret.Keys.TwitchOAuthToken];
+      id = Config.Data[Config.Keys.ChannelID];
+    }
+
+    using HttpRequestMessage request = new(HttpMethod.Post, "https://api.twitch.tv/helix/chat/messages");
+    request.Headers.Add("Authorization", $"Bearer {token}");
+    request.Headers.Add("Client-Id", Secret.Data[Secret.Keys.TwitchClientID]);
+    using StringContent requestContent = new(new JsonObject() {
+      { "broadcaster_id", Config.Data[Config.Keys.ChannelID] },
+      { "sender_id", id },
+      { "message", string.Concat("Current time: ", DateTime.Now.ToString("t")) }
+      }.ToString(), Encoding.UTF8, "application/json");
+    request.Content = requestContent;
+    var response = Notifications.Client.Send(request).Content.ReadAsStringAsync().Result;
+    Console.WriteLine(response);
   }
 }
 

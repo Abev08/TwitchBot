@@ -96,7 +96,19 @@ public partial class MainWindow : Window
     } while (true);
 
     AccessTokens.GetAccessTokens();
-    Config.GetBroadcasterID();
+    // Get broadcaster ID
+    Config.Data[Config.Keys.ChannelID] = Chatter.GetChatterID(Config.Data[Config.Keys.ChannelName]);
+    if (Config.Data[Config.Keys.ChannelID].Length == 0)
+    {
+      Log.Error("Couldn't get broadcaster ID, the bot wouldn't work. Closing.");
+      return;
+    }
+    if (Secret.Data[Secret.Keys.TwitchUseTwoAccounts] == "1")
+    {
+      Config.Data[Config.Keys.BotID] = Chatter.GetChatterID(Secret.Data[Secret.Keys.TwitchName]);
+      if (Config.Data[Config.Keys.BotID].Length == 0) { Log.Warning("Couldn't get bot ID, main account would be used."); }
+    }
+
 
     if (args.Length > 0 && args[0] == "--consoleVisible") { } // Force console visibility in vscode with command line args
     else if (!Config.ConsoleVisible)
@@ -191,7 +203,8 @@ public partial class MainWindow : Window
           shouldHotkeysBeChecked = true || Config.HotkeysForPauseNotification.Count > 0 || Config.HotkeysForSkipNotification.Count > 0;
 
           // Check if any access token should be updated
-          if (AccessTokens.RefreshAccessToken()) AccessTokens.UpdateTokens();
+          if (AccessTokens.RefreshAccessToken(true)) AccessTokens.UpdateTokens(true);
+          if (AccessTokens.RefreshAccessToken(false)) AccessTokens.UpdateTokens(false);
           if (AccessTokens.RefreshSpotifyAccessToken()) AccessTokens.UpdateSpotifyTokens();
           if (AccessTokens.RefreshDiscordAccessToken()) AccessTokens.UpdateDiscordTokens();
 
@@ -472,6 +485,10 @@ public partial class MainWindow : Window
 
       case "Gigantify an emote":
         Notifications.CreateGigantifyEmoteNotification("Chatter", "This is a test");
+        break;
+
+      case "Test":
+        Chat.TestMessageSend();
         break;
     }
   }

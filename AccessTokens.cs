@@ -4,6 +4,7 @@ using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
+using System.Windows;
 
 using Serilog;
 
@@ -13,7 +14,7 @@ namespace AbevBot;
 public static class AccessTokens
 {
   /// <summary> Date and time when access token expiries. </summary>
-  private static DateTime BotOAuthTokenExpiration;
+  private static DateTime TwitchOAuthTokenExpiration, TwitchSubOAuthTokenExpiration;
   /// <summary> Time before OAuth token expiries to try to refresh it. </summary>
   private static readonly TimeSpan OAuthTokenExpirationSomething = new(0, 10, 0);
   /// <summary> Http client for GET and POST requests. </summary>
@@ -25,6 +26,7 @@ public static class AccessTokens
   /// <summary> Twitch scope of permissions. https://dev.twitch.tv/docs/authentication/scopes </summary>
   private static readonly string[] TwitchScopes = new[] {
     "bits:read", // View Bits information for a channel
+    "channel:bot", // Joins your channel’s chatroom as a bot user, and perform chat-related actions as that user
     "channel:manage:redemptions", // Manage Channel Points custom rewards and their redemptions on a channel
     "channel:moderate", // Perform moderation actions in a channel. The user requesting the scope must be a moderator in the channel
     "channel:read:hype_train", // View Hype Train information for a channel
@@ -33,12 +35,22 @@ public static class AccessTokens
     "chat:edit", // Send live stream chat messages
     "chat:read", // View live stream chat messages
     "moderator:manage:banned_users", // Ban and unban users
-    "moderator:manage:shoutouts", // Manage a broadcaster’s shoutouts
     "moderator:manage:shield_mode", // Manage status of shield mode
+    "moderator:manage:shoutouts", // Manage a broadcaster’s shoutouts
     "moderator:read:chatters", // View the chatters in a broadcaster’s chat room
     "moderator:read:followers", // Read the followers of a broadcaster
-    "whispers:edit", // Send whisper messages
-    "whispers:read", // View your whisper messages
+    "user:bot", // Join a specified chat channel as your user and appear as a bot, and perform chat-related actions as your user
+    "user:read:chat", // Receive chatroom messages and informational notifications relating to a channel’s chatroom
+    "user:write:chat", // Send chat messages to a chatroom
+    // "whispers:edit", // Send whisper messages
+    // "whispers:read", // View your whisper messages
+  };
+  private static readonly string[] TwitchSubScopes = new[] {
+    "chat:edit", // Send live stream chat messages
+    "chat:read", // View live stream chat messages
+    "user:bot", // Join a specified chat channel as your user and appear as a bot, and perform chat-related actions as your user
+    "user:read:chat", // Receive chatroom messages and informational notifications relating to a channel’s chatroom
+    "user:write:chat", // Send chat messages to a chatroom
   };
   /// <summary> Spotify scope of permissions. https://developer.spotify.com/documentation/web-api/concepts/scopes </summary>
   private static readonly string[] SpotifyScopes = new[] {
@@ -60,26 +72,53 @@ public static class AccessTokens
   public static void GetAccessTokens()
   {
     // Twitch
-    if (string.IsNullOrEmpty(Secret.Data[Secret.Keys.OAuthToken]) ||
-        string.IsNullOrEmpty(Secret.Data[Secret.Keys.OAuthRefreshToken]))
+    if (string.IsNullOrEmpty(Secret.Data[Secret.Keys.TwitchOAuthToken]) ||
+        string.IsNullOrEmpty(Secret.Data[Secret.Keys.TwitchOAuthRefreshToken]))
     {
-      GetNewOAuthToken();
-      UpdateTokens();
+      GetNewOAuthToken(true);
+      UpdateTokens(true);
     }
     else
     {
       // Check if readed token works
-      if (!ValidateOAuthToken())
+      if (!ValidateOAuthToken(true))
       {
         // The verification failed. First try to refresh access token before requesting new one
-        RefreshAccessToken();
-        if (!ValidateOAuthToken())
+        RefreshAccessToken(true);
+        if (!ValidateOAuthToken(true))
         {
           // Refreshing access token also failed, request new one
-          GetNewOAuthToken();
+          GetNewOAuthToken(true);
         }
 
-        UpdateTokens();
+        UpdateTokens(true);
+      }
+    }
+
+    // Twitch sub account
+    if (Secret.Data[Secret.Keys.TwitchUseTwoAccounts] == "1")
+    {
+      if (string.IsNullOrEmpty(Secret.Data[Secret.Keys.TwitchSubOAuthToken]) ||
+          string.IsNullOrEmpty(Secret.Data[Secret.Keys.TwitchSubOAuthRefreshToken]))
+      {
+        GetNewOAuthToken(false);
+        UpdateTokens(false);
+      }
+      else
+      {
+        // Check if readed token works
+        if (!ValidateOAuthToken(false))
+        {
+          // The verification failed. First try to refresh access token before requesting new one
+          RefreshAccessToken(false);
+          if (!ValidateOAuthToken(false))
+          {
+            // Refreshing access token also failed, request new one
+            GetNewOAuthToken(false);
+          }
+
+          UpdateTokens(false);
+        }
       }
     }
 
@@ -138,23 +177,48 @@ public static class AccessTokens
   }
 
   /// <summary> Updates tokens in database saving current access tokens. </summary>
-  public static void UpdateTokens()
+  public static void UpdateTokens(bool main)
   {
-    Database.UpdateValueInConfig(Database.Keys.TwitchOAuth, Secret.Data[Secret.Keys.OAuthToken]).Wait();
-    Database.UpdateValueInConfig(Database.Keys.TwitchOAuthRefresh, Secret.Data[Secret.Keys.OAuthRefreshToken]).Wait();
+    if (main)
+    {
+      Database.UpdateValueInConfig(Database.Keys.TwitchOAuth, Secret.Data[Secret.Keys.TwitchOAuthToken]).Wait();
+      Database.UpdateValueInConfig(Database.Keys.TwitchOAuthRefresh, Secret.Data[Secret.Keys.TwitchOAuthRefreshToken]).Wait();
+    }
+    else
+    {
+      Database.UpdateValueInConfig(Database.Keys.TwitchSubOAuth, Secret.Data[Secret.Keys.TwitchSubOAuthToken]).Wait();
+      Database.UpdateValueInConfig(Database.Keys.TwitchSubOAuthRefresh, Secret.Data[Secret.Keys.TwitchSubOAuthRefreshToken]).Wait();
+    }
   }
 
   /// <summary> Request new access token. </summary>
-  private static void GetNewOAuthToken()
+  private static void GetNewOAuthToken(bool main)
   {
+    string accountName, scopes;
+    if (main)
+    {
+      accountName = Config.Data[Config.Keys.ChannelName];
+      scopes = string.Join('+', TwitchScopes).Replace(":", "%3A"); // Change to url encoded
+    }
+    else
+    {
+      accountName = Secret.Data[Secret.Keys.TwitchName];
+      scopes = string.Join('+', TwitchSubScopes).Replace(":", "%3A"); // Change to url encoded
+    }
+
+    MessageBox.Show(string.Concat("New Twitch authorization is required!\n",
+        "Make sure you are logged into: ", accountName, "\n",
+        "Continue, when you are ready. It will open new browser tab."),
+      "AbevBot: Twitch authorization");
     Log.Information("Requesting new Twitch OAuth token.");
 
     string uri = string.Concat(
       "https://id.twitch.tv/oauth2/authorize?",
-      "client_id=", Secret.Data[Secret.Keys.CustomerID],
+      "client_id=", Secret.Data[Secret.Keys.TwitchClientID],
       "&redirect_uri=http://localhost:3000",
       "&response_type=code",
-      "&scope=", string.Join('+', TwitchScopes).Replace(":", "%3A") // Change to url encoded
+      "&force_verify=true",
+      "&scope=", scopes
     );
 
     // Open the link for the user to complete authorization
@@ -184,8 +248,8 @@ public static class AccessTokens
       string code = requestUrl.Substring(6, requestUrl.IndexOf('&', 6) - 6);
       using HttpRequestMessage request = new(HttpMethod.Post, "https://id.twitch.tv/oauth2/token");
       request.Content = new StringContent(string.Concat(
-          "client_id=", Secret.Data[Secret.Keys.CustomerID],
-          "&client_secret=", Secret.Data[Secret.Keys.Password],
+          "client_id=", Secret.Data[Secret.Keys.TwitchClientID],
+          "&client_secret=", Secret.Data[Secret.Keys.TwitchPassword],
           "&code=", code,
           "&grant_type=authorization_code",
           "&redirect_uri=http://localhost:3000"
@@ -201,9 +265,19 @@ public static class AccessTokens
       }
       Log.Information(response.ToString());
       // Read information from received data
-      Secret.Data[Secret.Keys.OAuthToken] = response.Token;
-      Secret.Data[Secret.Keys.OAuthRefreshToken] = response.RefreshToken;
-      BotOAuthTokenExpiration = DateTime.Now + TimeSpan.FromSeconds(response.ExpiresIn.Value) - OAuthTokenExpirationSomething;
+
+      if (main)
+      {
+        Secret.Data[Secret.Keys.TwitchOAuthToken] = response.Token;
+        Secret.Data[Secret.Keys.TwitchOAuthRefreshToken] = response.RefreshToken;
+        TwitchOAuthTokenExpiration = DateTime.Now + TimeSpan.FromSeconds(response.ExpiresIn.Value) - OAuthTokenExpirationSomething;
+      }
+      else
+      {
+        Secret.Data[Secret.Keys.TwitchSubOAuthToken] = response.Token;
+        Secret.Data[Secret.Keys.TwitchSubOAuthRefreshToken] = response.RefreshToken;
+        TwitchSubOAuthTokenExpiration = DateTime.Now + TimeSpan.FromSeconds(response.ExpiresIn.Value) - OAuthTokenExpirationSomething;
+      }
     }
     else
     {
@@ -214,43 +288,73 @@ public static class AccessTokens
 
   /// <summary> Validates access token. </summary>
   /// <returns> true if access token is valid, otherwise false. </returns>
-  private static bool ValidateOAuthToken()
+  private static bool ValidateOAuthToken(bool main)
   {
     using HttpRequestMessage request = new(HttpMethod.Get, "https://id.twitch.tv/oauth2/validate");
-    request.Headers.Add("Authorization", $"OAuth {Secret.Data[Secret.Keys.OAuthToken]}");
+    if (main) { request.Headers.Add("Authorization", $"OAuth {Secret.Data[Secret.Keys.TwitchOAuthToken]}"); }
+    else { request.Headers.Add("Authorization", $"OAuth {Secret.Data[Secret.Keys.TwitchSubOAuthToken]}"); }
 
     string resp;
     try { resp = Client.Send(request).Content.ReadAsStringAsync().Result; }
     catch (HttpRequestException ex) { Log.Error("Twitch OAuth token validation failed. {ex}", ex); return false; }
     var response = AccessTokenValidationResponse.Deserialize(resp);
-    if (response?.ClientID?.Equals(Secret.Data[Secret.Keys.CustomerID]) == true && response?.ExpiresIn > 0)
+    if (response?.ClientID?.Equals(Secret.Data[Secret.Keys.TwitchClientID]) == true && response?.ExpiresIn > 0)
     {
-      if (response?.Scopes?.Length != TwitchScopes.Length) { Log.Warning("Current Twitch OAuth token is missing some scopes."); }
+      if (main)
+      {
+        if (response?.Scopes?.Length != TwitchScopes.Length) { Log.Warning("Current Twitch OAuth token is missing some scopes."); }
+        else
+        {
+          TwitchOAuthTokenExpiration = DateTime.Now + TimeSpan.FromSeconds(response.ExpiresIn.Value) - OAuthTokenExpirationSomething;
+          Log.Information("Twitch OAuth token validation succeeded. Token expiries in {time} hours.", MathF.Round(response.ExpiresIn.Value / 3600f, 2));
+          return true;
+        }
+      }
       else
       {
-        BotOAuthTokenExpiration = DateTime.Now + TimeSpan.FromSeconds(response.ExpiresIn.Value) - OAuthTokenExpirationSomething;
-        Log.Information("Twitch OAuth token validation succeeded. Token expiries in {time} hours.", MathF.Round(response.ExpiresIn.Value / 3600f, 2));
-        return true;
+        if (response?.Scopes?.Length != TwitchSubScopes.Length) { Log.Warning("Current Twitch sub OAuth token is missing some scopes."); }
+        else
+        {
+          TwitchSubOAuthTokenExpiration = DateTime.Now + TimeSpan.FromSeconds(response.ExpiresIn.Value) - OAuthTokenExpirationSomething;
+          Log.Information("Twitch OAuth sub token validation succeeded. Token expiries in {time} hours.", MathF.Round(response.ExpiresIn.Value / 3600f, 2));
+          return true;
+        }
       }
     }
-    else { Log.Warning("Twitch OAuth token validation failed."); }
+    else
+    {
+      if (main) { Log.Warning("Twitch OAuth token validation failed."); }
+      else { Log.Warning("Twitch OAuth sub token validation failed."); }
+    }
 
     return false;
   }
 
   /// <summary> Refreshes access token using refresh token. </summary>
   /// <returns>true if new token was acquired, otherwise false.</returns>
-  public static bool RefreshAccessToken()
+  public static bool RefreshAccessToken(bool main)
   {
-    if (DateTime.Now < BotOAuthTokenExpiration) return false;
+    string refreshToken;
+    if (main)
+    {
+      if (DateTime.Now < TwitchOAuthTokenExpiration) { return false; }
+      Log.Information("Refreshing Twitch OAuth token.");
+      refreshToken = Secret.Data[Secret.Keys.TwitchOAuthRefreshToken].Replace(":", "%3A"); // Change to url encoded
+    }
+    else
+    {
+      if (Secret.Data[Secret.Keys.TwitchUseTwoAccounts] != "1") { return false; }
+      if (DateTime.Now < TwitchSubOAuthTokenExpiration) { return false; }
+      Log.Information("Refreshing Twitch sub OAuth token.");
+      refreshToken = Secret.Data[Secret.Keys.TwitchSubOAuthRefreshToken].Replace(":", "%3A"); // Change to url encoded
+    }
 
-    Log.Information("Refreshing Twitch OAuth token.");
     using HttpRequestMessage request = new(HttpMethod.Post, "https://id.twitch.tv/oauth2/token");
     request.Content = new StringContent(string.Concat(
-        "client_id=", Secret.Data[Secret.Keys.CustomerID],
-        "&client_secret=", Secret.Data[Secret.Keys.Password],
+        "client_id=", Secret.Data[Secret.Keys.TwitchClientID],
+        "&client_secret=", Secret.Data[Secret.Keys.TwitchPassword],
         "&grant_type=refresh_token",
-        "&refresh_token=", Secret.Data[Secret.Keys.OAuthRefreshToken].Replace(":", "%3A") // Change to url encoded
+        "&refresh_token=", refreshToken
     ));
     request.Content.Headers.ContentType = MediaTypeHeaderValue.Parse("application/x-www-form-urlencoded");
 
@@ -265,9 +369,18 @@ public static class AccessTokens
     }
     Log.Information(response.ToString());
     // Read information from received data
-    Secret.Data[Secret.Keys.OAuthToken] = response.Token;
-    Secret.Data[Secret.Keys.OAuthRefreshToken] = response.RefreshToken;
-    BotOAuthTokenExpiration = DateTime.Now + TimeSpan.FromSeconds(response.ExpiresIn.Value) - OAuthTokenExpirationSomething;
+    if (main)
+    {
+      Secret.Data[Secret.Keys.TwitchOAuthToken] = response.Token;
+      Secret.Data[Secret.Keys.TwitchOAuthRefreshToken] = response.RefreshToken;
+      TwitchOAuthTokenExpiration = DateTime.Now + TimeSpan.FromSeconds(response.ExpiresIn.Value) - OAuthTokenExpirationSomething;
+    }
+    else
+    {
+      Secret.Data[Secret.Keys.TwitchSubOAuthToken] = response.Token;
+      Secret.Data[Secret.Keys.TwitchSubOAuthRefreshToken] = response.RefreshToken;
+      TwitchSubOAuthTokenExpiration = DateTime.Now + TimeSpan.FromSeconds(response.ExpiresIn.Value) - OAuthTokenExpirationSomething;
+    }
 
     return true;
   }

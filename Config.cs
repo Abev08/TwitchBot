@@ -12,7 +12,7 @@ public static class Config
 {
   public enum Keys
   {
-    ChannelName, ChannelID,
+    ChannelName, ChannelID, BotID,
     ConsoleVisible, PeriodicMessageTimeInterval, PeriodicMessageMinChatMessages, StartVideoEnabled,
     AlwaysReadTTSFromThem, OverpoweredInFight,
     SongRequestTimeout,
@@ -986,23 +986,6 @@ public static class Config
     await Database.UpdateValueInConfig(Database.Keys.VolumeVideo, VolumeVideo.ToString().Replace('.', ','));
   }
 
-  /// <summary> Gets Broadcaster ID from Channel Name. Should be used once at bot startup. </summary>
-  public static void GetBroadcasterID()
-  {
-    Log.Information("Getting broadcaster ID.");
-    string uri = $"https://api.twitch.tv/helix/users?login={Config.Data[Config.Keys.ChannelName]}";
-    using HttpRequestMessage request = new(HttpMethod.Get, uri);
-    request.Headers.Add("Authorization", $"Bearer {Secret.Data[Secret.Keys.OAuthToken]}");
-    request.Headers.Add("Client-Id", Secret.Data[Secret.Keys.CustomerID]);
-
-    string resp;
-    try { resp = Notifications.Client.Send(request).Content.ReadAsStringAsync().Result; }
-    catch (HttpRequestException ex) { Log.Error("Couldn't acquire broadcaster ID. {ex}", ex); return; }
-    var response = ChannelIDResponse.Deserialize(resp);
-    if (response != null && response?.Data?.Length == 1) { Config.Data[Config.Keys.ChannelID] = response.Data[0].ID; }
-    else { Log.Warning("Couldn't acquire broadcaster ID. Probably defined channel name doesn't exist."); }
-  }
-
   /// <summary> Gets current broadcaster status. </summary>
   /// <returns>true if the stream is online, otherwise false.</returns>
   public static bool GetBroadcasterStatus()
@@ -1013,8 +996,8 @@ public static class Config
       "?query=", Config.Data[Config.Keys.ChannelName].Replace(" ", "%20")
     );
     using HttpRequestMessage request = new(HttpMethod.Get, uri);
-    request.Headers.Add("Authorization", $"Bearer {Secret.Data[Secret.Keys.OAuthToken]}");
-    request.Headers.Add("Client-Id", Secret.Data[Secret.Keys.CustomerID]);
+    request.Headers.Add("Authorization", $"Bearer {Secret.Data[Secret.Keys.TwitchOAuthToken]}");
+    request.Headers.Add("Client-Id", Secret.Data[Secret.Keys.TwitchClientID]);
 
     string resp;
     try { resp = Notifications.Client.Send(request).Content.ReadAsStringAsync().Result; }

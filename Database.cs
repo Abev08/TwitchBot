@@ -15,6 +15,8 @@ public static class Database
   {
     Version,
     TwitchOAuth, TwitchOAuthRefresh,
+    TwitchSubOAuth, TwitchSubOAuthRefresh,
+    TwitchClientSHA, TwitchPasswordSHA,
     VolumeAudio, VolumeVideo,
     EnabledChatTTS,
     EnabledGamba, EnabledGambaLife, EnabledGambaAnimations,
@@ -68,12 +70,16 @@ public static class Database
     DateTime.TryParse(GetValueOrCreateFromConfig(Keys.LastOnline, DateTime.MinValue.ToString()), out Config.BroadcasterLastOnline);
 
     // Get tokens
-    Secret.Data[Secret.Keys.OAuthToken] = GetValueOrCreateFromConfig(Keys.TwitchOAuth, string.Empty);
-    Secret.Data[Secret.Keys.OAuthRefreshToken] = GetValueOrCreateFromConfig(Keys.TwitchOAuthRefresh, string.Empty);
+    Secret.Data[Secret.Keys.TwitchOAuthToken] = GetValueOrCreateFromConfig(Keys.TwitchOAuth, string.Empty);
+    Secret.Data[Secret.Keys.TwitchOAuthRefreshToken] = GetValueOrCreateFromConfig(Keys.TwitchOAuthRefresh, string.Empty);
+    Secret.Data[Secret.Keys.TwitchSubOAuthToken] = GetValueOrCreateFromConfig(Keys.TwitchSubOAuth, string.Empty);
+    Secret.Data[Secret.Keys.TwitchSubOAuthRefreshToken] = GetValueOrCreateFromConfig(Keys.TwitchSubOAuthRefresh, string.Empty);
     Secret.Data[Secret.Keys.SpotifyOAuthToken] = GetValueOrCreateFromConfig(Keys.SpotifyOAuth, string.Empty);
     Secret.Data[Secret.Keys.SpotifyOAuthRefreshToken] = GetValueOrCreateFromConfig(Keys.SpotifyOAuthRefresh, string.Empty);
     Secret.Data[Secret.Keys.DiscordOAuthToken] = GetValueOrCreateFromConfig(Keys.DiscordOAuth, string.Empty);
     Secret.Data[Secret.Keys.DiscordOAuthRefreshToken] = GetValueOrCreateFromConfig(Keys.DiscordOAuthRefresh, string.Empty);
+    GetValueOrCreateFromConfig(Keys.TwitchClientSHA, string.Empty); // Just create the key if not present
+    GetValueOrCreateFromConfig(Keys.TwitchPasswordSHA, string.Empty); // Just create the key if not present
     DateTime.TryParse(GetValueOrCreateFromConfig(Keys.DiscordOAuthExpiration, DateTime.MinValue.ToString()), out AccessTokens.DiscordOAuthTokenExpiration);
 
     // Get sound slider values
@@ -139,14 +145,15 @@ public static class Database
   public static string GetValueFromConfig(Keys name)
   {
     SQLiteCommand command = new($"SELECT Value FROM Config WHERE Name='{name}';", Connection);
-    string result = (string)command.ExecuteScalar();
+    var result = command.ExecuteScalar();
     if (result is null)
     {
       // Row doesn't exist
       Log.Warning("Name {name} doesn't exist in database Config table!", name);
       return string.Empty;
     }
-    return result;
+    else if (result is DBNull) { return string.Empty; } // The Value is NULL
+    return (string)result;
   }
 
   public static async Task<bool> UpdateValueInConfig(Keys name, object value)

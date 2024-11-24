@@ -94,6 +94,7 @@
                         <ComboBoxItem Content="Key combination" ToolTip="Channel points redemption that does key combination. The keys are: Ctrl+Shift+Esc."/>
                         <ComboBoxItem Content="Message effect" ToolTip="Special message effect in chat"/>
                         <ComboBoxItem Content="Gigantify an emote" ToolTip="Gigantified emote in chat"/>
+                        <!-- <ComboBoxItem Content="Test"/> -->
                     </ComboBox>
                     <TextBox x:Name="tbTestNotificationValue" Text="7" Margin="0,0,0,5" PreviewTextInput="TestNotificationValue_TextInput" ToolTip="Count of main thing in a notification (bits, gifted subs, etc.)"/>
                     <Button x:Name="btnTestNotification" Content="Test Notification" Click="NotificationTestClicked" ToolTip="Queues selected above test notification"/>
