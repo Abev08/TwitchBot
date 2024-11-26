@@ -28,7 +28,7 @@ public static class Config
     ChannelRedemption_RandomVideo_Size, ChannelRedemption_RandomVideo_Position,
 
     ChannelRedemption_ID, ChannelRedemption_KeyAction, ChannelRedemption_KeyActionType, ChannelRedemption_KeyActionAfterTime, ChannelRedemption_KeyActionAfterTimeType, ChannelRedemption_ChatMessage, ChannelRedemption_TextToDisplay, ChannelRedemption_TextPosition, ChannelRedemption_TextToSpeech, ChannelRedemption_SoundToPlay, ChannelRedemption_VideoToPlay, ChannelRedemption_MarkAsFulfilled,
-    YouTubeChatMessagePrefix,
+    YouTubeChatMessagePrefix, YouTubeMessageTimeInterval,
     msg
   };
 
@@ -593,6 +593,13 @@ public static class Config
               }
               break;
 
+            case Keys.YouTubeMessageTimeInterval:
+              if (TimeSpan.TryParse(text[1], out timeSpan))
+              {
+                if (timeSpan.TotalSeconds >= 0) YouTube.MessagePostInterval = TimeSpan.FromTicks(timeSpan.Ticks);
+              }
+              break;
+
             default:
               if (Data.ContainsKey((Keys)key)) { Data[(Keys)key] = text[1].Trim(); }
               else Log.Warning("Not recognized key '{key}' on line {index} in Config.ini file.", text[0], lineIndex);
@@ -683,6 +690,8 @@ public static class Config
       writer.WriteLine(string.Concat(Keys.FightMinimalChatMessages.ToString(), " = false"));
       writer.WriteLine("; Prefix of YouTube chat message resended in Twitch chat.");
       writer.WriteLine(string.Concat(Keys.YouTubeChatMessagePrefix.ToString(), " = YT"));
+      writer.WriteLine("; Time between posting YouTube messages on Twitch (HH:MM:SS format). Default: empty -> 2 sec");
+      writer.WriteLine(string.Concat(Keys.YouTubeMessageTimeInterval.ToString(), " = "));
 
       writer.WriteLine();
       writer.WriteLine("; Hotkeys configuration");

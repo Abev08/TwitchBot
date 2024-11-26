@@ -28,6 +28,9 @@ public static class YouTube
   private static bool MessagesPollActive, MessagesPollFirstPoll;
   private static string MessagesPollUri;
   private static int MessagesPollFailCounter;
+  public static TimeSpan MessagePostInterval = TimeSpan.FromSeconds(2);
+  private static DateTime MessagePostLast = DateTime.MinValue;
+  private static readonly List<string> Messages = new();
 
   public static void CheckActiveStream()
   {
@@ -142,37 +145,38 @@ public static class YouTube
           try { msgPrefix = Config.Data[Config.Keys.YouTubeChatMessagePrefix]; }
           catch { }
 
-          List<string> messages = new();
-          foreach (var item in items)
+          var addedMessage = false;
+          lock (Messages)
           {
-            // Message snippet
-            var snippet = item["snippet"];
-            if (snippet is null) { continue; }
-            // Message type
-            var snippetType = snippet["type"];
-            if (snippetType is null || snippetType.ToString() == "messageDeletedEvent") { continue; } // Skip deleted messages
-            // Message author (chatter)
-            var temp = item["authorDetails"];
-            if (temp is null) { continue; }
-            temp = temp["displayName"];
-            if (temp is null) { continue; }
-            var chatter = Regex.Unescape(temp.ToString());
-            if (chatter is null || chatter.Length == 0) { continue; }
-            // Message text
-            temp = snippet["displayMessage"];
-            if (temp is null) { continue; }
-            var msg = Regex.Unescape(temp.ToString());
-            if (msg is null || msg.Length == 0) { continue; }
+            foreach (var item in items)
+            {
+              // Message snippet
+              var snippet = item["snippet"];
+              if (snippet is null) { continue; }
+              // Message type
+              var snippetType = snippet["type"];
+              if (snippetType is null || snippetType.ToString() == "messageDeletedEvent") { continue; } // Skip deleted messages
 
-            messages.Add(string.Concat(msgPrefix, " ", chatter, ": ", msg));
+              // Message author (chatter)
+              var temp = item["authorDetails"];
+              if (temp is null) { continue; }
+              temp = temp["displayName"];
+              if (temp is null) { continue; }
+              var chatter = Regex.Unescape(temp.ToString());
+              if (chatter is null || chatter.Length == 0) { continue; }
+              // Message text
+              temp = snippet["displayMessage"];
+              if (temp is null) { continue; }
+              var msg = Regex.Unescape(temp.ToString());
+              if (msg is null || msg.Length == 0) { continue; }
+
+              Messages.Add(string.Concat(msgPrefix, " ", chatter, ": ", msg));
+              addedMessage = true;
+            }
           }
-          if (messages.Count > 0)
-          {
-            // foreach (var msg in messages) { Console.WriteLine(msg); }
-            Chat.AddMessagesToQueue(messages);
-          }
+
           // 0 messages, that could be an error, for now log it
-          else { Log.Error("YouTube message poll, 0 chat messages received. Response: {resp}", response); }
+          if (!addedMessage) { Log.Error("YouTube message poll, 0 chat messages received. Response: {resp}", response); }
         }
         else { MessagesPollFirstPoll = false; }
 
@@ -193,5 +197,35 @@ public static class YouTube
         MessagesPollActive = false;
       }
     });
+  }
+
+  public static void SendMessages()
+  {
+    if (Messages.Count > 0)
+    {
+      if (MessagePostInterval.TotalSeconds == 0)
+      {
+        // Post all of the messages at once
+        lock (Messages)
+        {
+          Chat.AddMessagesToQueue(Messages);
+          Messages.Clear();
+        }
+      }
+      else
+      {
+        if (DateTime.Now - MessagePostLast >= MessagePostInterval)
+        {
+          MessagePostLast = DateTime.Now;
+          // Post 1st message in the list
+          lock (Messages)
+          {
+            var msg = Messages[0];
+            Messages.RemoveAt(0);
+            Chat.AddMessageToQueue(msg);
+          }
+        }
+      }
+    }
   }
 }

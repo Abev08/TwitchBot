@@ -236,6 +236,7 @@ public partial class MainWindow : Window
         // YouTube
         YouTube.CheckActiveStream();
         YouTube.PollChatMessages();
+        YouTube.SendMessages();
 
         Thread.Sleep(100);
       }
