@@ -33,18 +33,25 @@ public static class Discord
     Log.Information("Sending Discord Online message.");
 
     string message;
-    if (CustomOnlineMessage?.Length > 0) message = CustomOnlineMessage;
-    else message = $"Hello @everyone, stream just started https://twitch.tv/{Config.Data[Config.Keys.ChannelName]} ! {{title}}";
+    if (CustomOnlineMessage?.Length > 0) { message = CustomOnlineMessage; }
+    else { message = $"Hello @everyone, stream just started https://twitch.tv/{Config.Data[Config.Keys.ChannelName]} ! {{title}}"; }
     message = message.Replace("{title}", LastStreamTitle).Trim();
 
     using HttpRequestMessage request = new(HttpMethod.Post, $"https://discord.com/api/v10/channels/{Secret.Data[Secret.Keys.DiscordChannelID]}/messages");
     request.Content = new StringContent(
-      $"{{\"content\": \"{message}\"}}",
+      $"{{ \"content\": \"{message}\" }}",
       Encoding.UTF8, "application/json");
-
     request.Headers.Add("Authorization", $"Bot {Secret.Data[Secret.Keys.DiscordBotToken]}");
-    string resp;
-    try { resp = Notifications.Client.Send(request).Content.ReadAsStringAsync().Result; } // Assume that it worked
+
+    try
+    {
+      var resp = Notifications.Client.Send(request);
+      if (resp.StatusCode != System.Net.HttpStatusCode.OK)
+      {
+        // Message sent failed
+        Log.Error("Discord, sending online message failed, response: {resp}", resp.Content.ReadAsStringAsync().Result);
+      }
+    }
     catch (HttpRequestException ex) { Log.Error("Discord, sending online message failed. {ex}", ex); }
   }
 
