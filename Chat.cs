@@ -339,6 +339,13 @@ public static class Chat
         else { Log.Warning("Redefiniton of \"{key}\" key in line {index}.", text[0], lineIndex); } // TryAdd returned false - probably a duplicate
       }
     }
+
+    // Custom response just to mess with Cakez :)
+    if (Config.Data[Config.Keys.ChannelName] == "cakez77")
+    {
+      ResponseMessages.TryAdd("!demo", ("404 Not Found", true, new DateTime()));
+    }
+
     Log.Information("Loaded {count} automated response messages.", responseCount);
 
     RespMsgFileTimestamp = messagesFile.LastWriteTime;
