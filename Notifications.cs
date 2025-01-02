@@ -429,6 +429,21 @@ namespace AbevBot
       if (string.IsNullOrWhiteSpace(userName)) chatter = "Anonymous";
       else chatter = userName?.Trim();
 
+      // Strip leading "CheerXXX" emotes
+      while (message.StartsWith("Cheer") || message.StartsWith("cheer"))
+      {
+        int idx = 0;
+        for (; idx < 10; idx++) // Max 10 digit amount
+        {
+          var c = message[5 + idx];
+          if (c >= '0' && c <= '9') { }
+          else { break; }
+        }
+        if (idx > 0) { message = message[(5 + idx)..]; }
+        else { break; }
+        message = message.TrimStart();
+      }
+
       Array.Clear(NotificationData);
       NotificationData[0] = chatter;
       NotificationData[4] = count.ToString();
