@@ -340,12 +340,6 @@ public static class Chat
       }
     }
 
-    // Custom response just to mess with Cakez :)
-    if (Config.Data[Config.Keys.ChannelName] == "cakez77")
-    {
-      ResponseMessages.TryAdd("!demo", ("404 Not Found", true, new DateTime()));
-    }
-
     Log.Information("Loaded {count} automated response messages.", responseCount);
 
     RespMsgFileTimestamp = messagesFile.LastWriteTime;
