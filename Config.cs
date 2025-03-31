@@ -57,8 +57,10 @@ public static class Config
   public static float VolumeVideo { get; set; }
   private static DateTime ConfigFileTimestamp;
   public static DateTime BroadcasterLastOnline;
+  public static bool BroadcasterOnline { get; set; }
   public static DateTime BroadcasterLastOnlineCheck { get; set; }
-  public static TimeSpan BroadcasterOnlineCheckInterval { get; } = TimeSpan.FromMinutes(3);
+  public static TimeSpan BroadcasterOfflineCheckInterval { get; } = TimeSpan.FromSeconds(30);
+  public static TimeSpan BroadcasterOnlineCheckInterval { get; } = TimeSpan.FromMinutes(5);
   public static TimeSpan BroadcasterOfflineTimeout { get; } = TimeSpan.FromMinutes(30);
   public static readonly List<Key> HotkeysForPauseNotification = new();
   public static readonly List<Key> HotkeysForSkipNotification = new();

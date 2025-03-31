@@ -1020,7 +1020,7 @@ public static class Chat
   {
     var chatter = Chatter.GetChatterByID(metadata.UserID, metadata.UserName);
     chatter.LastChatted = DateTime.Now;
-    if (Notifications.WelcomeMessagesEnabled && chatter.WelcomeMessage?.Length > 0 && chatter.LastWelcomeMessage.Date != DateTime.Now.Date)
+    if (Notifications.WelcomeMessagesEnabled && Config.BroadcasterOnline && chatter.WelcomeMessage?.Length > 0 && chatter.LastWelcomeMessage.Date != DateTime.Now.Date)
     {
       Log.Information("Creating {userName} welcome message TTS.", metadata.UserName);
       chatter.SetLastWelcomeMessageToNow();

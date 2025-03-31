@@ -217,10 +217,12 @@ public partial class MainWindow : Window
           if (Chat.IsRespMsgFileUpdated()) Chat.LoadResponseMessages(true);
 
           // Check if broadcaster is online
-          if (DateTime.Now - Config.BroadcasterLastOnlineCheck >= Config.BroadcasterOnlineCheckInterval)
+          if ((!Config.BroadcasterOnline && (DateTime.Now - Config.BroadcasterLastOnlineCheck) >= Config.BroadcasterOfflineCheckInterval) ||
+          (Config.BroadcasterOnline && DateTime.Now - Config.BroadcasterLastOnlineCheck >= Config.BroadcasterOnlineCheckInterval))
           {
             if (Config.GetBroadcasterStatus())
             {
+              Config.BroadcasterOnline = true;
               if (DateTime.Now - Config.BroadcasterLastOnline >= Config.BroadcasterOfflineTimeout)
               {
                 Discord.SendOnlineMessage();
@@ -228,6 +230,7 @@ public partial class MainWindow : Window
               Config.BroadcasterLastOnline = DateTime.Now;
               Config.UpdateLastOnline();
             }
+            else { Config.BroadcasterOnline = false; }
             Config.BroadcasterLastOnlineCheck = DateTime.Now;
           }
           sw.Restart();
