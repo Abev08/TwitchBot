@@ -248,17 +248,12 @@ namespace AbevBot
       if (resp is null) return "Something went wrong peepoSad"; // Something went wrong
       if (resp.Length != 0)
       {
-        SpotifyQueueResponse response;
-        try { response = SpotifyQueueResponse.Deserialize(resp); }
-        catch (Exception ex)
-        {
-          Log.Error("{ex}", ex);
-          return "Something went wrong peepoSad";
-        }
-        if (response.Queue is null || response.Queue.Length == 0) return "Nothing is queued";
+        var response = SpotifyQueueResponse.Deserialize(resp);
+        if (response is null) { return "Something went wrong peepoSad"; }
+        else if (response.Queue is null || response.Queue.Length == 0) return "Nothing is queued";
 
         int limit = 3;
-        if (response.Queue.Length < limit) limit = response.Queue.Length;
+        if (response.Queue.Length < limit) { limit = response.Queue.Length; }
 
         StringBuilder sb = new();
         sb.Append("queued tracks: ");

@@ -451,7 +451,7 @@ public static class Chat
     try { resp = Client.Send(request).Content.ReadAsStringAsync().Result; }
     catch (HttpRequestException ex) { Log.Error("Acquiring chatters failed. {ex}", ex); return chatters; }
     var response = GetChattersResponse.Deserialize(resp);
-    if (response?.Data?.Length > 0)
+    if (response != null && response?.Data?.Length > 0)
     {
       for (int i = 0; i < response.Data.Length; i++)
       {

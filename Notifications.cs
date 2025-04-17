@@ -693,7 +693,7 @@ namespace AbevBot
       try { resp = Client.Send(request).Content.ReadAsStringAsync().Result; }
       catch (HttpRequestException ex) { Log.Error("{key} response creation failed. {ex}", "!voices", ex); return; }
       var response = GlotResponse.Deserialize(resp);
-      if (response?.Url?.Length > 0)
+      if (response != null && response?.Url?.Length > 0)
       {
         VoicesLink = response.Url.Replace("api/", ""); // Remove "api/" part
       }
@@ -850,7 +850,7 @@ namespace AbevBot
       try { resp = Client.Send(request).Content.ReadAsStringAsync().Result; }
       catch (HttpRequestException ex) { Log.Error("{key} response creation failed. {ex}", "!sounds", ex); return string.Empty; }
       var response = GlotResponse.Deserialize(resp);
-      if (response?.Url?.Length > 0)
+      if (response != null && response?.Url?.Length > 0)
       {
         s_soundsSamplePasteLink = response.Url.Replace("api/", ""); // Remove "api/" part
         Log.Information("Created respoonse link to \"{key}\" key.", "!sounds");

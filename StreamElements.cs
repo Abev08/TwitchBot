@@ -290,7 +290,7 @@ namespace AbevBot
       try { resp = Notifications.Client.Send(request).Content.ReadAsStringAsync().Result; }
       catch (HttpRequestException ex) { Log.Error("StreamElements voices request failed. {ex}", ex); return; }
       var response = StreamElementsResponse.Deserialize(resp);
-      if (response?.Message?.Length > 0)
+      if (response != null && response?.Message?.Length > 0)
       {
         int startIndex = response.Message.IndexOf("must be one of");
         if (startIndex > 0)

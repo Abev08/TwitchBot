@@ -5,11 +5,21 @@
   <meta charset="utf-8">
   <title>AbevBot</title>
   <script src="client.js"></script>
+  <style>
+    p.error {
+      color: red;
+      font-size: 48px;
+      font-weight: bold;
+      font-family: Calibri;
+      -webkit-text-stroke: 0.5px black;
+      margin: 50px;
+    }
+  </style>
 </head>
 
 <body>
   <div id="conn_err">
-    <p style="color: red; font-size: 48px; font-weight: bold; margin: 50px;">CONNECTION ERROR!</p>
+    <p class="error">CONNECTION ERROR!</p>
   </div>
 
   <div id="content"></div>

@@ -211,7 +211,8 @@ namespace AbevBot
       {
         string resp = Notifications.Client.Send(request).Content.ReadAsStringAsync().Result;
         var result = TikTokTTSResponse.Deserialize(resp);
-        if (result?.StatusCode != 0)
+        if (result is null) { return null; }
+        else if (result?.StatusCode != 0)
         {
           Log.Warning("TikTok TTS request status: {status}, error: {msg}", result?.StatusCode, result?.StatusMessage);
           return null;

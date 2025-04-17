@@ -69,8 +69,8 @@ public static class Events
           Log.Information("Events bot connected.");
           message = Encoding.UTF8.GetString(receiveBuffer, 0, receiveResult.Count);
           // Parse welcome message
-          WelcomeMessage welcomeMessage = WelcomeMessage.Deserialize(message);
-          if (welcomeMessage?.Payload?.Session?.ID is null)
+          var welcomeMessage = WelcomeMessage.Deserialize(message);
+          if (welcomeMessage is null || welcomeMessage?.Payload?.Session?.ID is null)
           {
             Log.Warning("Event bot error. Couldn't read session ID.");
             WebSocketClient.CloseAsync(WebSocketCloseStatus.NormalClosure, null, CancellationToken.None);
@@ -115,9 +115,11 @@ public static class Events
           zeroBytesReceivedCounter = 0;
 
           message = Encoding.UTF8.GetString(receiveBuffer, 0, receiveResult.Count);
-          var eventMsg = JsonSerializer.Deserialize<JsonObject>(message);
+          JsonObject eventMsg = null;
+          try { eventMsg = JsonSerializer.Deserialize<JsonObject>(message); }
+          catch (Exception ex) { Log.Error("Event message deserialization failed. {ex}", ex); }
 
-          if (eventMsg.ContainsKey("metadata") && eventMsg.ContainsKey("payload"))
+          if (eventMsg != null && eventMsg.ContainsKey("metadata") && eventMsg.ContainsKey("payload"))
           {
             switch (eventMsg["metadata"]["message_type"].ToString())
             {
@@ -369,7 +371,7 @@ public static class Events
     try { resp = HttpClient.Send(request).Content.ReadAsStringAsync().Result; }
     catch (HttpRequestException ex) { Log.Error("Events bot subscription request failed. {ex}", ex); return false; }
     var response = ResponseMessage.Deserialize(resp);
-    if (response.Error != null) { Log.Warning("Events bot subscription error: {msg}", response.Message); }
+    if (response is null || response.Error != null) { Log.Warning("Events bot subscription error: {msg}", response.Message); }
     else
     {
       Log.Information("Events bot subscription response: {type} {status}.", response.Data?[0].Type, response.Data?[0].Status);

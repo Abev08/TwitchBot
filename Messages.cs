@@ -1,6 +1,9 @@
+using System;
 using System.Collections.Generic;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+
+using Serilog;
 
 namespace AbevBot;
 
@@ -12,12 +15,10 @@ public class WelcomeMessage
   [JsonPropertyName("payload")]
   public Payload? Payload { get; set; }
 
-  public static WelcomeMessage Deserialize(string message)
+  public static WelcomeMessage? Deserialize(string message)
   {
-    WelcomeMessage? ret = JsonSerializer.Deserialize<WelcomeMessage>(message);
-    if (ret is null) throw new JsonException("Couldn't parse welcome message.");
-
-    return ret;
+    try { return JsonSerializer.Deserialize<WelcomeMessage>(message); }
+    catch (Exception ex) { Log.Error("Welcome message deserialization failed. {ex}", ex); return null; }
   }
 }
 
@@ -38,12 +39,10 @@ public class ResponseMessage
   [JsonPropertyName("data")]
   public Data[]? Data { get; set; }
 
-  public static ResponseMessage Deserialize(string message)
+  public static ResponseMessage? Deserialize(string message)
   {
-    ResponseMessage? ret = JsonSerializer.Deserialize<ResponseMessage>(message);
-    if (ret is null) throw new JsonException("Couldn't parse response message.");
-
-    return ret;
+    try { return JsonSerializer.Deserialize<ResponseMessage>(message); }
+    catch (Exception ex) { Log.Error("Event bot subscription request response deserialization failed. {ex}", ex); return null; }
   }
 }
 
@@ -72,35 +71,37 @@ public class SubscriptionMessage
   }
 }
 
-public class EventMessage
-{
-  [JsonPropertyName("metadata")]
-  public Metadata? Metadata { get; set; }
-  [JsonPropertyName("payload")]
-  public object? Payload { get; set; }
+// No longer used?
+// public class EventMessage
+// {
+//   [JsonPropertyName("metadata")]
+//   public Metadata? Metadata { get; set; }
+//   [JsonPropertyName("payload")]
+//   public object? Payload { get; set; }
 
-  public static EventMessage Deserialize(string message)
-  {
-    EventMessage? ret = JsonSerializer.Deserialize<EventMessage>(message);
-    if (ret is null) throw new JsonException("Couldn't parse event message.");
+//   public static EventMessage Deserialize(string message)
+//   {
+//     EventMessage? ret = JsonSerializer.Deserialize<EventMessage>(message);
+//     if (ret is null) throw new JsonException("Couldn't parse event message.");
 
-    return ret;
-  }
-}
+//     return ret;
+//   }
+// }
 
-public class ChannelIDResponse
-{
-  [JsonPropertyName("data")]
-  public ChannelIDData[]? Data { get; set; }
+// No longer used?
+// public class ChannelIDResponse
+// {
+//   [JsonPropertyName("data")]
+//   public ChannelIDData[]? Data { get; set; }
 
-  public static ChannelIDResponse Deserialize(string message)
-  {
-    ChannelIDResponse? ret = JsonSerializer.Deserialize<ChannelIDResponse>(message);
-    if (ret is null) throw new JsonException("Couldn't parse channel id response.");
+//   public static ChannelIDResponse Deserialize(string message)
+//   {
+//     ChannelIDResponse? ret = JsonSerializer.Deserialize<ChannelIDResponse>(message);
+//     if (ret is null) throw new JsonException("Couldn't parse channel id response.");
 
-    return ret;
-  }
-}
+//     return ret;
+//   }
+// }
 
 public class AccessTokenResponse
 {
@@ -117,12 +118,8 @@ public class AccessTokenResponse
 
   public static AccessTokenResponse? Deserialize(string message)
   {
-    if (message is null || message.Length == 0) return null;
-
-    AccessTokenResponse? ret = JsonSerializer.Deserialize<AccessTokenResponse>(message);
-    if (ret is null) throw new JsonException("Couldn't parse access token response.");
-
-    return ret;
+    try { return JsonSerializer.Deserialize<AccessTokenResponse>(message); }
+    catch (Exception ex) { Log.Error("Twitch OAuth token response deserialization failed. {ex}", ex); return null; }
   }
 
   public override string ToString()
@@ -146,12 +143,8 @@ public class AccessTokenValidationResponse
 
   public static AccessTokenValidationResponse? Deserialize(string message)
   {
-    if (message is null || message.Length == 0) return null;
-
-    AccessTokenValidationResponse? ret = JsonSerializer.Deserialize<AccessTokenValidationResponse>(message);
-    if (ret is null) throw new JsonException("Couldn't parse access token validation response.");
-
-    return ret;
+    try { return JsonSerializer.Deserialize<AccessTokenValidationResponse>(message); }
+    catch (Exception ex) { Log.Error("Twitch OAuth token validation response deserialization failed. {ex}", ex); return null; }
   }
 }
 
@@ -164,12 +157,10 @@ public class GetChattersResponse
   [JsonPropertyName("total")]
   public int? Total { get; set; }
 
-  public static GetChattersResponse Deserialize(string message)
+  public static GetChattersResponse? Deserialize(string message)
   {
-    GetChattersResponse? ret = JsonSerializer.Deserialize<GetChattersResponse>(message);
-    if (ret is null) throw new JsonException("Couldn't parse get chatters response.");
-
-    return ret;
+    try { return JsonSerializer.Deserialize<GetChattersResponse>(message); }
+    catch (Exception ex) { Log.Error("Chatters request response deserialization failed. {ex}", ex); return null; }
   }
 }
 
@@ -196,51 +187,54 @@ public class Payload
   [JsonPropertyName("event")]
   public Event? Event { get; set; }
 
-  public static Payload Deserialize(object o)
+  public static Payload? Deserialize(object o)
   {
-    string? str = o.ToString();
-    Payload? ret = JsonSerializer.Deserialize<Payload>(str?.Length > 0 ? str : "");
-    if (ret is null) throw new JsonException("Couldn't parse access token validation response.");
-
-    return ret;
+    try
+    {
+      string? str = o.ToString();
+      return JsonSerializer.Deserialize<Payload>(str?.Length > 0 ? str : "");
+    }
+    catch (Exception ex) { Log.Error("Spotify OAuth token response deserialization failed. {ex}", ex); return null; }
   }
 }
 
-public class PayloadCheer
-{
-  [JsonPropertyName("session")]
-  public Session? Session { get; set; }
-  [JsonPropertyName("subscription")]
-  public Subscription? Subscription { get; set; }
-  [JsonPropertyName("event")]
-  public EventCheer? Event { get; set; }
+// No longer used?
+// public class PayloadCheer
+// {
+//   [JsonPropertyName("session")]
+//   public Session? Session { get; set; }
+//   [JsonPropertyName("subscription")]
+//   public Subscription? Subscription { get; set; }
+//   [JsonPropertyName("event")]
+//   public EventCheer? Event { get; set; }
 
-  public static PayloadCheer Deserialize(object o)
-  {
-    string? str = o.ToString();
-    PayloadCheer? ret = JsonSerializer.Deserialize<PayloadCheer>(str?.Length > 0 ? str : "");
-    if (ret is null) throw new JsonException("Couldn't parse access token validation response.");
+//   public static PayloadCheer Deserialize(object o)
+//   {
+//     string? str = o.ToString();
+//     PayloadCheer? ret = JsonSerializer.Deserialize<PayloadCheer>(str?.Length > 0 ? str : "");
+//     if (ret is null) throw new JsonException("Couldn't parse access token validation response.");
 
-    return ret;
-  }
-}
+//     return ret;
+//   }
+// }
 
-public class PayloadHypeTrain
-{
-  [JsonPropertyName("subscription")]
-  public Subscription? Subscription { get; set; }
-  [JsonPropertyName("event")]
-  public EventHypeTrain? Event { get; set; }
+// No longer used?
+// public class PayloadHypeTrain
+// {
+//   [JsonPropertyName("subscription")]
+//   public Subscription? Subscription { get; set; }
+//   [JsonPropertyName("event")]
+//   public EventHypeTrain? Event { get; set; }
 
-  public static PayloadHypeTrain Deserialize(object o)
-  {
-    string? str = o.ToString();
-    PayloadHypeTrain? ret = JsonSerializer.Deserialize<PayloadHypeTrain>(str?.Length > 0 ? str : "");
-    if (ret is null) throw new JsonException("Couldn't parse access token validation response.");
+//   public static PayloadHypeTrain Deserialize(object o)
+//   {
+//     string? str = o.ToString();
+//     PayloadHypeTrain? ret = JsonSerializer.Deserialize<PayloadHypeTrain>(str?.Length > 0 ? str : "");
+//     if (ret is null) throw new JsonException("Couldn't parse access token validation response.");
 
-    return ret;
-  }
-}
+//     return ret;
+//   }
+// }
 
 public class Session
 {
@@ -533,12 +527,10 @@ public class StatusResponse
   [JsonPropertyName("data")]
   public StatusResponseData[]? Data { get; set; }
 
-  public static StatusResponse Deserialize(string message)
+  public static StatusResponse? Deserialize(string message)
   {
-    StatusResponse? ret = JsonSerializer.Deserialize<StatusResponse>(message);
-    if (ret is null) throw new JsonException("Couldn't parse stream status response.");
-
-    return ret;
+    try { return JsonSerializer.Deserialize<StatusResponse>(message); }
+    catch (Exception ex) { Log.Error("Stream status response deserialization failed. {ex}", ex); return null; }
   }
 }
 
@@ -593,12 +585,10 @@ public class StreamElementsResponse
   [JsonPropertyName("message")]
   public string? Message { get; set; }
 
-  public static StreamElementsResponse Deserialize(string message)
+  public static StreamElementsResponse? Deserialize(string message)
   {
-    StreamElementsResponse? ret = JsonSerializer.Deserialize<StreamElementsResponse>(message);
-    if (ret is null) throw new JsonException("Couldn't parse stream elements response.");
-
-    return ret;
+    try { return JsonSerializer.Deserialize<StreamElementsResponse>(message); }
+    catch (Exception ex) { Log.Error("StreamElements response deserialization failed. {ex}", ex); return null; }
   }
 }
 
@@ -634,12 +624,10 @@ public class GlotResponse
   [JsonPropertyName("url")]
   public string? Url { get; set; }
 
-  public static GlotResponse Deserialize(string message)
+  public static GlotResponse? Deserialize(string message)
   {
-    GlotResponse? ret = JsonSerializer.Deserialize<GlotResponse>(message);
-    if (ret is null) throw new JsonException("Couldn't parse Glot.io response.");
-
-    return ret;
+    try { return JsonSerializer.Deserialize<GlotResponse>(message); }
+    catch (Exception ex) { Log.Error("Glot response deserialization failed. {ex}", ex); return null; }
   }
 }
 
@@ -656,12 +644,10 @@ public class TikTokTTSResponse
   [JsonPropertyName("status_msg")]
   public string? StatusMessage { get; set; }
 
-  public static TikTokTTSResponse Deserialize(string message)
+  public static TikTokTTSResponse? Deserialize(string message)
   {
-    TikTokTTSResponse? ret = JsonSerializer.Deserialize<TikTokTTSResponse>(message);
-    if (ret is null) throw new JsonException("Couldn't parse TikTok TTS response.");
-
-    return ret;
+    try { return JsonSerializer.Deserialize<TikTokTTSResponse>(message); }
+    catch (Exception ex) { Log.Error("TikTok TTS response deserialization failed. {ex}", ex); return null; }
   }
 }
 
@@ -696,12 +682,10 @@ public class SpotifyAccessTokenResponse
   [JsonPropertyName("token_type")]
   public string? TokenType { get; set; }
 
-  public static SpotifyAccessTokenResponse Deserialize(string message)
+  public static SpotifyAccessTokenResponse? Deserialize(string message)
   {
-    SpotifyAccessTokenResponse? ret = JsonSerializer.Deserialize<SpotifyAccessTokenResponse>(message);
-    if (ret is null) throw new JsonException("Couldn't parse access token response.");
-
-    return ret;
+    try { return JsonSerializer.Deserialize<SpotifyAccessTokenResponse>(message); }
+    catch (Exception ex) { Log.Error("Spotify OAuth token response deserialization failed. {ex}", ex); return null; }
   }
 
   public override string ToString()
@@ -727,12 +711,10 @@ public class SpotifyCurrentlyPlayingResponse
   [JsonPropertyName("is_playing")]
   public bool? IsPlaying { get; set; }
 
-  public static SpotifyCurrentlyPlayingResponse Deserialize(string message)
+  public static SpotifyCurrentlyPlayingResponse? Deserialize(string message)
   {
-    SpotifyCurrentlyPlayingResponse? ret = JsonSerializer.Deserialize<SpotifyCurrentlyPlayingResponse>(message);
-    if (ret is null) throw new JsonException("Couldn't parse currently playing response.");
-
-    return ret;
+    try { return JsonSerializer.Deserialize<SpotifyCurrentlyPlayingResponse>(message); }
+    catch (Exception ex) { Log.Error("Spotify currently playing response deserialization failed. {ex}", ex); return null; }
   }
 }
 
@@ -885,12 +867,10 @@ public class SpotifyRecentlyPlayed
   [JsonPropertyName("href")]
   public string? Href { get; set; }
 
-  public static SpotifyRecentlyPlayed Deserialize(string message)
+  public static SpotifyRecentlyPlayed? Deserialize(string message)
   {
-    SpotifyRecentlyPlayed? ret = JsonSerializer.Deserialize<SpotifyRecentlyPlayed>(message);
-    if (ret is null) throw new JsonException("Couldn't parse recently played response.");
-
-    return ret;
+    try { return JsonSerializer.Deserialize<SpotifyRecentlyPlayed>(message); }
+    catch (Exception ex) { Log.Error("Spotify recently played response deserialization failed. {ex}", ex); return null; }
   }
 }
 
@@ -917,12 +897,10 @@ public class SpotifyResponse
   [JsonPropertyName("error")]
   public SpotifyResponseError? Error { get; set; }
 
-  public static SpotifyResponse Deserialize(string message)
+  public static SpotifyResponse? Deserialize(string message)
   {
-    SpotifyResponse? ret = JsonSerializer.Deserialize<SpotifyResponse>(message);
-    if (ret is null) throw new JsonException("Couldn't parse Spotify response.");
-
-    return ret;
+    try { return JsonSerializer.Deserialize<SpotifyResponse>(message); }
+    catch (Exception ex) { Log.Error("Spotify currently playing response deserialization failed. {ex}", ex); return null; }
   }
 }
 
@@ -943,12 +921,10 @@ public class SpotifyQueueResponse
   [JsonPropertyName("queue")]
   public SpotifyCurrentlyPlayingItem[]? Queue { get; set; }
 
-  public static SpotifyQueueResponse Deserialize(string message)
+  public static SpotifyQueueResponse? Deserialize(string message)
   {
-    SpotifyQueueResponse? ret = JsonSerializer.Deserialize<SpotifyQueueResponse>(message);
-    if (ret is null) throw new JsonException("Couldn't parse queue response.");
-
-    return ret;
+    try { return JsonSerializer.Deserialize<SpotifyQueueResponse>(message); }
+    catch (Exception ex) { Log.Error("Spotify queue response deserialization failed. {ex}", ex); return null; }
   }
 }
 
@@ -965,12 +941,10 @@ public class DiscordTokenResponse
   [JsonPropertyName("token_type")]
   public string? TokenType { get; set; }
 
-  public static DiscordTokenResponse Deserialize(string message)
+  public static DiscordTokenResponse? Deserialize(string message)
   {
-    DiscordTokenResponse? ret = JsonSerializer.Deserialize<DiscordTokenResponse>(message);
-    if (ret is null) throw new JsonException("Couldn't parse access token response.");
-
-    return ret;
+    try { return JsonSerializer.Deserialize<DiscordTokenResponse>(message); }
+    catch (Exception ex) { Log.Error("Discord OAuth token response deserialization failed. {ex}", ex); return null; }
   }
 
   public override string ToString()
@@ -1010,12 +984,10 @@ public class DiscordMeResponse
   [JsonPropertyName("locale")]
   public string? Locale { get; set; }
 
-  public static DiscordMeResponse Deserialize(string message)
+  public static DiscordMeResponse? Deserialize(string message)
   {
-    DiscordMeResponse? ret = JsonSerializer.Deserialize<DiscordMeResponse>(message);
-    if (ret is null) throw new JsonException("Couldn't parse access token response.");
-
-    return ret;
+    try { return JsonSerializer.Deserialize<DiscordMeResponse>(message); }
+    catch (Exception ex) { Log.Error("Discord OAuth token validation response deserialization failed. {ex}", ex); return null; }
   }
 }
 

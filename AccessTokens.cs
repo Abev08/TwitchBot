@@ -632,7 +632,7 @@ public static class AccessTokens
     try { resp = Client.Send(request).Content.ReadAsStringAsync().Result; }
     catch (HttpRequestException ex) { Log.Error("Discrod OAuth token validation failed. {ex}", ex); return false; }
     var response = DiscordMeResponse.Deserialize(resp);
-    if (response?.ID?.Length > 0 && response?.UserName?.Length > 0)
+    if (response != null && response?.ID?.Length > 0 && response?.UserName?.Length > 0)
     {
       Log.Information("Discord OAuth token validation succeeded.");
       return true;
