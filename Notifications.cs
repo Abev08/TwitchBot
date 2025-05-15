@@ -435,6 +435,7 @@ namespace AbevBot
         int idx = 0;
         for (; idx < 10; idx++) // Max 10 digit amount
         {
+          if (5 + idx >= message.Length) { break; }
           var c = message[5 + idx];
           if (c >= '0' && c <= '9') { }
           else { break; }
