@@ -88,23 +88,63 @@ public static class Discord
         RandomVideosMessages = null;
         return videos;
       }
-      if (RandomVideosMessages.Count == 50 || RandomVideosMessages.Count == 100) { Log.Warning("Discord, random videos request probably reached limit in received messages - TODO: implement requesting different ranges"); }
+      if (RandomVideosMessages?.Count == 50 || RandomVideosMessages?.Count == 100)
+      {
+        Log.Warning("Discord, random videos request probably reached limit in received messages - TODO: implement requesting different ranges");
+      }
     }
 
     foreach (var m in RandomVideosMessages)
     {
-      var attachments = m["attachments"];
-      if (attachments is JsonArray && ((JsonArray)attachments).Count == 1)
+      if (m is null) { continue; }
+
+      // Check start of the message
+      var content = m["content"].ToString();
+      if (content.ToLower().StartsWith("ignore")) { continue; } // Skip the message
+
+      // Check reactions on the message
+      var reactions = m["reactions"];
+      if (reactions is JsonArray re && re.Count > 0)
       {
-        // Found a message with attachement
-        var o = attachments[0];
-        var name = o["filename"].ToString();
-        var url = o["url"].ToString();
-        var type = o["content_type"].ToString();
-        // Check if attached thing is a video
-        if (type.StartsWith("video"))
+        int yesCount = 0, noCount = 0;
+        foreach (var reaction in re)
         {
-          videos.Add(url);
+          var emoji = reaction["emoji"]["name"].ToString();
+          var count = (int)reaction["count_details"]["normal"];
+          if (emoji == "🟩") { yesCount += count; }
+          else if (emoji == "🟥") { noCount += count; }
+        }
+
+        if (noCount >= yesCount) { continue; } // Skip the message
+      }
+
+      // Check attachments (attached videos)
+      var attachments = m["attachments"];
+      if (attachments is JsonArray att && att.Count == 1)
+      {
+        var name = att[0]["filename"].ToString();
+        var url = att[0]["url"].ToString();
+        var type = att[0]["content_type"].ToString();
+        if (type.StartsWith("video")) { videos.Add(url); }
+      }
+      else
+      {
+        // Check embeds - maybe the message is a link to a video
+        var embeds = m["embeds"];
+        if (embeds is JsonArray em && em.Count == 1)
+        {
+          var url = em[0]["url"].ToString();
+          var type = em[0]["type"].ToString();
+          if (type == "video") { videos.Add(url); }
+        }
+        else
+        {
+          // Maybe the message is a link to a video but for some reason the video is not embedding in the Discord message
+          if (content.ToLower().EndsWith(".mp4") || content.ToLower().EndsWith(".webm"))
+          {
+            if (Uri.TryCreate(content, UriKind.Absolute, out Uri uriResult) &&
+              (uriResult.Scheme == Uri.UriSchemeHttp || uriResult.Scheme == Uri.UriSchemeHttps)) { videos.Add(content); }
+          }
         }
       }
     }
