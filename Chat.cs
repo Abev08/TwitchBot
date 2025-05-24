@@ -317,7 +317,7 @@ public static class Chat
         continue;
       }
 
-      text[0] = line[..separatorIndex].Trim();
+      text[0] = line[..separatorIndex].Trim().ToLower();
       text[1] = line[(separatorIndex + 1)..].Trim();
 
       if (text[0].StartsWith("//")) { continue; } // Commented out line - skip it
@@ -1027,168 +1027,150 @@ public static class Chat
       Notifications.CreateTTSNotification(chatter.WelcomeMessage, chatter.Name);
     }
 
-    if (msg.StartsWith("!tts")) // Check if the message starts with !tts key
+    if (!msg.StartsWith('!')) { return; } // Message doesn't start with exclamation mark - not a command.
+
+    // Get the command
+    int temp = msg.IndexOf(' ');
+    string command = temp > 0 ? msg[..temp] : msg;
+    command = command.ToLower();
+    (string response, bool fromFile, DateTime lastUsed) rm; // Response message
+
+    switch (command)
     {
-      if (msg.Length <= 5) { Log.Warning("!tts command without a message Susge"); } // No message to read, do nothing
-      else if (Notifications.ChatTTSEnabled || Chatter.AlwaysReadTTSFromThem.Contains(metadata.UserName)) { Notifications.CreateTTSNotification(msg[5..], chatter.Name); } // 5.. - without "!tts "
-      else { AddMessageResponseToQueue("TTS disabled peepoSad", metadata.MessageID); }
-    }
-    else if (msg.StartsWith("!gamba")) // Check if the message starts with !gamba key
-    {
-      MinigameGamba.NewGamba(metadata.UserID, metadata.UserName, msg[6..]); // 6.. - without "!gamba"
-    }
-    else if (msg.StartsWith("!fight")) // Check if the message starts with !fight key
-    {
-      MinigameFight.NewFight(metadata.UserID, metadata.UserName, msg[6..]); // 6.. - without "!fight"
-    }
-    else if (msg.StartsWith("!rude")) // Check if the message starts with !rude key
-    {
-      MinigameRude.AddRudePoint(metadata.UserName, msg[5..]); // 5.. - without "!rude"
-    }
-    else if (msg.StartsWith("!point")) // Check if the message starts with !point key
-    {
-      if (metadata.Badge.Equals("STR") || msg.Length == 6) MinigameBackseat.AddBackseatPoint(msg[6..], 1); // 6.. - without "!point"
-      else AddMessageResponseToQueue("That's for the streamer, you shouldn't be using it Madge", metadata.MessageID);
-    }
-    else if (msg.StartsWith("!unpoint")) // Check if the message starts with !unpoint key
-    {
-      if (metadata.Badge.Equals("STR")) MinigameBackseat.AddBackseatPoint(msg[8..], -1); // 8.. - without "!unpoint"
-      else AddMessageResponseToQueue("That's for the streamer, you shouldn't be using it Madge", metadata.MessageID);
-    }
-    else if (msg.StartsWith("!vanish")) // Check if the message starts with !vanish key
-    {
-      if (!VanishEnabled) { } // Disabled - do nothing
-      else if (msg.Length == 7)
-      {
-        // Vanish the command user
-        if (!metadata.Badge.Equals("STR")) BanChatter("!vanish command", metadata.UserID, metadata.UserName);
-      }
-      else
-      {
-        // Vanish other user, only available for streamer and moderators
-        if (metadata.Badge.Equals("STR") || metadata.Badge.Equals("MOD"))
+      case "!tts":
+        if (msg.Length <= 5) { Log.Warning("!tts command without a message Susge"); } // No message to read, do nothing
+        else if (Notifications.ChatTTSEnabled || Chatter.AlwaysReadTTSFromThem.Contains(metadata.UserName)) { Notifications.CreateTTSNotification(msg[5..], chatter.Name); } // 5.. - without "!tts "
+        else { AddMessageResponseToQueue("TTS disabled peepoSad", metadata.MessageID); }
+        break;
+      case "!gamba":
+        MinigameGamba.NewGamba(metadata.UserID, metadata.UserName, msg[6..]); // 6.. - without "!gamba"
+        break;
+      case "!fight":
+        MinigameFight.NewFight(metadata.UserID, metadata.UserName, msg[6..]); // 6.. - without "!fight"
+        break;
+      case "!rude":
+        MinigameRude.AddRudePoint(metadata.UserName, msg[5..]); // 5.. - without "!rude"
+        break;
+      case "!point":
+        if (metadata.Badge.Equals("STR") || msg.Length == 6) { MinigameBackseat.AddBackseatPoint(msg[6..], 1); } // 6.. - without "!point"
+        else { AddMessageResponseToQueue("That's for the streamer, you shouldn't be using it Madge", metadata.MessageID); }
+        break;
+      case "!unpoint":
+        if (metadata.Badge.Equals("STR")) { MinigameBackseat.AddBackseatPoint(msg[8..], -1); } // 8.. - without "!unpoint"
+        else { AddMessageResponseToQueue("That's for the streamer, you shouldn't be using it Madge", metadata.MessageID); }
+        break;
+      case "!vanish":
+        if (!VanishEnabled) { } // Disabled - do nothing
+        else if (msg.Length == 7) { if (!metadata.Badge.Equals("STR")) BanChatter("!vanish command", metadata.UserID, metadata.UserName); }// Vanish the command user
+        else
         {
-          BanChatter("!vanish command", -1, msg[7..]); // 7.. - without "!vanish"
+          // Vanish other user, only available for streamer and moderators
+          if (metadata.Badge.Equals("STR") || metadata.Badge.Equals("MOD")) { BanChatter("!vanish command", -1, msg[7..]); }// 7.. - without "!vanish"
         }
-      }
-    }
-    else if (msg.StartsWith("!hug")) // Check if the message starts with !hug key
-    {
-      Hug(metadata.UserName, msg[4..]); // 4.. - without "!hug"
-    }
-    else if (msg.StartsWith("!commands")) // Check if the message starts with !commands key
-    {
-      // Check the timeout
-      if (ResponseMessages.TryGetValue("!commands", out var rm) && (DateTime.Now - rm.lastUsed) >= COOLDOWN_BETWEEN_THE_SAME_MESSAGE)
-      {
-        SendCommandsResponse(metadata.UserName, metadata.MessageID);
-        ResponseMessages["!commands"] = (rm.response, rm.fromFile, DateTime.Now);
-      }
-      else { Log.Warning("Not sending response for {command} key. Cooldown active.", "!commands"); }
-    }
-    else if (msg.StartsWith("!welcomemessageclear")) // Check if the message starts with !welcomemessageclear key
-    {
-      // Clear current welcome message
-      if (chatter.WelcomeMessage?.Length > 0)
-      {
-        chatter.SetWelcomeMessage(null);
-        AddMessageResponseToQueue("Welcome message was cleared", metadata.MessageID);
-      }
-      else { AddMessageResponseToQueue("Your welcome message is empty WeirdDude", metadata.MessageID); }
-    }
-    else if (msg.StartsWith("!welcomemessage")) // Check if the message starts with !welcomemessage key
-    {
-      string newMsg = msg[15..].Trim();
-      if (newMsg.Length == 0)
-      {
-        // Print out current welcome message
-        if (chatter.WelcomeMessage?.Length > 0) AddMessageResponseToQueue($"Current welcome message: {chatter.WelcomeMessage}", metadata.MessageID);
-        else AddMessageResponseToQueue("Your welcome message is empty peepoSad", metadata.MessageID);
-      }
-      else
-      {
-        // Set new welcome message
-        chatter.SetWelcomeMessage(newMsg);
-        AddMessageResponseToQueue("Welcome message was updated peepoHappy", metadata.MessageID);
-      }
-    }
-    else if (msg.StartsWith("!sounds")) // Check if the message starts with !sounds key
-    {
-      if (Notifications.AreSoundsAvailable())
-      {
-        string paste = Notifications.GetSampleSoundsPaste();
-        AddMessageResponseToQueue(paste, metadata.MessageID);
-      }
-      else { AddMessageResponseToQueue("There are no sounds to use peepoSad", metadata.MessageID); }
-    }
-    else if (msg.StartsWith("!previoussong")) // Check if the message starts with !previoussong key
-    {
-      if (Spotify.Working) { AddMessageResponseToQueue(Spotify.GetRecentlyPlayingTracks(), metadata.MessageID); }
-      else { AddMessageResponseToQueue("Spotify connection is not working peepoSad", metadata.MessageID); }
-    }
-    else if (msg.StartsWith("!songrequest")) // Check if the message starts with !songrequest key
-    {
-      SongRequest(chatter, msg[12..], metadata.MessageID);  // 12.. - without "!songrequest"
-    }
-    else if (msg.StartsWith("!sr")) // Check if the message starts with !sr key
-    {
-      SongRequest(chatter, msg[3..], metadata.MessageID); // 3.. - without "!sr"
-    }
-    else if (msg.StartsWith("!skipsong")) // Check if the message starts with !skipsong key
-    {
-      SkipSong(chatter);
-    }
-    else if (msg.StartsWith("!songqueue")) // Check if the message starts with !songqueue key
-    {
-      if (Spotify.Working) { AddMessageResponseToQueue(Spotify.GetSongQueue(), metadata.MessageID); }
-      else { AddMessageResponseToQueue("Spotify connection is not working peepoSad", metadata.MessageID); }
-    }
-    else if (msg.StartsWith("!song")) // Check if the message starts with !song key
-    {
-      if (Spotify.Working) { AddMessageResponseToQueue(Spotify.GetCurrentlyPlayingTrack(), metadata.MessageID); }
-      else { AddMessageResponseToQueue("Spotify connection is not working peepoSad", metadata.MessageID); }
-    }
-    else if (msg.StartsWith("!counter")) // Check if message starts with !counter key
-    {
-      if (Counter.IsStarted)
-      {
-        if (metadata.Badge == "STR" || metadata.Badge == "MOD") { Counter.ParseChatMessage(msg[8..].Trim(), metadata.MessageID); }
-        else { AddMessageResponseToQueue("Only the streamer or mods can update counters!", metadata.MessageID); }
-      }
-      else { AddMessageResponseToQueue("Counters are not working peepoSad", metadata.MessageID); }
-    }
-    else if (msg.StartsWith("!friendly"))
-    {
-      AddMessageResponseToQueue("PepeLaugh", metadata.MessageID);
-    }
-    else if (ResponseMessages.Count > 0) // Check if message starts with key to get automatic response
-    {
-      int temp = msg.IndexOf(' ');
-      string command = temp > 0 ? msg[..temp] : msg;
-      if (ResponseMessages.TryGetValue(command, out var rm))
-      {
-        // "!lang" response - "Please speak xxx in the chat...", only usable by the mods or the streamer
-        if (command.Equals("!lang"))
+        break;
+      case "!hug":
+        Hug(metadata.UserName, msg[4..]); // 4.. - without "!hug"
+        break;
+      case "!commands":
+        // Check the timeout
+        if (ResponseMessages.TryGetValue("!commands", out rm) && (DateTime.Now - rm.lastUsed) >= COOLDOWN_BETWEEN_THE_SAME_MESSAGE)
         {
-          if (metadata.Badge.Equals("MOD") || metadata.Badge.Equals("STR"))
+          SendCommandsResponse(metadata.UserName, metadata.MessageID);
+          ResponseMessages["!commands"] = (rm.response, rm.fromFile, DateTime.Now);
+        }
+        else { Log.Warning("Not sending response for {command} key. Cooldown active.", "!commands"); }
+        break;
+      case "!welcomemessageclear":
+        // Clear current welcome message
+        if (chatter.WelcomeMessage?.Length > 0)
+        {
+          chatter.SetWelcomeMessage(null);
+          AddMessageResponseToQueue("Welcome message was cleared", metadata.MessageID);
+        }
+        else { AddMessageResponseToQueue("Your welcome message is empty WeirdDude", metadata.MessageID); }
+        break;
+      case "!welcomemessage":
+        string newMsg = msg[15..].Trim();
+        if (newMsg.Length == 0)
+        {
+          // Print out current welcome message
+          if (chatter.WelcomeMessage?.Length > 0) AddMessageResponseToQueue($"Current welcome message: {chatter.WelcomeMessage}", metadata.MessageID);
+          else AddMessageResponseToQueue("Your welcome message is empty peepoSad", metadata.MessageID);
+        }
+        else
+        {
+          // Set new welcome message
+          chatter.SetWelcomeMessage(newMsg);
+          AddMessageResponseToQueue("Welcome message was updated peepoHappy", metadata.MessageID);
+        }
+        break;
+      case "!sounds":
+        if (Notifications.AreSoundsAvailable())
+        {
+          string paste = Notifications.GetSampleSoundsPaste();
+          AddMessageResponseToQueue(paste, metadata.MessageID);
+        }
+        else { AddMessageResponseToQueue("There are no sounds to use peepoSad", metadata.MessageID); }
+        break;
+      case "!previoussong":
+        if (Spotify.Working) { AddMessageResponseToQueue(Spotify.GetRecentlyPlayingTracks(), metadata.MessageID); }
+        else { AddMessageResponseToQueue("Spotify connection is not working peepoSad", metadata.MessageID); }
+        break;
+      case "!songrequest":
+        SongRequest(chatter, msg[12..], metadata.MessageID);  // 12.. - without "!songrequest"
+        break;
+      case "!sr":
+        SongRequest(chatter, msg[3..], metadata.MessageID); // 3.. - without "!sr"
+        break;
+      case "!skipsong":
+        SkipSong(chatter);
+        break;
+      case "!songqueue":
+        if (Spotify.Working) { AddMessageResponseToQueue(Spotify.GetSongQueue(), metadata.MessageID); }
+        else { AddMessageResponseToQueue("Spotify connection is not working peepoSad", metadata.MessageID); }
+        break;
+      case "!song":
+        if (Spotify.Working) { AddMessageResponseToQueue(Spotify.GetCurrentlyPlayingTrack(), metadata.MessageID); }
+        else { AddMessageResponseToQueue("Spotify connection is not working peepoSad", metadata.MessageID); }
+        break;
+      case "!counter":
+        if (Counter.IsStarted)
+        {
+          if (metadata.Badge == "STR" || metadata.Badge == "MOD") { Counter.ParseChatMessage(msg[8..].Trim(), metadata.MessageID); }
+          else { AddMessageResponseToQueue("Only the streamer or mods can update counters!", metadata.MessageID); }
+        }
+        else { AddMessageResponseToQueue("Counters are not working peepoSad", metadata.MessageID); }
+        break;
+      case "!friendly":
+        AddMessageResponseToQueue("PepeLaugh", metadata.MessageID);
+        break;
+      default:
+        // Not any of the predefined commands? Check user defined response messages
+        if (ResponseMessages.Count > 0 && ResponseMessages.TryGetValue(command, out rm))
+        {
+          // "!lang" response - "Please speak xxx in the chat...", only usable by the mods or the streamer
+          if (command.Equals("!lang"))
           {
-            if (temp > 0)
+            if (metadata.Badge.Equals("MOD") || metadata.Badge.Equals("STR"))
             {
-              string name = msg[temp..].Trim();
-              if (name.StartsWith('@')) name = name[1..];
-              AddMessageToQueue($"@{name} {rm.response}");
+              if (temp > 0)
+              {
+                string name = msg[temp..].Trim();
+                if (name.StartsWith('@')) name = name[1..];
+                AddMessageToQueue($"@{name} {rm.response}");
+              }
+              else { AddMessageResponseToQueue(rm.response, metadata.MessageID); }
             }
-            else { AddMessageResponseToQueue(rm.response, metadata.MessageID); }
           }
+          // Check if the same message was send not long ago
+          else if (DateTime.Now - rm.lastUsed >= COOLDOWN_BETWEEN_THE_SAME_MESSAGE)
+          {
+            AddMessageResponseToQueue(rm.response, metadata.MessageID);
+            ResponseMessages[command] = (rm.response, rm.fromFile, DateTime.Now);
+          }
+          else { Log.Warning("Not sending response for \"{command}\" key. Cooldown active.", command); }
         }
-        // Check if the same message was send not long ago
-        else if (DateTime.Now - rm.lastUsed >= COOLDOWN_BETWEEN_THE_SAME_MESSAGE)
-        {
-          AddMessageResponseToQueue(rm.response, metadata.MessageID);
-          ResponseMessages[command] = (rm.response, rm.fromFile, DateTime.Now);
-        }
-        else { Log.Warning("Not sending response for \"{command}\" key. Cooldown active.", command); }
-      }
+        break;
     }
   }
 
