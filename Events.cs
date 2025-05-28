@@ -91,6 +91,8 @@ public static class Events
             anySubscriptionSucceeded |= Subscribe("channel.hype_train.progress", "1", sessionID); // A Hype Train makes progress on the specified channel
             anySubscriptionSucceeded |= Subscribe("channel.ban", "1", sessionID); // A viewer is banned from the specified channel
             anySubscriptionSucceeded |= Subscribe("channel.channel_points_automatic_reward_redemption.add", "1", sessionID); // A viewer has redeemed an automatic channel points reward on the specified channel
+            anySubscriptionSucceeded |= Subscribe("channel.raid", "1", sessionID,
+              new JsonObject { { "condition", new JsonObject { { "to_broadcaster_user_id", Config.Data[Config.Keys.ChannelID] } } } }); // A broadcaster raids another broadcaster’s channel
 
             if (!anySubscriptionSucceeded)
             {
@@ -292,6 +294,13 @@ public static class Events
                     LogEventToFile(message);
                     break;
 
+                  case "channel.raid":
+                    userName = eventMsg["payload"]["event"]["from_broadcaster_user_name"]?.ToString();
+                    long.TryParse(eventMsg["payload"]["event"]["from_broadcaster_user_id"]?.ToString(), out userID);
+                    int.TryParse(eventMsg["payload"]["event"]["viewers"]?.ToString(), out var count);
+                    Notifications.CreateRaidNotification(userName, userID.ToString(), count);
+                    break;
+
                   case "some_reconnect_message_header_i_dont_remember":
                     // Reconnect message
                     Log.Information("Event bot got session reconnect message. Should close the connection and use provided url as WEBSOCKETURL but not doing that because it's not mandatory.");
@@ -358,12 +367,19 @@ public static class Events
     }
   }
 
-  private static bool Subscribe(string type, string version, string sessionID)
+  private static bool Subscribe(string type, string version, string sessionID, JsonObject additionalFields = null)
   {
     // https://dev.twitch.tv/docs/eventsub/eventsub-subscription-types/
     Log.Information("Events bot subscribing to {type} event.", type);
     using HttpRequestMessage request = new(HttpMethod.Post, SUBSCRIPTIONRUL);
-    request.Content = new StringContent(new SubscriptionMessage(type, version, Config.Data[Config.Keys.ChannelID], sessionID).ToJsonString(), Encoding.UTF8, "application/json");
+    var msg = new SubscriptionMessage(type, version, Config.Data[Config.Keys.ChannelID], sessionID).ToJsonString();
+    if (additionalFields != null && additionalFields.Count > 0)
+    {
+      var n = JsonObject.Parse(msg);
+      foreach (var additionalField in additionalFields) { n[additionalField.Key] = JsonObject.Parse(additionalFields[additionalField.Key].ToString()); }
+      msg = n.ToString();
+    }
+    request.Content = new StringContent(msg, Encoding.UTF8, "application/json");
     request.Headers.Add("Client-Id", Secret.Data[Secret.Keys.TwitchClientID]);
     request.Headers.Add("Authorization", $"Bearer {Secret.Data[Secret.Keys.TwitchOAuthToken]}");
 

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Net.Http;
 using System.Text;
+using System.Text.Json.Nodes;
 using System.Web;
 
 using Serilog;
@@ -223,6 +224,32 @@ namespace AbevBot
           return null;
         }
         return new MemoryStream(Convert.FromBase64String(result.Data.VStr));
+      }
+      catch (Exception ex) { Log.Error("TikTok TTS request failed. {ex}", ex); return null; }
+    }
+
+    // Not every voice works with this one, but it doesn't require sessionid
+    public static Stream GetTTS2(string text, string voice)
+    {
+      const string url = "https://tiktok-tts.weilnet.workers.dev/api/generation";
+      try
+      {
+        using HttpRequestMessage request = new(HttpMethod.Post, url);
+        request.Content = new StringContent(new JsonObject() {
+          {"text", text},
+          {"voice", voice}}.ToString(),
+         Encoding.UTF8, "application/json");
+        request.Content.Headers.ContentType = null;
+        request.Content.Headers.Add("Content-Type", "application/json");
+        string resp = Notifications.Client.Send(request).Content.ReadAsStringAsync().Result;
+        var result = JsonNode.Parse(resp);
+        if (result is null || (bool?)result["success"] != true) { return null; }
+        else
+        {
+          var data = (string?)result["data"];
+          if (data == null) { return null; }
+          else { return new MemoryStream(Convert.FromBase64String(data)); }
+        }
       }
       catch (Exception ex) { Log.Error("TikTok TTS request failed. {ex}", ex); return null; }
     }

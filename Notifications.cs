@@ -514,12 +514,12 @@ namespace AbevBot
     public static void CreateRaidNotification(string userName, string userID, int count)
     {
       var config = Configs["Raid"];
-      if (!config.Enable) return;
-      if (count < config.MinimumRaiders) return;
+      if (!config.Enable) { return; }
+      if (count < config.MinimumRaiders) { return; }
 
       string chatter;
-      if (string.IsNullOrWhiteSpace(userName)) chatter = "Anonymous";
-      else chatter = userName?.Trim();
+      if (string.IsNullOrWhiteSpace(userName)) { chatter = "Anonymous"; }
+      else { chatter = userName?.Trim(); }
 
       Array.Clear(NotificationData);
       NotificationData[0] = chatter;
@@ -527,7 +527,7 @@ namespace AbevBot
       NotificationData[12] = count > 1 ? "s" : string.Empty;
 
       Chat.AddMessageToQueue(string.Format(config.ChatMessage, NotificationData));
-      if (config.DoShoutout) Chat.Shoutout(userID);
+      if (config.DoShoutout) { Chat.Shoutout(userID); }
       AddNotification(new Notification(config, NotificationData));
     }
 
