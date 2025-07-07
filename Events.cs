@@ -228,7 +228,7 @@ public static class Events
                       userName,
                       eventMsg["payload"]["event"]["reward"]?["id"]?.ToString(),
                       eventMsg["payload"]["event"]["id"]?.ToString(),
-                      eventMsg["payload"]["event"]["reward"]?["prompt"]?.ToString());
+                      eventMsg["payload"]["event"]["user_input"]?.ToString());
                     break;
 
                   case "channel.ban":

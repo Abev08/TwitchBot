@@ -475,15 +475,15 @@ namespace AbevBot
       }
       else
       {
+        Array.Clear(NotificationData);
+        NotificationData[0] = userName;
+        NotificationData[7] = message;
+
         // Look through channel redemptions list
         foreach (var redemption in ChannelRedemptions)
         {
           if (redemption.ID.Equals(redemptionID))
           {
-            // Create notification
-            Array.Clear(NotificationData);
-            NotificationData[0] = chatterName;
-
             Chat.AddMessageToQueue(redemption.Config.ChatMessage);
             AddNotification(new Notification(redemption.Config, NotificationData, redemption)
             {
