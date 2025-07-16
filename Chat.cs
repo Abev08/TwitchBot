@@ -1234,9 +1234,7 @@ public static class Chat
       var response = JsonNode.Parse(resp.Content.ReadAsStringAsync().Result);
 
       var userID = long.Parse(response?["data"]?[0]?["user_id"].GetValue<string>());
-      var timeStr = response?["data"]?[0]?["followed_at"].GetValue<string>();
-      if (timeStr.EndsWith("Z")) { timeStr = timeStr[..^1]; }
-      var timeFollowed = DateTime.Parse(timeStr);
+      var timeFollowed = DateTime.Parse(response?["data"]?[0]?["followed_at"].GetValue<string>());
       return (userID == chatterID, timeFollowed);
     }
     catch { return (false, DateTime.MinValue); }
