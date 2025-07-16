@@ -556,6 +556,7 @@ public static class Chat
     }
     if (VanishEnabled) { sb.Append("!vanish, "); }
     if (Counter.IsStarted) { sb.Append("!counter, "); }
+    sb.Append("!bans, !banladder, ");
 
     foreach (string key in ResponseMessages.Keys)
     {
@@ -1144,6 +1145,10 @@ public static class Chat
       case "!friendly":
         AddMessageResponseToQueue("PepeLaugh", metadata.MessageID);
         break;
+      case "!bans":
+      case "!banladder":
+        AddMessageResponseToQueue(Chatter.GetBansLadder(), metadata.MessageID);
+        break;
       default:
         // Not any of the predefined commands? Check user defined response messages
         if (ResponseMessages.Count > 0 && ResponseMessages.TryGetValue(command, out rm))
@@ -1200,6 +1205,41 @@ public static class Chat
     request.Content = requestContent;
     var response = Notifications.Client.Send(request).Content.ReadAsStringAsync().Result;
     Console.WriteLine(response);
+  }
+
+  public static string GetCurrentlyBannedUsers()
+  {
+    try
+    {
+      // https://dev.twitch.tv/docs/api/reference/#get-banned-users
+      using HttpRequestMessage request = new(HttpMethod.Get, $"https://api.twitch.tv/helix/moderation/banned?broadcaster_id={Config.Data[Config.Keys.ChannelID]}&first=100");
+      request.Headers.Add("Authorization", $"Bearer {Secret.Data[Secret.Keys.TwitchOAuthToken]}");
+      request.Headers.Add("Client-Id", Secret.Data[Secret.Keys.TwitchClientID]);
+      var resp = Notifications.Client.Send(request);
+      if (!resp.IsSuccessStatusCode) { return string.Empty; }
+      return resp.Content.ReadAsStringAsync().Result;
+    }
+    catch { return string.Empty; }
+  }
+
+  public static (bool, DateTime) CheckIfUserFollowsBroadcaster(long chatterID)
+  {
+    try
+    {
+      using HttpRequestMessage request = new(HttpMethod.Get, $"https://api.twitch.tv/helix/channels/followers?broadcaster_id={Config.Data[Config.Keys.ChannelID]}&user_id={chatterID}");
+      request.Headers.Add("Authorization", $"Bearer {Secret.Data[Secret.Keys.TwitchOAuthToken]}");
+      request.Headers.Add("Client-Id", Secret.Data[Secret.Keys.TwitchClientID]);
+      var resp = Notifications.Client.Send(request);
+      if (!resp.IsSuccessStatusCode) { return (false, DateTime.MinValue); }
+      var response = JsonNode.Parse(resp.Content.ReadAsStringAsync().Result);
+
+      var userID = long.Parse(response?["data"]?[0]?["user_id"].GetValue<string>());
+      var timeStr = response?["data"]?[0]?["followed_at"].GetValue<string>();
+      if (timeStr.EndsWith("Z")) { timeStr = timeStr[..^1]; }
+      var timeFollowed = DateTime.Parse(timeStr);
+      return (userID == chatterID, timeFollowed);
+    }
+    catch { return (false, DateTime.MinValue); }
   }
 }
 

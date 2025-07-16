@@ -255,6 +255,10 @@ public static class Events
                         dur,
                         reason);
                     }
+
+                    // Increase ban counter on the chatter
+                    var chatter = Chatter.GetChatterByID(userID, userName);
+                    chatter.BanCounter++;
                     break;
 
                   case "channel.channel_points_automatic_reward_redemption.add":

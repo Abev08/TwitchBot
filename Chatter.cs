@@ -2,9 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Net.Http;
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 
 using Serilog;
@@ -21,6 +21,7 @@ namespace AbevBot
     public static readonly List<string> AlwaysReadTTSFromThem = new();
     public static readonly List<string> OverpoweredInFight = new();
     public static readonly TimeSpan OfflineTimeout = TimeSpan.FromMinutes(30);
+    public static readonly TimeSpan LastMessageInactive = TimeSpan.FromDays(60); // If a chatter doesn't send any message for 60 days consider him inactive
 
     public long ID { get; set; }
     public string Name { get; set; }
@@ -31,9 +32,9 @@ namespace AbevBot
     public FightStats Fight { get; set; }
     public DateTime LastWelcomeMessage { get; set; } = DateTime.MinValue;
     public string WelcomeMessage { get; set; } = string.Empty;
-    [JsonIgnore]
     public DateTime LastChatted { get; set; } = DateTime.MinValue;
     public DateTime LastSongRequest { get; set; } = DateTime.MinValue;
+    public int BanCounter { get; set; }
 
     /// <summary> Sets starting values for new chatter. </summary>
     private void InitChatter(long id)
@@ -43,6 +44,8 @@ namespace AbevBot
       {
         Points = STARTINGGAMBAPOINTS
       };
+      var followed = Chat.CheckIfUserFollowsBroadcaster(id);
+      if (followed.Item1) { LastTimeFollowed = followed.Item2; }
     }
 
     public void AddGambaPoints(int points)
@@ -225,6 +228,7 @@ namespace AbevBot
       if (chatter.RudePoints > 0) return true;
       if (chatter.BackseatPoints > 0) return true;
       if (chatter.WelcomeMessage?.Length > 0) return true;
+      if (DateTime.Now - chatter.LastChatted <= LastMessageInactive) return true;
       // if (chatter.LastTimeFollowed != DateTime.MinValue) return true;
 
       // All checks failed - the chatter is inactive and can be forgotten peepoSad
@@ -297,6 +301,28 @@ namespace AbevBot
       }
       catch (Exception ex) { Log.Error("Could get chatter \"{name}\" ID, error: {ex}", name, ex); }
       return "";
+    }
+
+    public static string GetBansLadder()
+    {
+      var ladder = new List<(string, int)>();
+      foreach (var c in Chatters) { if (c.Value.BanCounter > 1) { ladder.Add((c.Value.Name, c.Value.BanCounter)); } }
+      ladder.Sort((a, b) => { return b.Item2 - a.Item2; });
+
+      if (ladder.Count == 0) { return "No one was banned? Shruge"; }
+
+      var sb = new StringBuilder();
+      sb.Append("Bans ladder -> ");
+      var count = 0;
+      foreach (var c in ladder)
+      {
+        if (count > 0) { sb.Append(" | "); }
+        sb.Append(c.Item1).Append(": ").Append(c.Item2);
+        count++;
+        if (count >= 10) { break; }
+      }
+
+      return sb.ToString();
     }
   }
 
