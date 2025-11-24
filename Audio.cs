@@ -147,7 +147,15 @@ namespace AbevBot
           return;
         }
       }
-      else if (sound is Stream) { sample = new Mp3FileReader((Stream)sound).ToSampleProvider(); }
+      else if (sound is Stream)
+      {
+        try { sample = new Mp3FileReader((Stream)sound).ToSampleProvider(); }
+        catch (Exception ex)
+        {
+          Log.Warning("Couldn't get mp3 data from stream (probably from TTS), Exception: {ex}", ex);
+          return;
+        }
+      }
       else if (sound is FileInfo file)
       {
         if (file.Exists == true && file.Extension.Equals(".mp3")) { sample = new Mp3FileReader(file.FullName).ToSampleProvider(); }
