@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.IO;
 using System.Net.Http;
 using System.Text;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Web;
 
 using Serilog;
@@ -208,6 +210,8 @@ namespace AbevBot
       {"Naayf", "Naayf"}
     };
 
+    private static string AuthToken;
+
     public static string GetVoice(string name)
     {
       if (name is null || name.Length == 0) return string.Empty;
@@ -270,10 +274,46 @@ namespace AbevBot
 
     public static Stream GetTTS(string text, string voice = "Brian")
     {
+      return GetTTSNew(text, voice);
+
       if (text is null || text.Length == 0) return null;
 
       string t = HttpUtility.UrlEncode(text); // Without url encoding it breaks at "&" symbol
       using HttpRequestMessage request = new(HttpMethod.Get, $"https://api.streamelements.com/kappa/v2/speech?voice={voice}&text={t}");
+      try { return Notifications.Client.Send(request).Content.ReadAsStream(); }
+      catch (HttpRequestException ex) { Log.Error("StreamElements TTS request failed. {ex}", ex); return null; }
+    }
+
+    public static Stream GetTTSNew(string text, string voice = "Brian")
+    {
+      if (string.IsNullOrEmpty(text)) { return null; }
+
+      if (string.IsNullOrEmpty(AuthToken))
+      {
+        // Try to parse auth token from JWT Token
+        try
+        {
+          var jwtToken = Secret.Data[Secret.Keys.StreamElementsJWTToken];
+          if (string.IsNullOrEmpty(jwtToken)) { throw new Exception("missing JWT Token"); }
+          var tokenData = jwtToken.Split(".");
+          int mod4 = tokenData[1].Length % 4;
+          if (mod4 > 0) { tokenData[1] += new string('=', 4 - mod4); } // Add padding
+          var data = Convert.FromBase64String(tokenData[1]);
+          var tokenJSON = JsonSerializer.Deserialize<JsonObject>(data);
+          AuthToken = HttpUtility.UrlEncode((string)tokenJSON["authToken"]);
+          if (string.IsNullOrEmpty(AuthToken)) { throw new Exception("parsed auth token was empty"); }
+        }
+        catch (Exception ex)
+        {
+          Log.Error("StreamElements TTS, failed parsing auth token from JWT Token. {ex}", ex);
+          AuthToken = "-1";
+          return null;
+        }
+      }
+      else if (AuthToken == "-1") { return null; } // The auth token is missing
+
+      string t = HttpUtility.UrlEncode(text); // Without url encoding it breaks at "&" symbol
+      using HttpRequestMessage request = new(HttpMethod.Get, $"https://api.streamelements.com/kappa/v2/speech?voice={voice}&text={t}&key={AuthToken}");
       try { return Notifications.Client.Send(request).Content.ReadAsStream(); }
       catch (HttpRequestException ex) { Log.Error("StreamElements TTS request failed. {ex}", ex); return null; }
     }

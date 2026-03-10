@@ -88,7 +88,7 @@ public static class Events
             anySubscriptionSucceeded |= Subscribe("channel.subscription.message", "1", sessionID); // Channel got resubscription
             anySubscriptionSucceeded |= Subscribe("channel.cheer", "1", sessionID); // Channel got cheered
             anySubscriptionSucceeded |= Subscribe("channel.channel_points_custom_reward_redemption.add", "1", sessionID); // User redeemed channel points
-            anySubscriptionSucceeded |= Subscribe("channel.hype_train.progress", "1", sessionID); // A Hype Train makes progress on the specified channel
+            anySubscriptionSucceeded |= Subscribe("channel.hype_train.progress", "2", sessionID); // A Hype Train makes progress on the specified channel
             anySubscriptionSucceeded |= Subscribe("channel.ban", "1", sessionID); // A viewer is banned from the specified channel
             anySubscriptionSucceeded |= Subscribe("channel.channel_points_automatic_reward_redemption.add", "1", sessionID); // A viewer has redeemed an automatic channel points reward on the specified channel
             anySubscriptionSucceeded |= Subscribe("channel.raid", "1", sessionID,

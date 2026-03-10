@@ -31,6 +31,9 @@ public static class Secret
     /// <summary> Should Twitch chat bot use sub account for posting chat messages? "1" == enabled </summary>
     TwitchUseTwoAccounts,
 
+    /// <summary> StreamElements entire JWT Token. </summary>
+    StreamElementsJWTToken,
+
     /// <summary> TikTok Session ID needed for TikTok API calls. </summary>
     TikTokSessionID,
 
@@ -238,6 +241,18 @@ public static class Secret
       writer.WriteLine("; Additional things, can be left empty.");
       writer.WriteLine("; --------------------------------------------------");
 
+      writer.WriteLine();
+      writer.WriteLine("; ----- StreamElements");
+      writer.WriteLine("; JWT Token is required to use StreamElements features, for example TTS.");
+      writer.WriteLine("; Steps to acquire JWT Token:");
+      writer.WriteLine(";  1. Go to: https://streamelements.com/dashboard/account/channels.");
+      writer.WriteLine(";  2. If you are not logged in, log in into your Twitch account.");
+      writer.WriteLine(";  3. Authorize StreamElements to use your Twitch account.");
+      writer.WriteLine(";  4. Click on the copy icon next to \"JWT Token\" (it should be in top middle of the screen).");
+      writer.WriteLine(";  5. Paste entire token (it's a bit long, don't split it into multiple lines) below.");
+      writer.WriteLine(string.Concat(Keys.StreamElementsJWTToken.ToString(), " = "));
+
+      writer.WriteLine();
       writer.WriteLine();
       writer.WriteLine("; ----- TikTok");
       writer.WriteLine("; Session ID needed for API calls. You have to search yourself how to get one. I can't help you.");

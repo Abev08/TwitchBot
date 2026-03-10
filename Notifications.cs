@@ -534,28 +534,32 @@ namespace AbevBot
     /// <summary> Creates and adds to queue Random Video notification. </summary>
     public static void CreateRandomVideoNotification(string messageID, string sender)
     {
-      var video = GetRandomVideoNotPlayedRecently();
-      if (video is null || video.Length == 0) return;
-      string msgID = messageID;
-
-      var n = new Notification()
+      // The Discord videos fetch can block the thread untill the HTTP request is completed, moving it into green thread should help with that
+      Task.Run(() =>
       {
-        Type = NotificationType.OTHER,
-        SubType = "Random video",
-        Sender = sender,
-        VideoPath = video,
-        VideoParams = RandomVideoParameters,
+        var video = GetRandomVideoNotPlayedRecently();
+        if (video is null || video.Length == 0) return;
+        string msgID = messageID;
 
-        ExtraActionAtStartup = () =>
+        var n = new Notification()
         {
-          if (Config.Data[Config.Keys.ChannelRedemption_RandomVideo_MarkAsFulfilled].Equals("True"))
+          Type = NotificationType.OTHER,
+          SubType = "Random video",
+          Sender = sender,
+          VideoPath = video,
+          VideoParams = RandomVideoParameters,
+
+          ExtraActionAtStartup = () =>
           {
-            MarkRedemptionAsFulfilled(Config.Data[Config.Keys.ChannelRedemption_RandomVideo_ID], msgID);
+            if (Config.Data[Config.Keys.ChannelRedemption_RandomVideo_MarkAsFulfilled].Equals("True"))
+            {
+              MarkRedemptionAsFulfilled(Config.Data[Config.Keys.ChannelRedemption_RandomVideo_ID], msgID);
+            }
           }
-        }
-      };
-      n.UpdateControl();
-      AddNotification(n);
+        };
+        n.UpdateControl();
+        AddNotification(n);
+      });
     }
 
     /// <summary> Creates and adds to queue Chatter Timeout notification. </summary>
