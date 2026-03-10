@@ -741,8 +741,12 @@ public static class Chat
     temp2++;
 
     // Get message body
-    temp = msg.IndexOf(':', temp2);
-    if (temp > 0) { body = msg[(temp + 1)..]; }
+    if (temp2 < msg.Length)
+    {
+      temp = msg.IndexOf(':', temp2);
+      if (temp > 0) { body = msg[(temp + 1)..]; }
+    }
+    else { } // Empty message?
 
     // Get header data
     temp = 0;  // start
