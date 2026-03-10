@@ -147,11 +147,18 @@ namespace AbevBot
         return null;
       }
 
-      string name = userName.Trim().ToLower();
+      string name = userName.Trim().ToLower();      
+      if (string.IsNullOrWhiteSpace(name))
+      {
+        Log.Warning("Get chatter by name provided name after trimming is empty! Before: {userName}, after: {name}", userName, name);
+        return null;
+      }
+      
       var chatter = Chatters.GetEnumerator();
       while (chatter.MoveNext())
       {
-        if (chatter.Current.Value.Name.ToLower().Equals(name)) return chatter.Current.Value;
+        try { if (chatter.Current.Value.Name.ToLower().Equals(name)) { return chatter.Current.Value; } }
+        catch { }
       }
 
       var chatters = Chat.GetChatters();
