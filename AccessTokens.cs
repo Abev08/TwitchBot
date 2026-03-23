@@ -27,6 +27,7 @@ public static class AccessTokens
   private static readonly string[] TwitchScopes = new[] {
     "bits:read", // View Bits information for a channel
     "channel:bot", // Joins your channel’s chatroom as a bot user, and perform chat-related actions as that user
+    "channel:manage:clips", // Manage Clips for a channel
     "channel:manage:redemptions", // Manage Channel Points custom rewards and their redemptions on a channel
     "channel:moderate", // Perform moderation actions in a channel. The user requesting the scope must be a moderator in the channel
     "channel:read:hype_train", // View Hype Train information for a channel

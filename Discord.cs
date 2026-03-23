@@ -100,7 +100,8 @@ public static class Discord
 
       // Check start of the message
       var content = m["content"].ToString();
-      if (content.ToLower().StartsWith("ignore")) { continue; } // Skip the message
+      var contentLowerCase = content.ToLower();
+      if (contentLowerCase.StartsWith("ignore")) { continue; } // Skip the message
 
       // Check reactions on the message
       var reactions = m["reactions"];
@@ -116,6 +117,21 @@ public static class Discord
         }
 
         if (noCount >= yesCount) { continue; } // Skip the message
+      }
+
+      // Check for Twitch clip link, try to generate download url
+      if (contentLowerCase.StartsWith("https://www.twitch.tv/"))
+      {
+        var idx = content.IndexOf("/clip/");
+        if (idx >= 0)
+        {
+          var clipID = content[(idx + 6)..];
+          idx = clipID.IndexOf("?");
+          if (idx >= 0) { clipID = clipID[..idx]; }
+          var url = Notifications.GetTwitchClipDownloadUrl(clipID);
+          if (!string.IsNullOrEmpty(url)) { videos.Add(url); }
+          continue;
+        }
       }
 
       // Check attachments (attached videos)
@@ -140,7 +156,7 @@ public static class Discord
         else
         {
           // Maybe the message is a link to a video but for some reason the video is not embedding in the Discord message
-          if (content.ToLower().EndsWith(".mp4") || content.ToLower().EndsWith(".webm"))
+          if (contentLowerCase.EndsWith(".mp4") || contentLowerCase.EndsWith(".webm"))
           {
             if (Uri.TryCreate(content, UriKind.Absolute, out Uri uriResult) &&
               (uriResult.Scheme == Uri.UriSchemeHttp || uriResult.Scheme == Uri.UriSchemeHttps)) { videos.Add(content); }

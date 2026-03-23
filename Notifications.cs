@@ -1068,6 +1068,38 @@ namespace AbevBot
         MainWindow.I.UpdatePastNotificationQueue(notif, false);
       }
     }
+
+    public static string GetTwitchClipDownloadUrl(string clipID)
+    {
+      if (string.IsNullOrEmpty(clipID)) { return string.Empty; }
+
+      var url = $"https://api.twitch.tv/helix/clips/downloads?broadcaster_id={Config.Data[Config.Keys.ChannelID]}&editor_id={Config.Data[Config.Keys.ChannelID]}&clip_id={clipID}";
+      using HttpRequestMessage request = new(HttpMethod.Get, url);
+      request.Headers.Add("Authorization", $"Bearer {Secret.Data[Secret.Keys.TwitchOAuthToken]}");
+      request.Headers.Add("Client-Id", Secret.Data[Secret.Keys.TwitchClientID]);
+      try
+      {
+        var resp = Client.Send(request);
+        if (!resp.IsSuccessStatusCode)
+        {
+          Log.Error("Twitch clip, requesting the clip data failed. {statusCode}", resp.StatusCode);
+          return string.Empty;
+        }
+        else
+        {
+          var data = resp.Content.ReadAsStringAsync().Result;
+          var receivedClips = JsonNode.Parse(data)["data"].AsArray();
+          if (receivedClips?.Count == 0)
+          {
+            Log.Warning("Twitch clip, received clip data was empty, {clipID}", clipID);
+            return string.Empty;
+          }
+          return receivedClips[0]["landscape_download_url"].GetValue<string>(); // Assume that the 1st returned clip was the one that was requested
+        }
+      }
+      catch (Exception ex) { Log.Error("Twitch clip, acquiring the download link failed. {ex}", ex); }
+      return string.Empty;
+    }
   }
 
   public enum NotificationType
