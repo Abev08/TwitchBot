@@ -29,7 +29,7 @@ namespace AbevBot
     public static bool SkipNotification { get; set; }
     public static bool ChatTTSEnabled { get; set; }
     public static bool WelcomeMessagesEnabled { get; set; }
-    /// <summary> Queue of notifiactions. </summary>
+    /// <summary> Queue of notifications. </summary>
     public static readonly List<Notification> NotificationQueue = new();
     /// <summary> Collection of past notifications.
     /// When notification ends it should be added to this collection and cleared from it after some time. </summary>
@@ -168,7 +168,7 @@ namespace AbevBot
             if (NotificationQueue[0].Update())
             {
               SkipNotification = false;
-              // Update returned true == notificaion has ended, remove it from queue
+              // Update returned true == notification has ended, remove it from queue
               var n = NotificationQueue[0];
               NotificationQueue.RemoveAt(0);
               MainWindow.I.UpdateNotificationQueue(NotificationQueue.Count, MaybeNotificationQueue.Count, n, true);
@@ -246,7 +246,7 @@ namespace AbevBot
 
         lock (MaybeNotificationQueue)
         {
-          notification.StartAfter = DateTime.Now.AddSeconds(startAfter); // Lets give it 5 sec, maybe propper event message will come?
+          notification.StartAfter = DateTime.Now.AddSeconds(startAfter); // Lets give it 5 sec, maybe proper event message will come?
           MaybeNotificationQueue.Add(notification);
           MainWindow.I.SetNotificationQueueCount(NotificationQueue.Count, MaybeNotificationQueue.Count);
         }
@@ -456,7 +456,7 @@ namespace AbevBot
     }
 
     /// <summary> Creates and adds to queue Channel Points Redemption notification. </summary>
-    public static void CreateRedemptionNotificaiton(string userName, string redemptionID, string messageID, string message)
+    public static void CreateRedemptionNotification(string userName, string redemptionID, string messageID, string message)
     {
       string msgID = messageID;
       var chatter = Chatter.GetChatterByName(userName);
@@ -534,11 +534,11 @@ namespace AbevBot
     /// <summary> Creates and adds to queue Random Video notification. </summary>
     public static void CreateRandomVideoNotification(string messageID, string sender)
     {
-      // The Discord videos fetch can block the thread untill the HTTP request is completed, moving it into green thread should help with that
+      // The Discord videos fetch can block the thread until the HTTP request is completed, moving it into green thread should help with that
       Task.Run(() =>
       {
         var video = GetRandomVideoNotPlayedRecently();
-        if (video is null || video.Length == 0) return;
+        if (string.IsNullOrEmpty(video)) { return; }
         string msgID = messageID;
 
         var n = new Notification()
@@ -676,7 +676,7 @@ namespace AbevBot
     {
       if (Chat.ResponseMessages.ContainsKey("!voices"))
       {
-        Log.Warning("Couldn't add respoonse to \"{key}\" key - the key is already present in response messages.", "!voices");
+        Log.Warning("Couldn't add response to \"{key}\" key - the key is already present in response messages.", "!voices");
         return;
       }
 
@@ -704,7 +704,7 @@ namespace AbevBot
       }
 
       Chat.ResponseMessages.Add("!voices", ($"TTS Voices: {VoicesLink}", false, new DateTime()));
-      Log.Information("Added respoonse to \"{key}\" key.", "!voices");
+      Log.Information("Added response to \"{key}\" key.", "!voices");
     }
 
     private static void CreateVoicesResponse()
@@ -720,11 +720,11 @@ namespace AbevBot
           "StreamElements: ", "https://github.com/Abev08/TwitchBot/blob/main/StreamElements.cs ",
           "TikTok: ", "https://github.com/Abev08/TwitchBot/blob/main/TikTok.cs"
         ), false, new DateTime()));
-        Log.Information("Added respoonse to \"{key}\" key.", "!voices");
+        Log.Information("Added response to \"{key}\" key.", "!voices");
       }
       else
       {
-        Log.Warning("Couldn't add respoonse to \"{key}\" key - the key is already present in response messages.", "!voices");
+        Log.Warning("Couldn't add response to \"{key}\" key - the key is already present in response messages.", "!voices");
       }
     }
 
@@ -770,7 +770,7 @@ namespace AbevBot
       {
         bool newSounds = false;
         // Check if new sounds are available
-        // comparasion is needed to know when to update !sounds response paste link
+        // comparison is needed to know when to update !sounds response paste link
         if (sounds.Count != SampleSounds.Count) { newSounds = true; }
         else
         {
@@ -858,7 +858,7 @@ namespace AbevBot
       if (response != null && response?.Url?.Length > 0)
       {
         s_soundsSamplePasteLink = response.Url.Replace("api/", ""); // Remove "api/" part
-        Log.Information("Created respoonse link to \"{key}\" key.", "!sounds");
+        Log.Information("Created response link to \"{key}\" key.", "!sounds");
         return s_soundsSamplePasteLink;
       }
       else
@@ -899,46 +899,29 @@ namespace AbevBot
       return videos;
     }
 
-    /// <summary> Gets random videos not played recently. </summary>
-    /// <returns>List of FileInfo objects describing random videos</returns>
-    public static List<string> GetRandomVideosToPlay()
-    {
-      var videosAll = GetRandomVideosAll();
-      var videosToPlay = new List<string>();
-      videosToPlay.AddRange(videosAll);
-
-      foreach (var v in RandomVideosRecentlyPlayed)
-      {
-        for (int i = videosToPlay.Count - 1; i >= 0; i--)
-        {
-          if (v == videosToPlay[i])
-          {
-            videosToPlay.RemoveAt(i);
-            break;
-          }
-        }
-      }
-
-      if (videosToPlay.Count == 0)
-      {
-        videosToPlay.AddRange(videosAll);
-        RandomVideosRecentlyPlayed.Clear();
-      }
-
-      return videosToPlay;
-    }
-
-    /// <summary> Gets random video from a pool of videos not played recently. </summary>
+    /// <summary> Gets random video from a pool of videos not played recently.
+    /// The returned video is added to the list of recently played videos and wont be returned again
+    /// unless all of the available videos were already played. </summary>
     /// <returns>Path to random video</returns>
     public static string GetRandomVideoNotPlayedRecently()
     {
-      var videos = GetRandomVideosToPlay();
-      int index = Random.Shared.Next(videos.Count);
-      if (index < 0 || videos.Count == 0) return null;
+      var videos = GetRandomVideosAll();
+      if (videos.Count == 0) { return string.Empty; }
+      var videosToPlay = new List<string>(videos);
 
-      var video = videos[index];
+      foreach (var v in RandomVideosRecentlyPlayed) { videosToPlay.Remove(v); }
+
+      if (videosToPlay.Count == 0)
+      {
+        videosToPlay = videos;
+        RandomVideosRecentlyPlayed.Clear();
+      }
+
+      int index = Random.Shared.Next(videosToPlay.Count);
+      if (index < 0 || videosToPlay.Count == 0) { return string.Empty; }
+
+      var video = videosToPlay[index];
       RandomVideosRecentlyPlayed.Add(video);
-      videos.RemoveAt(index);
       return video;
     }
 

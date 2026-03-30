@@ -189,7 +189,7 @@ namespace AbevBot
 
       if (DateTime.Now - StartTime > MaximumNotificationTime)
       {
-        Log.Warning("Maximum notification time reached, something went wrong, to not block other notificaitons force closing this one!");
+        Log.Warning("Maximum notification time reached, something went wrong, to not block other notifications force closing this one!");
         Stop();
         NotPausable = false;
         return true;
@@ -385,7 +385,10 @@ namespace AbevBot
             {
               // Add text before the sample to be read
               if (supplier.Equals("StreamElements")) { Audio.AddToSampleProviderList(StreamElements.GetTTS(text[..index].Trim(), voice), ref newAudio); }
-              else if (supplier.Equals("TikTok")) { Audio.AddToSampleProviderList(TikTok.GetTTS(text[..index].Trim(), voice), ref newAudio); }
+              else if (supplier.Equals("TikTok"))
+              {
+                foreach (var tts in TikTok.GetTTSWithCharLimit(text[..index].Trim(), voice)) { Audio.AddToSampleProviderList(tts, ref newAudio); }
+              }
               else { Log.Warning("TTS supplier {supplier} not recognized!", supplier); }
 
               // Add sample sound
@@ -418,7 +421,10 @@ namespace AbevBot
                 {
                   // Add text before the sample to be read
                   if (supplier.Equals("StreamElements")) { Audio.AddToSampleProviderList(StreamElements.GetTTS(text[..index].Trim(), voice), ref newAudio); }
-                  else if (supplier.Equals("TikTok")) { Audio.AddToSampleProviderList(TikTok.GetTTS(text[..index].Trim(), voice), ref newAudio); }
+                  else if (supplier.Equals("TikTok"))
+                  {
+                    foreach (var tts in TikTok.GetTTSWithCharLimit(text[..index].Trim(), voice)) { Audio.AddToSampleProviderList(tts, ref newAudio); }
+                  }
                   else { Log.Warning("TTS supplier {supplier} not recognized!", supplier); }
 
                   // Add sample sound
@@ -439,7 +445,10 @@ namespace AbevBot
         {
           // No sample found, add text to be read, clear the remainder of the text
           if (supplier.Equals("StreamElements")) { Audio.AddToSampleProviderList(StreamElements.GetTTS(text.Trim(), voice), ref newAudio); }
-          else if (supplier.Equals("TikTok")) { Audio.AddToSampleProviderList(TikTok.GetTTS(text.Trim(), voice), ref newAudio); }
+          else if (supplier.Equals("TikTok"))
+          {
+            foreach (var tts in TikTok.GetTTSWithCharLimit(text.Trim(), voice)) { Audio.AddToSampleProviderList(tts, ref newAudio); }
+          }
           else { Log.Warning("TTS supplier {supplier} not recognized!", supplier); }
           text = string.Empty;
         }

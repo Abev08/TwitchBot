@@ -12,6 +12,8 @@ namespace AbevBot
 {
   public static class TikTok
   {
+    public const int MaxCharacterLimit = 190; // Probably the limit is 200, give it some wiggle room
+
     // Dictionary of <key, value>
     // key: TikTok internal voice name
     // value: Voice name used on stream and tts messages
@@ -169,7 +171,7 @@ namespace AbevBot
 
     /// <summary> Appends all available voices to provided StringBuilder. </summary>
     /// <param name="sb">StringBuilder to append voices to.</param>
-    /// <param name="charactersPerLine">Insert line break after provided amout of characters (<= 0 - don't insert line breaks).</param>
+    /// <param name="charactersPerLine">Insert line break after provided amount of characters (<= 0 - don't insert line breaks).</param>
     public static void AppendVoices(ref StringBuilder sb, int charactersPerLine = -1)
     {
       var voice = Voices.GetEnumerator();
@@ -193,6 +195,40 @@ namespace AbevBot
         first = false;
       }
       sb.AppendLine();
+    }
+
+    public static List<Stream> GetTTSWithCharLimit(string text, string voice)
+    {
+      var streams = new List<Stream>();
+
+      // Split the input text into chucks
+      var texts = new List<string>();
+      int start = 0;
+      while (start < text.Length)
+      {
+        var remaining = text.Length - start;
+        var currentLimit = Math.Min(MaxCharacterLimit, remaining);
+        if (currentLimit < remaining)
+        {
+          var t = text.AsSpan(start, currentLimit);
+          var punctuationIdx = t.LastIndexOfAny('.', ',');
+          var whiteSpaceIdx = t.LastIndexOf(' ');
+
+          if (punctuationIdx > 0 && Math.Abs(punctuationIdx - whiteSpaceIdx) < 20) { currentLimit = punctuationIdx + 1; }
+          else if (whiteSpaceIdx > 0) { currentLimit = whiteSpaceIdx + 1; }
+        }
+
+        texts.Add(text.Substring(start, currentLimit).Trim());
+        start += currentLimit;
+      }
+
+      foreach (var t in texts)
+      {
+        var s = GetTTS(t, voice);
+        if (s != null) { streams.Add(s); }
+      }
+
+      return streams;
     }
 
     public static Stream GetTTS(string text, string voice)

@@ -78,7 +78,7 @@ public static class Chat
   private static void Update()
   {
     int sleepErrorDur = 5000;
-    var receiveBuffer = new byte[16384]; // Max IRC message is 4096 bytes? let's allocate 4 times that, 2 times max message length wasn't enaugh for really fast chats
+    var receiveBuffer = new byte[16384]; // Max IRC message is 4096 bytes? let's allocate 4 times that, 2 times max message length wasn't enough for really fast chats
     var remainingData = new byte[16384];
     int remainingDataLen = 0, zeroBytesReceivedCounter;
     string header, body, msg;
@@ -333,10 +333,10 @@ public static class Chat
         }
         else if (ResponseMessages.TryAdd(text[0], (text[1].Trim(), true, new DateTime())))
         {
-          Log.Information("Added respoonse to \"{key}\" key.", text[0]);
+          Log.Information("Added response to \"{key}\" key.", text[0]);
           responseCount++;
         }
-        else { Log.Warning("Redefiniton of \"{key}\" key in line {index}.", text[0], lineIndex); } // TryAdd returned false - probably a duplicate
+        else { Log.Warning("Redefinition of \"{key}\" key in line {index}.", text[0], lineIndex); } // TryAdd returned false - probably a duplicate
       }
     }
 
@@ -590,7 +590,7 @@ public static class Chat
   /// <param name="chatter">Chatter that requested the command</param>
   /// <param name="message">Chat message</param>
   /// <param name="messageID">Message ID of the message we are responding to</param>
-  /// <param name="fromNotifications">Is the request from notifiactions?</param>
+  /// <param name="fromNotifications">Is the request from notifications?</param>
   public static void SongRequest(Chatter chatter, string message, string messageID, bool fromNotifications = false)
   {
     if (!Spotify.Working)
@@ -789,7 +789,7 @@ public static class Chat
             metadata.MsgID = s;
             break;
           case "msg-param-recipient-display-name":
-            metadata.Receipent = s;
+            metadata.Recipient = s;
             break;
           case "msg-param-sub-plan":
             metadata.Sub.Tier = s.ToLower() switch
@@ -887,7 +887,7 @@ public static class Chat
           case "subgift":
             Log.Information("{userName} gifted sub to {userName2}! {msg}",
               metadata.UserName,
-              metadata.Receipent,
+              metadata.Recipient,
               body);
             break;
           case "submysterygift":
@@ -1032,14 +1032,24 @@ public static class Chat
       Notifications.CreateTTSNotification(chatter.WelcomeMessage, chatter.Name);
     }
 
+    (string response, bool fromFile, DateTime lastUsed) rm; // Response message
     if (!msg.StartsWith('!')) { return; } // Message doesn't start with exclamation mark - not a command.
+    else if (msg == "!commands") // Check !commands command
+    {
+      // Check the timeout
+      if (ResponseMessages.TryGetValue("!commands", out rm) && (DateTime.Now - rm.lastUsed) >= COOLDOWN_BETWEEN_THE_SAME_MESSAGE)
+      {
+        SendCommandsResponse(metadata.UserName, metadata.MessageID);
+        ResponseMessages["!commands"] = (rm.response, rm.fromFile, DateTime.Now);
+      }
+      else { Log.Warning("Not sending response for {command} key. Cooldown active.", "!commands"); }
+      return;
+    }
 
     // Get the command
     int temp = msg.IndexOf(' ');
     string command = temp > 0 ? msg[..temp] : msg;
     command = command.ToLower();
-    (string response, bool fromFile, DateTime lastUsed) rm; // Response message
-
     switch (command)
     {
       case "!tts":
@@ -1077,13 +1087,7 @@ public static class Chat
         Hug(metadata.UserName, msg[4..]); // 4.. - without "!hug"
         break;
       case "!commands":
-        // Check the timeout
-        if (ResponseMessages.TryGetValue("!commands", out rm) && (DateTime.Now - rm.lastUsed) >= COOLDOWN_BETWEEN_THE_SAME_MESSAGE)
-        {
-          SendCommandsResponse(metadata.UserName, metadata.MessageID);
-          ResponseMessages["!commands"] = (rm.response, rm.fromFile, DateTime.Now);
-        }
-        else { Log.Warning("Not sending response for {command} key. Cooldown active.", "!commands"); }
+        // It's checked above, the whole message has to be the command instead just the start
         break;
       case "!welcomemessageclear":
         // Clear current welcome message
@@ -1264,14 +1268,14 @@ class MessageMetadata
   public string Bits = string.Empty;
   /// <summary> Type of special chat message (like "sub", "emote_only_on"). </summary>
   public string MsgID = string.Empty;
-  public string Receipent = string.Empty;
+  public string Recipient = string.Empty;
   /// <summary> Information about sub message received in chat. </summary>
   public (string Tier, string DurationInAdvance, string Streak, string CumulativeMonths) Sub = (string.Empty, string.Empty, string.Empty, string.Empty);
 
   /// <summary> Resets current metadata to default state. </summary>
   public void Clear()
   {
-    MessageType = Badge = UserName = MessageID = CustomRewardID = Bits = MsgID = Receipent = string.Empty;
+    MessageType = Badge = UserName = MessageID = CustomRewardID = Bits = MsgID = Recipient = string.Empty;
     UserID = -1;
 
     Sub.Tier = Sub.DurationInAdvance = Sub.Streak = Sub.CumulativeMonths = string.Empty;

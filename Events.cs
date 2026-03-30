@@ -224,7 +224,7 @@ public static class Events
                     Log.Information("{name} redeemed ID: {id} with channel points.",
                       userName,
                       eventMsg["payload"]["event"]["reward"]?["id"]?.ToString());
-                    Notifications.CreateRedemptionNotificaiton(
+                    Notifications.CreateRedemptionNotification(
                       userName,
                       eventMsg["payload"]["event"]["reward"]?["id"]?.ToString(),
                       eventMsg["payload"]["event"]["id"]?.ToString(),
